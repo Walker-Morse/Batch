@@ -58,6 +58,9 @@ type SecretStore interface {
 type BatchFileRepository interface {
 	Create(ctx context.Context, f *BatchFile) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, updatedAt time.Time) error
+	// SetRecordCount is called after parsing to record total row count.
+	// Required for Stage 3's stall detection (staged_count vs record_count).
+	SetRecordCount(ctx context.Context, id uuid.UUID, count int) error
 	IncrementMalformedCount(ctx context.Context, id uuid.UUID) error
 	GetByCorrelationID(ctx context.Context, correlationID uuid.UUID) (*BatchFile, error)
 }
@@ -257,3 +260,7 @@ type PurseRecord         struct{ PurseID uuid.UUID }
 type EnrollmentFact      struct{ CorrelationID uuid.UUID; RowSequenceNumber int }
 type PurseLifecycleFact  struct{ PurseID uuid.UUID; EventType string }
 type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; FISResultCode string }
+
+// SetRecordCount is called by Stage 2 after parsing to record the total row count.
+// Required for Stage 3's stall detection (staged_count vs record_count comparison).
+// This addition is appended here — the interface block above closes before this.

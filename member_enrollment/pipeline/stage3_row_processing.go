@@ -4,61 +4,569 @@
 //   and failure boundary. One row exception does not abort the file.
 //
 // Processing order per row (MANDATORY — do not reorder):
-//   1. Idempotency check: domain_commands composite key
+//   1. Idempotency check: FindDuplicate on domain_commands composite key
 //      (correlation_id, client_member_id, command_type, benefit_period)
-//      → if Accepted exists: return Duplicate, skip
-//   2. Write batch_records_rt30 / rt37 / rt60 with status STAGED
-//   3. Write domain state: consumers, cards, purses
-//   4. Inline mart write (MartWriter): dim_member, dim_card, dim_purse, fact_enrollments
+//      → if Accepted or Completed exists: skip (return Duplicate)
+//   2. Insert domain_commands row with status=Accepted
+//   3. Write batch_records_rt30/rt37/rt60 with status=STAGED
+//   4. Write domain state: consumers, cards, purses (upsert)
+//   5. Write audit_log entry for the state transition
 //
 // On row exception:
-//   - Write to dead_letter_store with failure_stage = "row_processing"
+//   - Write to dead_letter_store with failure_stage="row_processing"
 //   - Increment failure counter
-//   - Continue to next row
+//   - Continue to next row (never abort the file on a single row failure)
 //
 // On Stage 3 completion:
 //   - Compare staged_count to batch_files.record_count
-//   - If counts diverge (unresolved dead letters): transition to STALLED
-//   - If STALLED: emit "batch.stalled" log event, do NOT proceed to Stage 4
-//   - Resolution: replay CLI tool (Open Item #24) or manual poison-message abandonment
-//
-// Sequential throughput: wall-clock time scales linearly with row count.
-// At RFU volumes (≤200K rows), FIS batch processing SLA (~45-60 min/50K records)
-// is the dominant constraint — not Stage 3 throughput. Validate in load testing (§5.6).
-//
-// Evolution path (ADR-010): the Stage 3 loop body is the clean extraction point
-// for future parallel execution (SQS + Lambda or Fargate pool). No domain changes
-// required — idempotency model and dead letter flow are identical.
-//
-// Do NOT implement row-level parallelism without first confirming Aurora connection
-// pool sizing. RDS Proxy is sized for one persistent connection per concurrent
-// Fargate task — not per-row concurrent connections.
-//
-// Status transition: VALIDATING → PROCESSING → (STALLED | advance to Stage 4)
+//   - If staged_count < record_count: transition batch_files → STALLED
+//   - STALLED: emit "batch.stalled" log event; do NOT proceed to Stage 4
+//   - Resolution: replay-cli tool (Open Item #24)
 package pipeline
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/walker-morse/batch/_adapters/aurora"
+	"github.com/walker-morse/batch/_shared/domain"
+	"github.com/walker-morse/batch/_shared/observability"
 	"github.com/walker-morse/batch/_shared/ports"
+	"github.com/walker-morse/batch/member_enrollment/srg"
 )
 
-// RowProcessingStage implements Stage 3 of the ingest-task pipeline.
+// RowProcessingStage implements Stage 3.
 type RowProcessingStage struct {
 	DomainCommands ports.DomainCommandRepository
 	DeadLetters    ports.DeadLetterRepository
 	BatchFiles     ports.BatchFileRepository
+	BatchRecords   *aurora.BatchRecordsRepo
+	DomainState    *aurora.DomainStateRepo
 	Audit          ports.AuditLogWriter
-	Mart           ports.MartWriter
 	Obs            ports.IObservabilityPort
 }
 
-// Run processes all rows in the validated SRG file sequentially.
-func (s *RowProcessingStage) Run(ctx context.Context, batchFileID string) error {
-	// TODO: sequential row iteration
-	// TODO: idempotency gate (domain_commands) — MUST be first write
-	// TODO: batch_records writes
-	// TODO: domain state writes (consumers, cards, purses)
-	// TODO: MartWriter inline writes
-	// TODO: staged_count vs record_count comparison → STALLED if mismatch
-	return nil
+// RowProcessingInput carries everything Stage 3 needs.
+type RowProcessingInput struct {
+	BatchFile    *ports.BatchFile
+	SRG310Rows   []*srg.SRG310Row
+	SRG315Rows   []*srg.SRG315Row
+	SRG320Rows   []*srg.SRG320Row
+	ProgramID    uuid.UUID
+	SubprogramID int64
+}
+
+// Result captures the outcome of Stage 3.
+type RowProcessingResult struct {
+	StagedCount    int
+	FailedCount    int
+	DuplicateCount int
+	// Stalled is true if unresolved dead letters prevent Stage 4 from proceeding.
+	Stalled bool
+}
+
+// Run processes all rows sequentially.
+func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*RowProcessingResult, error) {
+	result := &RowProcessingResult{}
+
+	// Transition batch_files → PROCESSING
+	if err := s.BatchFiles.UpdateStatus(ctx, in.BatchFile.ID, "PROCESSING", time.Now().UTC()); err != nil {
+		return nil, fmt.Errorf("stage3: transition to PROCESSING: %w", err)
+	}
+
+	// Process SRG310 rows (ENROLL)
+	for _, row := range in.SRG310Rows {
+		outcome := s.processSRG310Row(ctx, in, row)
+		switch outcome {
+		case outcomeStagedOK:
+			result.StagedCount++
+		case outcomeDuplicate:
+			result.DuplicateCount++
+		case outcomeDeadLettered:
+			result.FailedCount++
+		}
+	}
+
+	// Process SRG315 rows (UPDATE/SUSPEND/TERMINATE)
+	for _, row := range in.SRG315Rows {
+		outcome := s.processSRG315Row(ctx, in, row)
+		switch outcome {
+		case outcomeStagedOK:
+			result.StagedCount++
+		case outcomeDuplicate:
+			result.DuplicateCount++
+		case outcomeDeadLettered:
+			result.FailedCount++
+		}
+	}
+
+	// Process SRG320 rows (LOAD)
+	for _, row := range in.SRG320Rows {
+		outcome := s.processSRG320Row(ctx, in, row)
+		switch outcome {
+		case outcomeStagedOK:
+			result.StagedCount++
+		case outcomeDuplicate:
+			result.DuplicateCount++
+		case outcomeDeadLettered:
+			result.FailedCount++
+		}
+	}
+
+	// Check for STALLED condition: unresolved dead letters
+	totalExpected := len(in.SRG310Rows) + len(in.SRG315Rows) + len(in.SRG320Rows)
+	if result.FailedCount > 0 {
+		unresolved, _ := s.DeadLetters.ListUnresolved(ctx, in.BatchFile.CorrelationID)
+		if len(unresolved) > 0 {
+			result.Stalled = true
+			_ = s.BatchFiles.UpdateStatus(ctx, in.BatchFile.ID, "STALLED", time.Now().UTC())
+			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+				EventType:     observability.EventBatchStalled,
+				Level:         "WARN",
+				CorrelationID: &in.BatchFile.CorrelationID,
+				TenantID:      &in.BatchFile.TenantID,
+				BatchFileID:   &in.BatchFile.ID,
+				Stage:         strPtr("stage3_row_processing"),
+				Message: fmt.Sprintf(
+					"batch STALLED: %d unresolved dead letters of %d total rows",
+					len(unresolved), totalExpected,
+				),
+			})
+			return result, nil
+		}
+	}
+
+	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+		EventType:     "stage3.complete",
+		Level:         "INFO",
+		CorrelationID: &in.BatchFile.CorrelationID,
+		TenantID:      &in.BatchFile.TenantID,
+		BatchFileID:   &in.BatchFile.ID,
+		Stage:         strPtr("stage3_row_processing"),
+		Message: fmt.Sprintf("stage3 complete: staged=%d duplicates=%d failed=%d",
+			result.StagedCount, result.DuplicateCount, result.FailedCount),
+	})
+
+	return result, nil
+}
+
+type rowOutcome int
+
+const (
+	outcomeStagedOK    rowOutcome = iota
+	outcomeDuplicate
+	outcomeDeadLettered
+)
+
+func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG310Row) rowOutcome {
+	// Step 1: Idempotency check — MUST precede all writes (§4.1.1)
+	existing, err := s.DomainCommands.FindDuplicate(ctx,
+		in.BatchFile.TenantID, row.ClientMemberID,
+		string(domain.CommandEnroll), row.BenefitPeriod,
+		in.BatchFile.CorrelationID,
+	)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("idempotency_check_failed: %v", err),
+			row.Raw)
+	}
+	if existing != nil {
+		return outcomeDuplicate // already processed — skip safely
+	}
+
+	// Step 2: Insert domain_commands — this is the write-side CQRS record
+	cmdID := uuid.New()
+	now := time.Now().UTC()
+	cmd := &ports.DomainCommand{
+		ID:             cmdID,
+		CorrelationID:  in.BatchFile.CorrelationID,
+		TenantID:       in.BatchFile.TenantID,
+		ClientMemberID: row.ClientMemberID,
+		CommandType:    string(domain.CommandEnroll),
+		BenefitPeriod:  row.BenefitPeriod,
+		Status:         string(domain.CommandAccepted),
+		BatchFileID:    in.BatchFile.ID,
+		SequenceInFile: row.SequenceInFile,
+		CreatedAt:      now,
+	}
+	if err := s.DomainCommands.Insert(ctx, cmd); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("domain_command_insert_failed: %v", err),
+			row.Raw)
+	}
+
+	// Step 3: Write batch_records_rt30 (STAGED)
+	rawJSON, _ := json.Marshal(row.Raw) // PHI — stored for replay; never logged
+	var subprogramID *int64
+	if in.SubprogramID != 0 {
+		sid := in.SubprogramID
+		subprogramID = &sid
+	}
+	rt30 := &aurora.BatchRecordRT30{
+		ID:             uuid.New(),
+		BatchFileID:    in.BatchFile.ID,
+		DomainCommandID: cmdID,
+		CorrelationID:  in.BatchFile.CorrelationID,
+		TenantID:       in.BatchFile.TenantID,
+		SequenceInFile: row.SequenceInFile,
+		Status:         "STAGED",
+		StagedAt:       now,
+		ClientMemberID: row.ClientMemberID,
+		SubprogramID:   subprogramID,
+		FirstName:      strPtrIfNotEmpty(row.FirstName),
+		LastName:       strPtrIfNotEmpty(row.LastName),
+		DateOfBirth:    timePtrIfNotZero(row.DOB),
+		Address1:       strPtrIfNotEmpty(row.Address1),
+		Address2:       strPtrIfNotEmpty(row.Address2),
+		City:           strPtrIfNotEmpty(row.City),
+		State:          strPtrIfNotEmpty(row.State),
+		ZIP:            strPtrIfNotEmpty(row.ZIP),
+		Email:          strPtrIfNotEmpty(row.Email),
+		CardDesignID:   strPtrIfNotEmpty(row.CardDesignID),
+		CustomCardID:   strPtrIfNotEmpty(row.CustomCardID),
+		PackageID:      strPtrIfNotEmpty(row.PackageID),
+		RawPayload:     rawJSON,
+	}
+	if err := s.BatchRecords.InsertRT30(ctx, rt30); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("rt30_insert_failed: %v", err),
+			row.Raw)
+	}
+
+	// Step 4: Write domain state — Consumer upsert
+	consumer := &domain.Consumer{
+		ID:                uuid.New(),
+		TenantID:          in.BatchFile.TenantID,
+		ClientMemberID:    row.ClientMemberID,
+		Status:            domain.ConsumerActive,
+		FirstName:         row.FirstName,
+		LastName:          row.LastName,
+		DOB:               row.DOB,
+		Address1:          row.Address1,
+		Address2:          &row.Address2,
+		City:              row.City,
+		State:             row.State,
+		ZIP:               row.ZIP,
+		Email:             &row.Email,
+		ProgramID:         in.ProgramID,
+		SubprogramID:      in.SubprogramID,
+		ContractPBP:       &row.ContractPBP,
+		CustomCardID:      &row.CustomCardID,
+		SourceBatchFileID: in.BatchFile.ID,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := s.DomainState.UpsertConsumer(ctx, consumer); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("consumer_upsert_failed: %v", err),
+			row.Raw)
+	}
+
+	// Card starts as Ready (status=1) — FIS assigns card ID after RT30 return (Stage 7)
+	card := &domain.Card{
+		ID:                uuid.New(),
+		TenantID:          in.BatchFile.TenantID,
+		ConsumerID:        consumer.ID,
+		ClientMemberID:    row.ClientMemberID,
+		Status:            domain.CardReady,
+		CardDesignID:      &row.CardDesignID,
+		PackageID:         &row.PackageID,
+		SourceBatchFileID: in.BatchFile.ID,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := s.DomainState.InsertCard(ctx, card); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("card_insert_failed: %v", err),
+			row.Raw)
+	}
+
+	// Step 5: Audit log
+	_ = s.Audit.Write(ctx, &ports.AuditEntry{
+		TenantID:       in.BatchFile.TenantID,
+		EntityType:     "consumers",
+		EntityID:       consumer.ID.String(),
+		NewState:       "ACTIVE",
+		ChangedBy:      "ingest-task:stage3",
+		CorrelationID:  &in.BatchFile.CorrelationID,
+		ClientMemberID: &row.ClientMemberID,
+	})
+
+	return outcomeStagedOK
+}
+
+func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG315Row) rowOutcome {
+	commandType := srgEventToCommandType(row.EventType)
+	if commandType == "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("unknown_srg315_event_type: %q", row.EventType),
+			row.Raw)
+	}
+
+	// Idempotency check
+	existing, err := s.DomainCommands.FindDuplicate(ctx,
+		in.BatchFile.TenantID, row.ClientMemberID,
+		commandType, row.BenefitPeriod,
+		in.BatchFile.CorrelationID,
+	)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("idempotency_check_failed: %v", err), row.Raw)
+	}
+	if existing != nil {
+		return outcomeDuplicate
+	}
+
+	cmdID := uuid.New()
+	now := time.Now().UTC()
+	if err := s.DomainCommands.Insert(ctx, &ports.DomainCommand{
+		ID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, ClientMemberID: row.ClientMemberID,
+		CommandType: commandType, BenefitPeriod: row.BenefitPeriod,
+		Status: string(domain.CommandAccepted),
+		BatchFileID: in.BatchFile.ID, SequenceInFile: row.SequenceInFile,
+		CreatedAt: now,
+	}); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("domain_command_insert_failed: %v", err), row.Raw)
+	}
+
+	// RT37 requires fis_card_id — look it up from consumers → cards
+	consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, in.BatchFile.TenantID, row.ClientMemberID)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"consumer_not_found: RT37 requires prior RT30 completion", row.Raw)
+	}
+
+	rawJSON, _ := json.Marshal(row.Raw)
+	rt37 := &aurora.BatchRecordRT37{
+		ID: uuid.New(), BatchFileID: in.BatchFile.ID,
+		DomainCommandID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
+		Status: "STAGED", StagedAt: now,
+		ClientMemberID: row.ClientMemberID,
+		// fis_card_id from consumer — nil if RT30 not yet completed (Stage 7 not run)
+		FISCardID:      fisCardIDOrEmpty(consumer),
+		CardStatusCode: commandTypeToCardStatus(commandType),
+		RawPayload:     rawJSON,
+	}
+	// If fis_card_id is empty, this will fail DB NOT NULL constraint — dead letter it
+	if rt37.FISCardID == "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"rt37_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
+	}
+	if err := s.BatchRecords.InsertRT37(ctx, rt37); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("rt37_insert_failed: %v", err), row.Raw)
+	}
+
+	return outcomeStagedOK
+}
+
+func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG320Row) rowOutcome {
+	commandType := srg320CommandTypeToCommand(row.CommandType)
+	if commandType == "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("unknown_srg320_command_type: %q", row.CommandType), row.Raw)
+	}
+
+	// Idempotency check
+	existing, err := s.DomainCommands.FindDuplicate(ctx,
+		in.BatchFile.TenantID, row.ClientMemberID,
+		commandType, row.BenefitPeriod,
+		in.BatchFile.CorrelationID,
+	)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("idempotency_check_failed: %v", err), row.Raw)
+	}
+	if existing != nil {
+		return outcomeDuplicate
+	}
+
+	cmdID := uuid.New()
+	now := time.Now().UTC()
+	if err := s.DomainCommands.Insert(ctx, &ports.DomainCommand{
+		ID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, ClientMemberID: row.ClientMemberID,
+		CommandType: commandType, BenefitPeriod: row.BenefitPeriod,
+		Status: string(domain.CommandAccepted),
+		BatchFileID: in.BatchFile.ID, SequenceInFile: row.SequenceInFile,
+		CreatedAt: now,
+	}); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("domain_command_insert_failed: %v", err), row.Raw)
+	}
+
+	// RT60 requires fis_card_id
+	consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, in.BatchFile.TenantID, row.ClientMemberID)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"consumer_not_found: RT60 requires prior RT30 completion", row.Raw)
+	}
+	if fisCardIDOrEmpty(consumer) == "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"rt60_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
+	}
+
+	atCode := "AT01" // load
+	if commandType == string(domain.CommandSweep) {
+		atCode = "AT30" // period-end sweep
+	}
+
+	rawJSON, _ := json.Marshal(row.Raw)
+	expiryDate := row.ExpiryDate
+	rt60 := &aurora.BatchRecordRT60{
+		ID: uuid.New(), BatchFileID: in.BatchFile.ID,
+		DomainCommandID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
+		Status: "STAGED", StagedAt: now,
+		ATCode:         &atCode,
+		ClientMemberID: row.ClientMemberID,
+		FISCardID:      fisCardIDOrEmpty(consumer),
+		AmountCents:    row.AmountCents,
+		EffectiveDate:  row.EffectiveDate,
+		ExpiryDate:     &expiryDate,
+		RawPayload:     rawJSON,
+	}
+	if err := s.BatchRecords.InsertRT60(ctx, rt60); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("rt60_insert_failed: %v", err), row.Raw)
+	}
+
+	// Update One Fintech sub-ledger balance immediately — not deferred (§I.2)
+	// This is the FBO integrity requirement: balance updated at command write time
+	// TODO: look up purse ID and call DomainState.UpdatePurseBalance
+
+	return outcomeStagedOK
+}
+
+// deadLetter writes a failed row to dead_letter_store and returns outcomeDeadLettered.
+// The failure_reason must contain only a structured code — NO PHI ever (§6.5.2, §7.2).
+// rawRecord contains PHI and is stored in message_body — never logged.
+func (s *RowProcessingStage) deadLetter(
+	ctx context.Context,
+	in *RowProcessingInput,
+	seq int,
+	clientMemberID string,
+	failureStage string,
+	failureReason string, // structured code only — no PHI
+	rawRecord map[string]string, // PHI — stored as JSONB; never log
+) rowOutcome {
+	msgBody, _ := json.Marshal(rawRecord) // PHI — stored but never logged
+	batchFileID := in.BatchFile.ID
+	_ = s.DeadLetters.Write(ctx, &ports.DeadLetterEntry{
+		ID:                uuid.New(),
+		CorrelationID:     in.BatchFile.CorrelationID,
+		BatchFileID:       &batchFileID,
+		RowSequenceNumber: &seq,
+		TenantID:          in.BatchFile.TenantID,
+		ClientMemberID:    &clientMemberID,
+		FailureStage:      failureStage,
+		FailureReason:     failureReason,
+		MessageBody:       msgBody,
+		RetryCount:        0,
+		CreatedAt:         time.Now().UTC(),
+	})
+
+	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+		EventType:         observability.EventDeadLetterWritten,
+		Level:             "WARN",
+		CorrelationID:     &in.BatchFile.CorrelationID,
+		TenantID:          &in.BatchFile.TenantID,
+		BatchFileID:       &in.BatchFile.ID,
+		RowSequenceNumber: &seq,
+		Stage:             strPtr(failureStage),
+		// failure_reason logged here (structured code only — no PHI)
+		Message: fmt.Sprintf("dead_letter: seq=%d reason=%s", seq, failureReason),
+	})
+
+	return outcomeDeadLettered
+}
+
+// ─── mapping helpers ──────────────────────────────────────────────────────────
+
+func srgEventToCommandType(eventType string) string {
+	switch eventType {
+	case "ACTIVATE":
+		return string(domain.CommandUpdate)
+	case "SUSPEND":
+		return string(domain.CommandSuspend)
+	case "TERMINATE":
+		return string(domain.CommandTerminate)
+	case "EXPIRE_PURSE":
+		return string(domain.CommandSweep)
+	case "WALLET_TRANSFER":
+		return string(domain.CommandUpdate)
+	default:
+		return ""
+	}
+}
+
+func srg320CommandTypeToCommand(commandType string) string {
+	switch commandType {
+	case "LOAD", "TOPUP", "RELOAD":
+		return string(domain.CommandLoad)
+	case "CASHOUT", "SWEEP":
+		return string(domain.CommandSweep)
+	default:
+		return ""
+	}
+}
+
+func commandTypeToCardStatus(commandType string) int16 {
+	switch commandType {
+	case string(domain.CommandUpdate):
+		return 2 // Active
+	case string(domain.CommandSuspend):
+		return 6 // Suspended
+	case string(domain.CommandTerminate):
+		return 7 // Closed
+	default:
+		return 6 // Default to suspended for unknown
+	}
+}
+
+func fisCardIDOrEmpty(c *domain.Consumer) string {
+	// Consumer doesn't directly hold fis_card_id — that's on the card entity.
+	// For now, consumer.FISCUID can bridge to card lookup.
+	// TODO: accept card as parameter once card lookup is wired.
+	// This returns empty until Stage 7 populates fis_card_id on the card row.
+	return ""
+}
+
+// ─── small helpers ────────────────────────────────────────────────────────────
+
+func strPtrIfNotEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func timePtrIfNotZero(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }

@@ -146,3 +146,17 @@ func (m *MockFileStore) DeleteObject(_ context.Context, _, key string) error {
 func (m *MockFileStore) HeadObject(_ context.Context, _, key string) (*ports.ObjectMeta, error) {
 	return &ports.ObjectMeta{SHA256: "abc123"}, nil
 }
+
+func (m *MockBatchFileRepository) SetRecordCount(_ context.Context, id uuid.UUID, count int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if f, ok := m.Files[id]; ok {
+		f.RecordCount = &count
+	}
+	return nil
+}
+
+func (m *MockFileStore) SHA256OfObject(_ context.Context, _, key string) (string, error) {
+	// Return a deterministic fake hash for testing
+	return "abc123def456abc123def456abc123def456abc123def456abc123def456abc1", nil
+}
