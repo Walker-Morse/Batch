@@ -17,7 +17,7 @@ package benefit_loading
 import (
 	"time"
 
-	"github.com/walker-morse/batch/shared/domain"
+	"github.com/walker-morse/batch/_shared/domain"
 )
 
 // PurseSequencingInvariant checks that a new purse can be issued.

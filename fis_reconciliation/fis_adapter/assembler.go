@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/walker-morse/batch/shared/ports"
+	"github.com/walker-morse/batch/_shared/ports"
 )
 
 const (

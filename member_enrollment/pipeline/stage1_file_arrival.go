@@ -21,8 +21,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/walker-morse/batch/shared/observability"
-	"github.com/walker-morse/batch/shared/ports"
+	"github.com/walker-morse/batch/_shared/observability"
+	"github.com/walker-morse/batch/_shared/ports"
 )
 
 // FileArrivalStage implements Stage 1 of the ingest-task pipeline.

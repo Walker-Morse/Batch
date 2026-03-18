@@ -34,7 +34,7 @@ package observability
 import (
 	"context"
 
-	"github.com/walker-morse/batch/shared/ports"
+	"github.com/walker-morse/batch/_shared/ports"
 )
 
 // EventTypes are the canonical structured log event names used throughout the pipeline.

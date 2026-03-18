@@ -37,13 +37,13 @@ dead_letter/            Triage and replay for failed pipeline records
 sanctions_screening/    OFAC/MVB compliance: OFAC-API.com + sanctions.io
 fbo_reconciliation/     FBO purse balance integrity — FDIC pass-through insurance gate
 
-shared/                 Domain types, port contracts, observability interface
-schema/                 Aurora PostgreSQL DDL — pipeline state, domain state, reporting
-docs/adr/               Architecture Decision Records (ADR-001 through ADR-011)
-docs/compliance/        HIPAA, OFAC, FBO integrity requirement summaries
-docs/runbooks/          Operational runbooks (dead letter triage, etc.)
-infra/                  AWS CDK constructs (networking, ECS, Aurora, storage, IAM)
-cmd/
+_shared/                Domain types, port contracts, observability interface
+_schema/                Aurora PostgreSQL DDL — pipeline state, domain state, reporting
+_docs/adr/              Architecture Decision Records (ADR-001 through ADR-011)
+_docs/compliance/       HIPAA, OFAC, FBO integrity requirement summaries
+_docs/runbooks/         Operational runbooks (dead letter triage, etc.)
+_infra/                 AWS CDK constructs (networking, ECS, Aurora, storage, IAM)
+_cmd/
   ingest-task/          ECS Fargate entry point — all 7 pipeline stages
   replay-cli/           Dead letter replay tool (Open Item #24)
   apl-uploader/         APL file generation and upload to FIS
@@ -71,17 +71,17 @@ One Fargate task per inbound file. Concurrent file arrivals run concurrent tasks
 
 | ADR | Decision | Status |
 |-----|----------|--------|
-| [ADR-001](docs/adr/ADR-001-enterprise-batch-etl-pattern.md) | Enterprise Batch ETL with adapter seams (path to hexagonal) | ACCEPTED |
-| [ADR-002](docs/adr/ADR-002-go-implementation-language.md) | Go as implementation language | ACCEPTED |
-| [ADR-003](docs/adr/ADR-003-single-ecs-fargate-container.md) | Single ECS Fargate container for all pipeline compute | ACCEPTED |
-| [ADR-004](docs/adr/ADR-004-datadog-opentelemetry-observability.md) | Datadog + OpenTelemetry; zero PHI to Datadog by design | ACCEPTED |
-| [ADR-005](docs/adr/ADR-005-aws-cdk-infrastructure.md) | AWS CDK as IaC tooling | ACCEPTED |
-| [ADR-006](docs/adr/ADR-006-s3-batch-file-staging.md) | S3 for batch file staging and non-repudiation | ACCEPTED |
-| [ADR-007](docs/adr/ADR-007-batch-assembly-eventbridge-scheduler.md) | Batch assembly on receipt; EventBridge Scheduler cadence gate | ACCEPTED |
-| [ADR-008](docs/adr/ADR-008-aurora-postgresql-serverless-v2.md) | Aurora PostgreSQL Serverless v2 as primary data store | ACCEPTED |
-| [ADR-009](docs/adr/ADR-009-separate-database-per-health-plan-client.md) | Separate database per health plan client | ACCEPTED |
-| [ADR-010](docs/adr/ADR-010-row-per-member-processing-unit.md) | Row-per-member processing unit; sequential in-process (Stage 3) | ACCEPTED |
-| [ADR-011](docs/adr/ADR-011-ofac-sanctions-screening.md) | OFAC-API.com (onboarding) + sanctions.io (continuous monitoring) | ACCEPTED |
+| [ADR-001](_docs/adr/ADR-001-enterprise-batch-etl-pattern.md) | Enterprise Batch ETL with adapter seams (path to hexagonal) | ACCEPTED |
+| [ADR-002](_docs/adr/ADR-002-go-implementation-language.md) | Go as implementation language | ACCEPTED |
+| [ADR-003](_docs/adr/ADR-003-single-ecs-fargate-container.md) | Single ECS Fargate container for all pipeline compute | ACCEPTED |
+| [ADR-004](_docs/adr/ADR-004-datadog-opentelemetry-observability.md) | Datadog + OpenTelemetry; zero PHI to Datadog by design | ACCEPTED |
+| [ADR-005](_docs/adr/ADR-005-aws-cdk-infrastructure.md) | AWS CDK as IaC tooling | ACCEPTED |
+| [ADR-006](_docs/adr/ADR-006-s3-batch-file-staging.md) | S3 for batch file staging and non-repudiation | ACCEPTED |
+| [ADR-007](_docs/adr/ADR-007-batch-assembly-eventbridge-scheduler.md) | Batch assembly on receipt; EventBridge Scheduler cadence gate | ACCEPTED |
+| [ADR-008](_docs/adr/ADR-008-aurora-postgresql-serverless-v2.md) | Aurora PostgreSQL Serverless v2 as primary data store | ACCEPTED |
+| [ADR-009](_docs/adr/ADR-009-separate-database-per-health-plan-client.md) | Separate database per health plan client | ACCEPTED |
+| [ADR-010](_docs/adr/ADR-010-row-per-member-processing-unit.md) | Row-per-member processing unit; sequential in-process (Stage 3) | ACCEPTED |
+| [ADR-011](_docs/adr/ADR-011-ofac-sanctions-screening.md) | OFAC-API.com (onboarding) + sanctions.io (continuous monitoring) | ACCEPTED |
 
 ---
 
