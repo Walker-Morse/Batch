@@ -11,15 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.22'
+
+      # Go's ./... excludes _-prefixed directories (_shared, _schema, etc.)
+      # All packages must be listed explicitly.
       - name: Vet
-        run: go vet ./...
+        run: make vet
+
       - name: Test
-        run: go test ./...
+        run: make test
+
       - name: Vulnerability scan (govulncheck — OWASP Addendum F)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          govulncheck ./member_enrollment/... ./benefit_loading/... \
+            ./fis_reconciliation/... ./dead_letter/... ./sanctions_screening/... \
+            ./fbo_reconciliation/... ./_shared/... ./_cmd/...
