@@ -188,3 +188,32 @@ func (r *DomainStateRepo) UpdatePurseBalance(ctx context.Context, id uuid.UUID, 
 	}
 	return nil
 }
+
+// GetProgramByTenantAndSubprogram resolves the programs.id UUID from the FIS
+// subprogram identifier carried on every SRG310 row.
+// Called per-row during Stage 3; the RowProcessingStage caches results by
+// (tenantID, fisSubprogramID) so the DB is queried at most once per unique
+// subprogram value per file — not once per row.
+// Returns an error if no active program row exists; Stage 3 dead-letters the row.
+func (r *DomainStateRepo) GetProgramByTenantAndSubprogram(
+	ctx context.Context,
+	tenantID string,
+	fisSubprogramID string, // string from SRG310 row e.g. "26071"; NUMERIC(10) in DB
+) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.pool.QueryRow(ctx,
+		`SELECT id FROM public.programs
+		 WHERE tenant_id = $1
+		   AND fis_subprogram_id = $2
+		   AND is_active = true
+		 LIMIT 1`,
+		tenantID, fisSubprogramID,
+	).Scan(&id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf(
+			"programs.GetByTenantAndSubprogram(tenant=%s subprogram=%s): %w",
+			tenantID, fisSubprogramID, err,
+		)
+	}
+	return id, nil
+}
