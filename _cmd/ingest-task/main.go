@@ -159,6 +159,7 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		BatchFiles:     batchFileRepo,
 		BatchRecords:   batchRecordsRepo,
 		DomainState:    domainStateRepo,
+		Programs:       domainStateRepo, // DomainStateRepo satisfies ports.ProgramLookup
 		Audit:          auditRepo,
 		Obs:            obs,
 	}
