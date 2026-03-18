@@ -264,3 +264,13 @@ type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; F
 // SetRecordCount is called by Stage 2 after parsing to record the total row count.
 // Required for Stage 3's stall detection (staged_count vs record_count comparison).
 // This addition is appended here — the interface block above closes before this.
+
+// ─── Program Lookup (Stage 3) ────────────────────────────────────────────────
+
+// ProgramLookup resolves the programs table UUID from the FIS subprogram
+// identifier carried on every SRG310 row. Implemented by DomainStateRepo.
+// Stage 3 depends on this narrow interface — not the full DomainStateRepo —
+// so it can be mocked in unit tests without a live DB connection.
+type ProgramLookup interface {
+	GetProgramByTenantAndSubprogram(ctx context.Context, tenantID, fisSubprogramID string) (uuid.UUID, error)
+}
