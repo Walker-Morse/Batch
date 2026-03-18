@@ -5,6 +5,7 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -159,4 +160,156 @@ func (m *MockBatchFileRepository) SetRecordCount(_ context.Context, id uuid.UUID
 func (m *MockFileStore) SHA256OfObject(_ context.Context, _, key string) (string, error) {
 	// Return a deterministic fake hash for testing
 	return "abc123def456abc123def456abc123def456abc123def456abc123def456abc1", nil
+}
+
+// ─── MockProgramLookup ───────────────────────────────────────────────────────
+
+// MockProgramLookup implements ports.ProgramLookup for unit tests.
+// Programs maps "tenantID|subprogramID" → uuid.UUID.
+// If a key is absent, returns an error simulating an unknown program.
+type MockProgramLookup struct {
+	mu       sync.Mutex
+	Programs map[string]uuid.UUID
+	CallLog  []string // each entry is "tenantID|subprogramID"
+}
+
+func NewMockProgramLookup() *MockProgramLookup {
+	return &MockProgramLookup{Programs: make(map[string]uuid.UUID)}
+}
+
+// Register adds a known program mapping for tests.
+func (m *MockProgramLookup) Register(tenantID, subprogramID string, id uuid.UUID) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Programs[tenantID+"|"+subprogramID] = id
+}
+
+func (m *MockProgramLookup) GetProgramByTenantAndSubprogram(_ context.Context, tenantID, subprogramID string) (uuid.UUID, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := tenantID + "|" + subprogramID
+	m.CallLog = append(m.CallLog, key)
+	if id, ok := m.Programs[key]; ok {
+		return id, nil
+	}
+	return uuid.Nil, fmt.Errorf("programs.GetByTenantAndSubprogram: no active program for tenant=%s subprogram=%s", tenantID, subprogramID)
+}
+
+// CallCount returns how many times the lookup was called (cache-miss indicator).
+func (m *MockProgramLookup) CallCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.CallLog)
+}
+
+// ─── MockDeadLetterRepository ────────────────────────────────────────────────
+
+type MockDeadLetterRepository struct {
+	mu      sync.Mutex
+	Entries []*ports.DeadLetterEntry
+	WriteErr error
+}
+
+func NewMockDeadLetterRepository() *MockDeadLetterRepository {
+	return &MockDeadLetterRepository{}
+}
+
+func (m *MockDeadLetterRepository) Write(_ context.Context, e *ports.DeadLetterEntry) error {
+	if m.WriteErr != nil {
+		return m.WriteErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Entries = append(m.Entries, e)
+	return nil
+}
+
+func (m *MockDeadLetterRepository) ListUnresolved(_ context.Context, correlationID uuid.UUID) ([]*ports.DeadLetterEntry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []*ports.DeadLetterEntry
+	for _, e := range m.Entries {
+		if e.CorrelationID == correlationID && e.ResolvedAt == nil {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
+func (m *MockDeadLetterRepository) MarkReplayed(_ context.Context, id uuid.UUID, at time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, e := range m.Entries {
+		if e.ID == id {
+			e.ReplayedAt = &at
+		}
+	}
+	return nil
+}
+
+func (m *MockDeadLetterRepository) MarkResolved(_ context.Context, id uuid.UUID, resolvedBy, notes string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now()
+	for _, e := range m.Entries {
+		if e.ID == id {
+			e.ResolvedAt = &now
+			e.ResolvedBy = &resolvedBy
+			e.ResolutionNotes = &notes
+		}
+	}
+	return nil
+}
+
+// ─── MockDomainCommandRepository ─────────────────────────────────────────────
+
+type MockDomainCommandRepository struct {
+	mu       sync.Mutex
+	Commands []*ports.DomainCommand
+	FindErr  error
+	InsertErr error
+}
+
+func NewMockDomainCommandRepository() *MockDomainCommandRepository {
+	return &MockDomainCommandRepository{}
+}
+
+func (m *MockDomainCommandRepository) Insert(_ context.Context, cmd *ports.DomainCommand) error {
+	if m.InsertErr != nil {
+		return m.InsertErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Commands = append(m.Commands, cmd)
+	return nil
+}
+
+func (m *MockDomainCommandRepository) FindDuplicate(_ context.Context, tenantID, clientMemberID, commandType, benefitPeriod string, correlationID uuid.UUID) (*ports.DomainCommand, error) {
+	if m.FindErr != nil {
+		return nil, m.FindErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.Commands {
+		if c.TenantID == tenantID &&
+			c.ClientMemberID == clientMemberID &&
+			c.CommandType == commandType &&
+			c.BenefitPeriod == benefitPeriod &&
+			c.CorrelationID == correlationID {
+			return c, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *MockDomainCommandRepository) UpdateStatus(_ context.Context, id uuid.UUID, status string, reason *string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.Commands {
+		if c.ID == id {
+			c.Status = status
+			c.FailureReason = reason
+		}
+	}
+	return nil
 }
