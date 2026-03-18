@@ -338,3 +338,10 @@ type BatchRecordsLister interface {
 	ListStagedByCorrelationID(ctx context.Context, correlationID uuid.UUID) (*StagedRecords, error)
 }
 
+// BatchRecordsReconciler is the narrow interface for Stage 7 return file processing.
+// Implemented by aurora.BatchRecordsRepo.
+type BatchRecordsReconciler interface {
+	GetStagedByCorrelationAndSequence(ctx context.Context, correlationID uuid.UUID, sequenceInFile int, recordType string) (recordID uuid.UUID, domainCommandID uuid.UUID, err error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, recordType string, status string, fisResultCode, fisResultMessage *string) error
+}
+

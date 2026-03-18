@@ -669,3 +669,156 @@ func TestTimePtrIfNotZero(t *testing.T) {
 		t.Error("expected non-nil for non-zero time")
 	}
 }
+
+// ─── processSRG320Row — purse balance update (§I.2 FBO integrity) ─────────────
+
+// seedConsumerWithCard seeds a consumer with a resolved fis_card_id so the RT60
+// path doesn't dead-letter on the card check.
+func seedConsumerWithCard(m *stage3Mocks, bf *ports.BatchFile, clientMemberID string) *domain.Consumer {
+	fisCard := "CARD-001"
+	c := &domain.Consumer{
+		ID:             uuid.New(),
+		TenantID:       bf.TenantID,
+		ClientMemberID: clientMemberID,
+		FISCardID:      &fisCard,
+	}
+	m.state.RegisterConsumer(bf.TenantID, clientMemberID, c)
+	return c
+}
+
+// seedPurse seeds a purse for a consumer + benefit period combo.
+func seedPurse(m *stage3Mocks, consumerID uuid.UUID, benefitPeriod string, balanceCents int64) *domain.Purse {
+	p := &domain.Purse{
+		ID:                    uuid.New(),
+		ConsumerID:            consumerID,
+		BenefitPeriod:         benefitPeriod,
+		AvailableBalanceCents: balanceCents,
+		Status:                domain.PurseActive,
+	}
+	m.state.RegisterPurse(consumerID, benefitPeriod, p)
+	return p
+}
+
+// TestSRG320Row_LoadUpdatesBalance verifies that an AT01 LOAD adds AmountCents
+// to the existing purse balance immediately (§I.2).
+func TestSRG320Row_LoadUpdatesBalance(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	bf := seedBatchFile(m, "rfu-oregon")
+	consumer := seedConsumerWithCard(m, bf, "MBR-LOAD")
+	purse := seedPurse(m, consumer.ID, "2026-06", 10000) // existing balance: $100.00
+
+	row := minimalSRG320("MBR-LOAD", "LOAD", 1)
+	row.AmountCents = 5000 // load $50.00
+
+	outcome := stage.processSRG320Row(context.Background(),
+		&RowProcessingInput{BatchFile: bf}, row)
+
+	if outcome != outcomeStagedOK {
+		t.Fatalf("outcome = %v; want outcomeStagedOK", outcome)
+	}
+	if len(m.state.BalanceUpdates) != 1 {
+		t.Fatalf("BalanceUpdates count = %d; want 1", len(m.state.BalanceUpdates))
+	}
+	update := m.state.BalanceUpdates[0]
+	if update.PurseID != purse.ID {
+		t.Errorf("PurseID = %v; want %v", update.PurseID, purse.ID)
+	}
+	if update.BalanceCents != 15000 {
+		t.Errorf("BalanceCents = %d; want 15000 (10000 + 5000)", update.BalanceCents)
+	}
+}
+
+// TestSRG320Row_SweepZerosBalance verifies that an AT30 SWEEP sets balance to 0
+// regardless of the current balance — contractual period-end expiry (SOW §2.1, §3.3).
+func TestSRG320Row_SweepZerosBalance(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	bf := seedBatchFile(m, "rfu-oregon")
+	consumer := seedConsumerWithCard(m, bf, "MBR-SWEEP")
+	purse := seedPurse(m, consumer.ID, "2026-06", 9500) // balance: $95.00
+
+	row := minimalSRG320("MBR-SWEEP", "SWEEP", 1)
+	row.AmountCents = 9500
+
+	outcome := stage.processSRG320Row(context.Background(),
+		&RowProcessingInput{BatchFile: bf}, row)
+
+	if outcome != outcomeStagedOK {
+		t.Fatalf("outcome = %v; want outcomeStagedOK", outcome)
+	}
+	if len(m.state.BalanceUpdates) != 1 {
+		t.Fatalf("BalanceUpdates count = %d; want 1", len(m.state.BalanceUpdates))
+	}
+	update := m.state.BalanceUpdates[0]
+	if update.PurseID != purse.ID {
+		t.Errorf("PurseID = %v; want %v", update.PurseID, purse.ID)
+	}
+	if update.BalanceCents != 0 {
+		t.Errorf("BalanceCents = %d; want 0 (sweep zeroes balance)", update.BalanceCents)
+	}
+}
+
+// TestSRG320Row_PurseNotFound_DeadLettered verifies that a missing purse record
+// dead-letters the row — can't update FBO sub-ledger without the purse ID.
+func TestSRG320Row_PurseNotFound_DeadLettered(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	bf := seedBatchFile(m, "rfu-oregon")
+	seedConsumerWithCard(m, bf, "MBR-NOPURSE")
+	// No purse seeded — GetPurseByConsumerAndBenefitPeriod will fail
+
+	outcome := stage.processSRG320Row(context.Background(),
+		&RowProcessingInput{BatchFile: bf},
+		minimalSRG320("MBR-NOPURSE", "LOAD", 1),
+	)
+
+	if outcome != outcomeDeadLettered {
+		t.Errorf("outcome = %v; want outcomeDeadLettered", outcome)
+	}
+	if !strings.Contains(m.deadLetters.Entries[0].FailureReason, "purse_lookup_failed") {
+		t.Errorf("failure_reason = %q; want purse_lookup_failed", m.deadLetters.Entries[0].FailureReason)
+	}
+}
+
+// TestSRG320Row_UpdatePurseBalanceFails_DeadLettered verifies that a DB error
+// on UpdatePurseBalance dead-letters the row — FBO integrity cannot be guaranteed.
+func TestSRG320Row_UpdatePurseBalanceFails_DeadLettered(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	bf := seedBatchFile(m, "rfu-oregon")
+	consumer := seedConsumerWithCard(m, bf, "MBR-BALUPDATEERR")
+	seedPurse(m, consumer.ID, "2026-06", 5000)
+	m.state.UpdatePurseBalanceErr = errors.New("db: connection lost")
+
+	outcome := stage.processSRG320Row(context.Background(),
+		&RowProcessingInput{BatchFile: bf},
+		minimalSRG320("MBR-BALUPDATEERR", "LOAD", 1),
+	)
+
+	if outcome != outcomeDeadLettered {
+		t.Errorf("outcome = %v; want outcomeDeadLettered", outcome)
+	}
+	if !strings.Contains(m.deadLetters.Entries[0].FailureReason, "purse_balance_update_failed") {
+		t.Errorf("failure_reason = %q; want purse_balance_update_failed", m.deadLetters.Entries[0].FailureReason)
+	}
+}
+
+// TestSRG320Row_PHINotInBalanceFailureReason verifies PHI (clientMemberID) never
+// appears in failure_reason for purse balance failures (§6.5.2, §7.2).
+func TestSRG320Row_PHINotInBalanceFailureReason(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	bf := seedBatchFile(m, "rfu-oregon")
+	consumer := seedConsumerWithCard(m, bf, "SSN-123-456")
+	seedPurse(m, consumer.ID, "2026-06", 5000)
+	m.state.UpdatePurseBalanceErr = errors.New("db error")
+
+	stage.processSRG320Row(context.Background(),
+		&RowProcessingInput{BatchFile: bf},
+		minimalSRG320("SSN-123-456", "LOAD", 1),
+	)
+
+	if len(m.deadLetters.Entries) == 0 {
+		t.Fatal("expected dead letter entry")
+	}
+	reason := m.deadLetters.Entries[0].FailureReason
+	if strings.Contains(reason, "SSN-123-456") {
+		t.Errorf("failure_reason %q contains PHI — must never log member ID", reason)
+	}
+}

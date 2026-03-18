@@ -55,6 +55,10 @@ type DomainStateWriter interface {
 	UpsertConsumer(ctx context.Context, c *domain.Consumer) error
 	InsertCard(ctx context.Context, c *domain.Card) error
 	GetConsumerByNaturalKey(ctx context.Context, tenantID, clientMemberID string) (*domain.Consumer, error)
+	// Purse sub-ledger — required for FBO integrity (§I.2).
+	// Balance updated at RT60 write time, not deferred until FIS return.
+	GetPurseByConsumerAndBenefitPeriod(ctx context.Context, consumerID uuid.UUID, benefitPeriod string) (*domain.Purse, error)
+	UpdatePurseBalance(ctx context.Context, id uuid.UUID, balanceCents int64) error
 }
 
 // RowProcessingStage implements Stage 3.
@@ -493,9 +497,29 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 			fmt.Sprintf("rt60_insert_failed: %v", err), row.Raw)
 	}
 
-	// Update One Fintech sub-ledger balance immediately — not deferred (§I.2)
-	// This is the FBO integrity requirement: balance updated at command write time
-	// TODO: look up purse ID and call DomainState.UpdatePurseBalance
+	// Update One Fintech sub-ledger balance immediately — not deferred (§I.2).
+	// FBO integrity requirement: balance reflects accepted command at write time.
+	purse, err := s.DomainState.GetPurseByConsumerAndBenefitPeriod(ctx, consumer.ID, row.BenefitPeriod)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("purse_lookup_failed: %v", err), row.Raw)
+	}
+
+	var newBalance int64
+	if commandType == string(domain.CommandSweep) {
+		// AT30 period-end sweep zeroes the purse — contract deadline (SOW §2.1, §3.3)
+		newBalance = 0
+	} else {
+		// AT01 load: add to current balance
+		newBalance = purse.AvailableBalanceCents + row.AmountCents
+	}
+
+	if err := s.DomainState.UpdatePurseBalance(ctx, purse.ID, newBalance); err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("purse_balance_update_failed: %v", err), row.Raw)
+	}
 
 	return outcomeStagedOK
 }

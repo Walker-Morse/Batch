@@ -271,10 +271,18 @@ func (m *MockDeadLetterRepository) MarkResolved(_ context.Context, id uuid.UUID,
 // ─── MockDomainCommandRepository ─────────────────────────────────────────────
 
 type MockDomainCommandRepository struct {
-	mu       sync.Mutex
-	Commands []*ports.DomainCommand
-	FindErr  error
+	mu        sync.Mutex
+	Commands  []*ports.DomainCommand
+	FindErr   error
 	InsertErr error
+	// StatusUpdates captures every UpdateStatus call for Stage 7 assertions.
+	StatusUpdates []DomainCommandStatusUpdate
+}
+
+// DomainCommandStatusUpdate records a single UpdateStatus call.
+type DomainCommandStatusUpdate struct {
+	ID     uuid.UUID
+	Status string
 }
 
 func NewMockDomainCommandRepository() *MockDomainCommandRepository {
@@ -318,6 +326,7 @@ func (m *MockDomainCommandRepository) UpdateStatus(_ context.Context, id uuid.UU
 			c.FailureReason = reason
 		}
 	}
+	m.StatusUpdates = append(m.StatusUpdates, DomainCommandStatusUpdate{ID: id, Status: status})
 	return nil
 }
 
@@ -373,19 +382,34 @@ func (m *MockBatchRecordWriter) InsertRT60(_ context.Context, rec *aurora.BatchR
 
 // MockDomainStateWriter implements pipeline.DomainStateWriter for unit tests.
 // Consumers maps tenantID+"|"+clientMemberID → *domain.Consumer (seeded via Register).
-// If GetConsumerByNaturalKey is called for an unknown key, it returns an error
-// matching production behaviour (consumer not found).
+// Purses maps consumerID+"|"+benefitPeriod → *domain.Purse (seeded via RegisterPurse).
+// BalanceUpdates records every (purseID, balanceCents) pair written via UpdatePurseBalance.
 type MockDomainStateWriter struct {
 	mu        sync.Mutex
 	Consumers map[string]*domain.Consumer
 	Cards     []*domain.Card
-	UpsertConsumerErr error
-	InsertCardErr     error
-	GetConsumerErr    error // if set, all GetConsumerByNaturalKey calls return this
+	Purses    map[string]*domain.Purse
+	// Captured writes
+	BalanceUpdates []PurseBalanceUpdate
+	// Error injection
+	UpsertConsumerErr        error
+	InsertCardErr            error
+	GetConsumerErr           error // if set, all GetConsumerByNaturalKey calls return this
+	GetPurseErr              error // if set, all GetPurseByConsumerAndBenefitPeriod calls return this
+	UpdatePurseBalanceErr    error
+}
+
+// PurseBalanceUpdate records a single UpdatePurseBalance call for assertion in tests.
+type PurseBalanceUpdate struct {
+	PurseID      uuid.UUID
+	BalanceCents int64
 }
 
 func NewMockDomainStateWriter() *MockDomainStateWriter {
-	return &MockDomainStateWriter{Consumers: make(map[string]*domain.Consumer)}
+	return &MockDomainStateWriter{
+		Consumers: make(map[string]*domain.Consumer),
+		Purses:    make(map[string]*domain.Purse),
+	}
 }
 
 // RegisterConsumer seeds a known consumer for GetConsumerByNaturalKey lookups.
@@ -425,6 +449,35 @@ func (m *MockDomainStateWriter) GetConsumerByNaturalKey(_ context.Context, tenan
 		return c, nil
 	}
 	return nil, fmt.Errorf("consumer not found: tenant=%s client_member_id=%s", tenantID, clientMemberID)
+}
+
+// RegisterPurse seeds a known purse for GetPurseByConsumerAndBenefitPeriod lookups.
+func (m *MockDomainStateWriter) RegisterPurse(consumerID uuid.UUID, benefitPeriod string, p *domain.Purse) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Purses[consumerID.String()+"|"+benefitPeriod] = p
+}
+
+func (m *MockDomainStateWriter) GetPurseByConsumerAndBenefitPeriod(_ context.Context, consumerID uuid.UUID, benefitPeriod string) (*domain.Purse, error) {
+	if m.GetPurseErr != nil {
+		return nil, m.GetPurseErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if p, ok := m.Purses[consumerID.String()+"|"+benefitPeriod]; ok {
+		return p, nil
+	}
+	return nil, fmt.Errorf("purse not found: consumer=%s benefit_period=%s", consumerID, benefitPeriod)
+}
+
+func (m *MockDomainStateWriter) UpdatePurseBalance(_ context.Context, id uuid.UUID, balanceCents int64) error {
+	if m.UpdatePurseBalanceErr != nil {
+		return m.UpdatePurseBalanceErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.BalanceUpdates = append(m.BalanceUpdates, PurseBalanceUpdate{PurseID: id, BalanceCents: balanceCents})
+	return nil
 }
 
 // ─── MockFISBatchAssembler ────────────────────────────────────────────────────
@@ -497,4 +550,240 @@ func (m *MockBatchRecordsLister) ListStagedByCorrelationID(_ context.Context, co
 		return r, nil
 	}
 	return &ports.StagedRecords{}, nil // empty — structurally valid empty file
+}
+
+// ─── MockFISTransport ─────────────────────────────────────────────────────────
+
+// MockFISTransport implements ports.FISTransport for unit tests.
+type MockFISTransport struct {
+	mu                sync.Mutex
+	DeliveredFilename string
+	DeliveredBody     []byte
+	DeliverErr        error
+	PollResult        io.ReadCloser // returned by PollForReturn on success
+	PollErr           error
+}
+
+func NewMockFISTransport() *MockFISTransport {
+	return &MockFISTransport{}
+}
+
+func (m *MockFISTransport) Deliver(_ context.Context, body io.Reader, filename string) error {
+	if m.DeliverErr != nil {
+		return m.DeliverErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.DeliveredFilename = filename
+	data, _ := io.ReadAll(body)
+	m.DeliveredBody = data
+	return nil
+}
+
+func (m *MockFISTransport) PollForReturn(_ context.Context, _ uuid.UUID, _ time.Duration) (io.ReadCloser, error) {
+	if m.PollErr != nil {
+		return nil, m.PollErr
+	}
+	if m.PollResult != nil {
+		return m.PollResult, nil
+	}
+	return io.NopCloser(strings.NewReader("")), nil
+}
+
+// ─── MockBatchRecordsReconciler ───────────────────────────────────────────────
+
+// MockBatchRecordsReconciler implements ports.BatchRecordsReconciler for Stage 7 tests.
+// StagedRows maps "correlationID|seq|type" → (recordID, domainCommandID).
+// StatusUpdates captures all UpdateStatus calls for assertion.
+type MockBatchRecordsReconciler struct {
+	mu            sync.Mutex
+	StagedRows    map[string][2]uuid.UUID // key → [recordID, cmdID]
+	StatusUpdates []BatchRecordStatusUpdate
+	GetStagedErr  error
+	UpdateErr     error
+}
+
+type BatchRecordStatusUpdate struct {
+	ID            uuid.UUID
+	RecordType    string
+	Status        string
+	FISResultCode *string
+}
+
+func NewMockBatchRecordsReconciler() *MockBatchRecordsReconciler {
+	return &MockBatchRecordsReconciler{StagedRows: make(map[string][2]uuid.UUID)}
+}
+
+// Register seeds a (recordID, domainCommandID) pair for lookup.
+func (m *MockBatchRecordsReconciler) Register(correlationID uuid.UUID, seq int, recordType string, recordID, cmdID uuid.UUID) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := fmt.Sprintf("%s|%d|%s", correlationID, seq, recordType)
+	m.StagedRows[key] = [2]uuid.UUID{recordID, cmdID}
+}
+
+func (m *MockBatchRecordsReconciler) GetStagedByCorrelationAndSequence(_ context.Context, correlationID uuid.UUID, seq int, recordType string) (uuid.UUID, uuid.UUID, error) {
+	if m.GetStagedErr != nil {
+		return uuid.Nil, uuid.Nil, m.GetStagedErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := fmt.Sprintf("%s|%d|%s", correlationID, seq, recordType)
+	if ids, ok := m.StagedRows[key]; ok {
+		return ids[0], ids[1], nil
+	}
+	return uuid.Nil, uuid.Nil, fmt.Errorf("staged row not found: %s", key)
+}
+
+func (m *MockBatchRecordsReconciler) UpdateStatus(_ context.Context, id uuid.UUID, recordType, status string, fisResultCode, _ *string) error {
+	if m.UpdateErr != nil {
+		return m.UpdateErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.StatusUpdates = append(m.StatusUpdates, BatchRecordStatusUpdate{
+		ID: id, RecordType: recordType, Status: status, FISResultCode: fisResultCode,
+	})
+	return nil
+}
+
+// ─── MockDomainStateReconciler ────────────────────────────────────────────────
+
+// MockDomainStateReconciler implements pipeline.DomainStateReconciler for Stage 7 tests.
+type MockDomainStateReconciler struct {
+	mu sync.Mutex
+	// Seed data
+	Consumers map[string]*domain.Consumer // tenantID|clientMemberID → Consumer
+	Cards     map[uuid.UUID]*domain.Card  // consumerID → Card
+	// Captured writes
+	ConsumerFISUpdates  []ConsumerFISUpdate
+	CardFISUpdates      []CardFISUpdate
+	PurseFISUpdates     []PurseFISUpdate
+	// Error injection
+	GetConsumerErr              error
+	GetCardErr                  error
+	UpdateConsumerFISIDsErr     error
+	UpdateCardFISIDErr          error
+	UpdatePurseFISNumberErr     error
+}
+
+type ConsumerFISUpdate struct {
+	ID          uuid.UUID
+	FISPersonID string
+	FISCUID     string
+}
+
+type CardFISUpdate struct {
+	ID        uuid.UUID
+	FISCardID string
+}
+
+type PurseFISUpdate struct {
+	ConsumerID    uuid.UUID
+	BenefitPeriod string
+	FISNumber     int16
+}
+
+func NewMockDomainStateReconciler() *MockDomainStateReconciler {
+	return &MockDomainStateReconciler{
+		Consumers: make(map[string]*domain.Consumer),
+		Cards:     make(map[uuid.UUID]*domain.Card),
+	}
+}
+
+func (m *MockDomainStateReconciler) RegisterConsumer(tenantID, clientMemberID string, c *domain.Consumer) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Consumers[tenantID+"|"+clientMemberID] = c
+}
+
+func (m *MockDomainStateReconciler) RegisterCard(consumerID uuid.UUID, c *domain.Card) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Cards[consumerID] = c
+}
+
+func (m *MockDomainStateReconciler) GetConsumerByNaturalKey(_ context.Context, tenantID, clientMemberID string) (*domain.Consumer, error) {
+	if m.GetConsumerErr != nil {
+		return nil, m.GetConsumerErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.Consumers[tenantID+"|"+clientMemberID]; ok {
+		return c, nil
+	}
+	return nil, fmt.Errorf("consumer not found: %s|%s", tenantID, clientMemberID)
+}
+
+func (m *MockDomainStateReconciler) GetCardByConsumerID(_ context.Context, consumerID uuid.UUID) (*domain.Card, error) {
+	if m.GetCardErr != nil {
+		return nil, m.GetCardErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.Cards[consumerID]; ok {
+		return c, nil
+	}
+	return nil, fmt.Errorf("card not found for consumer: %s", consumerID)
+}
+
+func (m *MockDomainStateReconciler) UpdateConsumerFISIdentifiers(_ context.Context, id uuid.UUID, fisPersonID, fisCUID string) error {
+	if m.UpdateConsumerFISIDsErr != nil {
+		return m.UpdateConsumerFISIDsErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ConsumerFISUpdates = append(m.ConsumerFISUpdates, ConsumerFISUpdate{ID: id, FISPersonID: fisPersonID, FISCUID: fisCUID})
+	return nil
+}
+
+func (m *MockDomainStateReconciler) UpdateCardFISCardID(_ context.Context, id uuid.UUID, fisCardID string, _ time.Time) error {
+	if m.UpdateCardFISIDErr != nil {
+		return m.UpdateCardFISIDErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.CardFISUpdates = append(m.CardFISUpdates, CardFISUpdate{ID: id, FISCardID: fisCardID})
+	return nil
+}
+
+func (m *MockDomainStateReconciler) UpdatePurseFISNumber(_ context.Context, consumerID uuid.UUID, benefitPeriod string, fisNumber int16) error {
+	if m.UpdatePurseFISNumberErr != nil {
+		return m.UpdatePurseFISNumberErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.PurseFISUpdates = append(m.PurseFISUpdates, PurseFISUpdate{ConsumerID: consumerID, BenefitPeriod: benefitPeriod, FISNumber: fisNumber})
+	return nil
+}
+
+// ─── MockMartWriter ───────────────────────────────────────────────────────────
+
+// MockMartWriter implements ports.MartWriter for unit tests.
+// ReconciliationFacts captures all WriteReconciliationFact calls.
+type MockMartWriter struct {
+	mu                  sync.Mutex
+	ReconciliationFacts []*ports.ReconciliationFact
+}
+
+func (m *MockMartWriter) UpsertMember(_ context.Context, _ *ports.MemberRecord) (int64, error) {
+	return 0, nil
+}
+func (m *MockMartWriter) UpsertCard(_ context.Context, _ *ports.CardRecord) (int64, error) {
+	return 0, nil
+}
+func (m *MockMartWriter) UpsertPurse(_ context.Context, _ *ports.PurseRecord) (int64, error) {
+	return 0, nil
+}
+func (m *MockMartWriter) WriteEnrollmentFact(_ context.Context, _ *ports.EnrollmentFact) error {
+	return nil
+}
+func (m *MockMartWriter) WritePurseLifecycleFact(_ context.Context, _ *ports.PurseLifecycleFact) error {
+	return nil
+}
+func (m *MockMartWriter) WriteReconciliationFact(_ context.Context, f *ports.ReconciliationFact) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ReconciliationFacts = append(m.ReconciliationFacts, f)
+	return nil
 }

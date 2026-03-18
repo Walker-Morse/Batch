@@ -315,3 +315,40 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 	return result, nil
 }
 
+
+// GetStagedByCorrelationAndSequence looks up a single staged record by its
+// (correlation_id, sequence_in_file) composite key. Used by Stage 7 to match
+// return file records to their staged counterparts.
+// recordType must be "RT30", "RT37", or "RT60".
+// Returns (uuid.Nil, uuid.Nil, error) if no matching row is found.
+func (r *BatchRecordsRepo) GetStagedByCorrelationAndSequence(
+	ctx context.Context,
+	correlationID uuid.UUID,
+	sequenceInFile int,
+	recordType string,
+) (recordID uuid.UUID, domainCommandID uuid.UUID, err error) {
+	var table string
+	switch recordType {
+	case "RT30":
+		table = "batch_records_rt30"
+	case "RT37":
+		table = "batch_records_rt37"
+	case "RT60":
+		table = "batch_records_rt60"
+	default:
+		return uuid.Nil, uuid.Nil, fmt.Errorf("batch_records.GetStaged: unknown record type %q", recordType)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, domain_command_id
+		FROM public.%s
+		WHERE correlation_id = $1
+		  AND sequence_in_file = $2
+		LIMIT 1`, table)
+
+	err = r.pool.QueryRow(ctx, query, correlationID, sequenceInFile).Scan(&recordID, &domainCommandID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, fmt.Errorf("batch_records.GetStaged(%s seq=%d): %w", recordType, sequenceInFile, err)
+	}
+	return recordID, domainCommandID, nil
+}

@@ -24,6 +24,8 @@ package fis_adapter
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/walker-morse/batch/_shared/ports"
@@ -106,4 +108,110 @@ func BuildFilename(programID string, date time.Time, seq int, fileKind string) s
 // Full-file halt: no member records were processed. All members must be dead-lettered.
 func IsRT99Halt(returnFileRecordCount int, firstRecordType string) bool {
 	return returnFileRecordCount == 1 && firstRecordType == RTPreProcessingHalt
+}
+
+// ─── Return File Parsing ──────────────────────────────────────────────────────
+
+// ReturnRecord is the parsed result of a single record from the FIS return file.
+// FIS returns the same 400-byte fixed-width format as the submission, with
+// result codes populated at specific offsets (§6.5.1, §6.6.5).
+//
+// Result code "000" = success. Any other value is an error.
+// For RT30: FISPersonID, FISCUID, and FISCardID are populated on success.
+// For RT60: FISPurseNumber is populated on success.
+type ReturnRecord struct {
+	RecordType     string  // RT30|RT37|RT60|RT99|RT10|RT20|RT80|RT90
+	SequenceInFile int     // 1-based row sequence — matches sequence_in_file
+	ClientMemberID string  // matches staged batch_records row
+	FISResultCode  string  // "000" = success; other = error
+	FISResultMsg   string  // human-readable result description
+	// RT30 return fields — populated on success
+	FISPersonID *string
+	FISCUID     *string
+	FISCardID   *string
+	// RT60 return fields — populated on success
+	FISPurseNumber *int16
+}
+
+// ParseReturnFile reads a FIS return file stream and produces one ReturnRecord
+// per 400-byte record. Header (RT10/RT20) and trailer (RT80/RT90) records are
+// included so RT99 full-file halt detection can inspect the first record.
+//
+// The caller must close the reader. Records are returned in file order (seq ascending).
+// Malformed records (wrong length, non-ASCII) are returned with RecordType="MALFORMED".
+func ParseReturnFile(body io.Reader) ([]*ReturnRecord, error) {
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return nil, fmt.Errorf("parse_return_file: read: %w", err)
+	}
+
+	// Split on CRLF — each record is RecordWidth bytes + CRLF separator.
+	// FIS guarantees CRLF-terminated records per §6.6.2.
+	var records []*ReturnRecord
+	seq := 0
+	for len(data) >= RecordWidth {
+		raw := data[:RecordWidth]
+		// Advance past record + optional CRLF
+		if len(data) >= RecordWidth+2 && data[RecordWidth] == '\r' && data[RecordWidth+1] == '\n' {
+			data = data[RecordWidth+2:]
+		} else {
+			data = data[RecordWidth:]
+		}
+
+		recType := strings.TrimRight(string(raw[0:4]), " ")
+		switch recType {
+		case RTFileHeader, RTBatchHeader, RTBatchTrailer, RTFileTrailer:
+			// Structural records — include for RT99 halt detection but skip seq increment
+			records = append(records, &ReturnRecord{RecordType: recType})
+			continue
+		case RTPreProcessingHalt:
+			// RT99 — could be full-file halt OR individual record error
+			resultCode := strings.TrimRight(string(raw[4:7]), " ")
+			resultMsg := strings.TrimRight(string(raw[7:47]), " ")
+			records = append(records, &ReturnRecord{
+				RecordType:    RTPreProcessingHalt,
+				FISResultCode: resultCode,
+				FISResultMsg:  resultMsg,
+			})
+			continue
+		}
+
+		seq++
+		rec := &ReturnRecord{
+			RecordType:     recType,
+			SequenceInFile: seq,
+			ClientMemberID: strings.TrimRight(string(raw[4:24]), " "),
+			FISResultCode:  strings.TrimRight(string(raw[24:27]), " "),
+			FISResultMsg:   strings.TrimRight(string(raw[27:67]), " "),
+		}
+
+		if rec.FISResultCode == "000" {
+			switch recType {
+			case RTNewAccount: // RT30
+				personID := strings.TrimRight(string(raw[67:87]), " ")
+				cuid := strings.TrimRight(string(raw[87:106]), " ")
+				cardID := strings.TrimRight(string(raw[106:125]), " ")
+				if personID != "" {
+					rec.FISPersonID = &personID
+				}
+				if cuid != "" {
+					rec.FISCUID = &cuid
+				}
+				if cardID != "" {
+					rec.FISCardID = &cardID
+				}
+			case RTFundLoad: // RT60
+				purseNumStr := strings.TrimRight(string(raw[67:72]), " ")
+				if purseNumStr != "" {
+					var n int16
+					fmt.Sscanf(purseNumStr, "%d", &n)
+					rec.FISPurseNumber = &n
+				}
+			}
+		}
+
+		records = append(records, rec)
+	}
+
+	return records, nil
 }
