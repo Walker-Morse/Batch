@@ -200,8 +200,8 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 	}
 
 	// Stage 3 — Row Processing
-	// ProgramID must come from programs table — looked up by tenant_id + subprogram_id
-	// TODO: implement program lookup; for now use zero UUID (will fail FK on first real run)
+	// Program lookup is resolved per-row inside Stage 3 via DomainStateRepo.GetProgramByTenantAndSubprogram.
+	// Results are cached within the run — at most one DB query per unique SubprogramID per file.
 	processingResult, err := s3stage.Run(ctx, &stage3.RowProcessingInput{
 		BatchFile:  batchFile,
 		SRG310Rows: validationResult.SRG310Rows,
