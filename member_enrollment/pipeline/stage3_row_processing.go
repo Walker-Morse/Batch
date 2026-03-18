@@ -47,6 +47,7 @@ type RowProcessingStage struct {
 	BatchFiles     ports.BatchFileRepository
 	BatchRecords   *aurora.BatchRecordsRepo
 	DomainState    *aurora.DomainStateRepo
+	Programs       ports.ProgramLookup // narrow interface for program resolution (testable)
 	Audit          ports.AuditLogWriter
 	Obs            ports.IObservabilityPort
 
@@ -493,7 +494,7 @@ func (s *RowProcessingStage) lookupProgram(ctx context.Context, tenantID, fisSub
 	if id, ok := s.programCache[cacheKey]; ok {
 		return id, nil
 	}
-	id, err := s.DomainState.GetProgramByTenantAndSubprogram(ctx, tenantID, fisSubprogramID)
+	id, err := s.Programs.GetProgramByTenantAndSubprogram(ctx, tenantID, fisSubprogramID)
 	if err != nil {
 		return uuid.Nil, err
 	}
