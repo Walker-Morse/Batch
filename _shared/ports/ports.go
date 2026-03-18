@@ -274,3 +274,67 @@ type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; F
 type ProgramLookup interface {
 	GetProgramByTenantAndSubprogram(ctx context.Context, tenantID, fisSubprogramID string) (uuid.UUID, error)
 }
+
+// ─── Batch Records Query (Stage 4) ───────────────────────────────────────────
+
+// StagedRecords holds all STAGED batch records for a single correlation ID,
+// grouped by record type. Returned by BatchRecordsLister.ListStagedByCorrelationID.
+// Ordered by sequence_in_file ASC within each slice.
+type StagedRecords struct {
+	RT30 []*StagedRT30
+	RT37 []*StagedRT37
+	RT60 []*StagedRT60
+}
+
+// StagedRT30 is the assembler-visible projection of a staged RT30 row.
+// Raw PHI fields are present — assembler uses them only for FIS record construction.
+// Never log these values (§7.2, HIPAA §164.312(b)).
+type StagedRT30 struct {
+	ID             uuid.UUID
+	SequenceInFile int
+	ClientMemberID string
+	SubprogramID   *int64
+	PackageID      *string
+	FirstName      *string
+	LastName       *string
+	DateOfBirth    *time.Time
+	Address1       *string
+	Address2       *string
+	City           *string
+	State          *string
+	ZIP            *string
+	Email          *string
+	CardDesignID   *string
+	CustomCardID   *string
+}
+
+// StagedRT37 is the assembler-visible projection of a staged RT37 row.
+type StagedRT37 struct {
+	ID             uuid.UUID
+	SequenceInFile int
+	ClientMemberID string
+	FISCardID      string
+	CardStatusCode int16
+	ReasonCode     *string
+}
+
+// StagedRT60 is the assembler-visible projection of a staged RT60 row.
+type StagedRT60 struct {
+	ID              uuid.UUID
+	SequenceInFile  int
+	ATCode          *string
+	ClientMemberID  string
+	FISCardID       string
+	PurseName       *string
+	AmountCents     int64
+	EffectiveDate   time.Time
+	ClientReference *string
+}
+
+// BatchRecordsLister is the narrow read interface for Stage 4 batch assembly.
+// Implemented by BatchRecordsRepo. Narrow interface allows unit testing of
+// AssemblerImpl without a live DB connection.
+type BatchRecordsLister interface {
+	ListStagedByCorrelationID(ctx context.Context, correlationID uuid.UUID) (*StagedRecords, error)
+}
+

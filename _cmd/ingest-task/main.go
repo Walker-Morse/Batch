@@ -130,7 +130,7 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 	// FISSequenceRepo persists per-day sequence numbers in Aurora (§6.6.1).
 	// Replaces the hardcoded stub that returned 1 — FIS silently discards duplicate filenames (§6.5.5).
 	seqStore := aurora.NewFISSequenceRepo(pool)
-	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore)
+	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore, batchRecordsRepo)
 
 	testProdIndicator := byte('P')
 	if cfg.PipelineEnv == "DEV" {

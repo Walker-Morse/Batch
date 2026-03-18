@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/walker-morse/batch/_shared/ports"
 )
 
 // BatchRecordRT30 is the staged FIS RT30 record (new account / card issuance).
@@ -204,3 +205,113 @@ func (r *BatchRecordsRepo) UpdateStatus(ctx context.Context, id uuid.UUID, recor
 	}
 	return nil
 }
+
+// ListStagedByCorrelationID returns all STAGED batch records for the given
+// correlation ID, ordered by sequence_in_file ASC within each record type.
+// Called by AssemblerImpl (Stage 4) to populate the FIS batch file body.
+// Returns an empty StagedRecords (not an error) if no staged rows exist —
+// the assembler will produce a structurally valid but empty file in that case.
+func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correlationID uuid.UUID) (*ports.StagedRecords, error) {
+	result := &ports.StagedRecords{}
+
+	// ── RT30 ──────────────────────────────────────────────────────────────────
+	rows30, err := r.pool.Query(ctx, `
+		SELECT id, sequence_in_file,
+		       client_member_id, subprogram_id, package_id,
+		       first_name, last_name, date_of_birth,
+		       address_1, address_2, city, state, zip, email,
+		       card_design_id, custom_card_id
+		FROM public.batch_records_rt30
+		WHERE correlation_id = $1
+		  AND status = 'STAGED'
+		ORDER BY sequence_in_file ASC`,
+		correlationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch_records_rt30.ListStaged: %w", err)
+	}
+	defer rows30.Close()
+
+	for rows30.Next() {
+		rec := &ports.StagedRT30{}
+		err := rows30.Scan(
+			&rec.ID, &rec.SequenceInFile,
+			&rec.ClientMemberID, &rec.SubprogramID, &rec.PackageID,
+			&rec.FirstName, &rec.LastName, &rec.DateOfBirth,
+			&rec.Address1, &rec.Address2, &rec.City, &rec.State, &rec.ZIP, &rec.Email,
+			&rec.CardDesignID, &rec.CustomCardID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("batch_records_rt30.ListStaged scan: %w", err)
+		}
+		result.RT30 = append(result.RT30, rec)
+	}
+	if err := rows30.Err(); err != nil {
+		return nil, fmt.Errorf("batch_records_rt30.ListStaged rows: %w", err)
+	}
+
+	// ── RT37 ──────────────────────────────────────────────────────────────────
+	rows37, err := r.pool.Query(ctx, `
+		SELECT id, sequence_in_file,
+		       client_member_id, fis_card_id, card_status_code, reason_code
+		FROM public.batch_records_rt37
+		WHERE correlation_id = $1
+		  AND status = 'STAGED'
+		ORDER BY sequence_in_file ASC`,
+		correlationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch_records_rt37.ListStaged: %w", err)
+	}
+	defer rows37.Close()
+
+	for rows37.Next() {
+		rec := &ports.StagedRT37{}
+		err := rows37.Scan(
+			&rec.ID, &rec.SequenceInFile,
+			&rec.ClientMemberID, &rec.FISCardID, &rec.CardStatusCode, &rec.ReasonCode,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("batch_records_rt37.ListStaged scan: %w", err)
+		}
+		result.RT37 = append(result.RT37, rec)
+	}
+	if err := rows37.Err(); err != nil {
+		return nil, fmt.Errorf("batch_records_rt37.ListStaged rows: %w", err)
+	}
+
+	// ── RT60 ──────────────────────────────────────────────────────────────────
+	rows60, err := r.pool.Query(ctx, `
+		SELECT id, sequence_in_file,
+		       at_code, client_member_id, fis_card_id,
+		       purse_name, amount_cents, effective_date, client_reference
+		FROM public.batch_records_rt60
+		WHERE correlation_id = $1
+		  AND status = 'STAGED'
+		ORDER BY sequence_in_file ASC`,
+		correlationID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch_records_rt60.ListStaged: %w", err)
+	}
+	defer rows60.Close()
+
+	for rows60.Next() {
+		rec := &ports.StagedRT60{}
+		err := rows60.Scan(
+			&rec.ID, &rec.SequenceInFile,
+			&rec.ATCode, &rec.ClientMemberID, &rec.FISCardID,
+			&rec.PurseName, &rec.AmountCents, &rec.EffectiveDate, &rec.ClientReference,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("batch_records_rt60.ListStaged scan: %w", err)
+		}
+		result.RT60 = append(result.RT60, rec)
+	}
+	if err := rows60.Err(); err != nil {
+		return nil, fmt.Errorf("batch_records_rt60.ListStaged rows: %w", err)
+	}
+
+	return result, nil
+}
+
