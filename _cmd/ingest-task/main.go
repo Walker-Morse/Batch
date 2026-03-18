@@ -127,7 +127,9 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 
 	// FIS batch assembler — owns all FIS record format knowledge (ADR-001)
 	// SequenceStore uses batchFileRepo to persist per-day sequence counter
-	seqStore := &dbSequenceStore{repo: batchFileRepo}
+	// FISSequenceRepo persists per-day sequence numbers in Aurora (§6.6.1).
+	// Replaces the hardcoded stub that returned 1 — FIS silently discards duplicate filenames (§6.5.5).
+	seqStore := aurora.NewFISSequenceRepo(pool)
 	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore)
 
 	testProdIndicator := byte('P')
@@ -301,17 +303,7 @@ func parseConfig() (*PipelineConfig, error) {
 	return cfg, nil
 }
 
-// dbSequenceStore implements fis_adapter.SequenceStore using the batch_files table.
-// The sequence number is stored per-day per-program to survive container restarts (§6.6.1).
-type dbSequenceStore struct {
-	repo *aurora.BatchFileRepo
-}
-
-func (d *dbSequenceStore) Next(ctx context.Context, programID string, date time.Time) (int, error) {
-	// TODO: implement per-day sequence counter in batch_files or a dedicated sequence table
-	// For now return 1 — production requires a real counter persisted to Aurora
-	return 1, nil
-}
+// dbSequenceStore removed — replaced by aurora.FISSequenceRepo (see _adapters/aurora/fis_sequence.go).
 
 func envOrDefault(key, def string) string {
 	if v := os.Getenv(key); v != "" {
