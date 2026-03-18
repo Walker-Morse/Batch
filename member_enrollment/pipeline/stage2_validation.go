@@ -21,7 +21,10 @@
 // names) must be confirmed before Stage 3 implementation (§2 Assumptions, Open Item #9).
 package pipeline
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // ValidationStage implements Stage 2 of the ingest-task pipeline.
 type ValidationStage struct {

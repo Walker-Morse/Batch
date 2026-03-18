@@ -17,7 +17,10 @@
 // Status transition: ASSEMBLED → TRANSFERRED
 package pipeline
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // FISTransferStage implements Stage 5 of the ingest-task pipeline.
 type FISTransferStage struct {

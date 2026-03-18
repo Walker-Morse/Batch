@@ -18,7 +18,10 @@
 // Status transition: PROCESSING → ASSEMBLED
 package pipeline
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // BatchAssemblyStage implements Stage 4 of the ingest-task pipeline.
 type BatchAssemblyStage struct {

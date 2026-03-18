@@ -37,7 +37,10 @@
 // Status transition: VALIDATING → PROCESSING → (STALLED | advance to Stage 4)
 package pipeline
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // RowProcessingStage implements Stage 3 of the ingest-task pipeline.
 type RowProcessingStage struct {

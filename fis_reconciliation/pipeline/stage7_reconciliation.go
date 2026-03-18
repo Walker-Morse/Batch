@@ -38,7 +38,10 @@
 // Status transition: TRANSFERRED → COMPLETE (or HALTED on RT99 full-file halt)
 package pipeline
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // ReconciliationStage implements Stage 7 of the ingest-task pipeline.
 type ReconciliationStage struct {

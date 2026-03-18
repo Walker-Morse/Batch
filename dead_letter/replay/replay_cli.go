@@ -20,7 +20,10 @@
 // for a hotfix to be deployed first (§6.5.3 triage guidance).
 package replay
 
-import "context"
+import (
+	"context"
+	"github.com/walker-morse/batch/_shared/ports"
+)
 
 // Replayer orchestrates dead letter replay for a given correlation ID.
 type Replayer struct {
