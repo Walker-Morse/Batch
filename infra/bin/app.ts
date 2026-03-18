@@ -22,6 +22,12 @@ new OneFintechStack(app, "OneFintechDev", {
   scheduleCron: "cron(0 2 * * ? *)",
   // DEV: single NAT gateway (cost optimised); TST/PRD: one per AZ
   natGateways: 1,
+  // PGP key Secrets Manager ARNs.
+  // Empty strings = NullPGP passthrough — allowed in DEV only (task enforces at startup).
+  // Provision secrets and populate ARNs before TST deploy (Open Item #41).
+  pgpPrivateKeySecretArn: process.env.PGP_PRIVATE_KEY_SECRET_ARN ?? "",
+  pgpPassphraseSecretArn: process.env.PGP_PASSPHRASE_SECRET_ARN ?? "",
+  pgpFisPublicKeySecretArn: process.env.PGP_FIS_PUBLIC_KEY_SECRET_ARN ?? "",
   description: "One Fintech / FIS Prepaid Sunrise — DEV environment",
 });
 

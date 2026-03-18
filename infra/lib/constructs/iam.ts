@@ -12,6 +12,16 @@ export interface IamProps {
   fisExchangeBucket: s3.IBucket;
   dbSecret: secretsmanager.ISecret;
   kmsKey: kms.IKey;
+  /**
+   * ARNs of Secrets Manager secrets for PGP keys.
+   * - pgpPrivateKeySecretArn: Morse private key for Stage 2 inbound decrypt
+   * - pgpPassphraseSecretArn: passphrase secret (optional, pass "" if key is unencrypted)
+   * - pgpFisPublicKeySecretArn: FIS public key for Stage 4 outbound encrypt
+   * All three must be provisioned before TST/PRD deploy (Open Item #41).
+   */
+  pgpPrivateKeySecretArn: string;
+  pgpPassphraseSecretArn: string;
+  pgpFisPublicKeySecretArn: string;
 }
 
 /**
@@ -62,11 +72,17 @@ export class IamConstruct extends Construct {
       actions: ["s3:ListBucket"],
       resources: [props.inboundBucket.bucketArn, props.stagedBucket.bucketArn],
     }));
+    // Build PGP secret ARN list — filter empty strings (passphrase is optional)
+    const pgpSecretArns = [
+      props.pgpPrivateKeySecretArn,
+      props.pgpPassphraseSecretArn,
+      props.pgpFisPublicKeySecretArn,
+    ].filter((arn) => arn !== "");
+
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "SecretsManagerRead",
       actions: ["secretsmanager:GetSecretValue"],
-      // TODO: add PGP key secret ARNs once provisioned (real PGP decrypt/encrypt)
-      resources: [props.dbSecret.secretArn],
+      resources: [props.dbSecret.secretArn, ...pgpSecretArns],
     }));
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "KmsUsage",

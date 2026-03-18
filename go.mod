@@ -13,6 +13,7 @@ require (
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	go.uber.org/zap v1.27.0
+	golang.org/x/crypto v0.49.0
 	golang.org/x/text v0.35.0
 )
 
@@ -35,6 +36,5 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 )

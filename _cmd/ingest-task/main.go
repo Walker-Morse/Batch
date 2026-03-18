@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -29,7 +30,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/walker-morse/batch/_adapters/aurora"
+	pgpadapter "github.com/walker-morse/batch/_adapters/pgp"
 	"github.com/walker-morse/batch/_adapters/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/walker-morse/batch/_shared/observability"
 	"github.com/walker-morse/batch/_shared/ports"
 	"github.com/walker-morse/batch/fis_reconciliation/fis_adapter"
@@ -65,6 +68,12 @@ type PipelineConfig struct {
 
 	// FIS assembler
 	FISCompanyID string // Morse LLC FIS Level 1 client identifier (8 chars)
+
+	// PGP key references (Secrets Manager ARNs — never plaintext key material in config)
+	// Empty strings trigger NullPGP passthrough — only allowed when PipelineEnv == "DEV".
+	PGPPrivateKeySecretARN   string // Morse private key for inbound SRG decrypt (Stage 2)
+	PGPPassphraseSecretARN   string // passphrase for private key, or "" if key is unencrypted
+	PGPFISPublicKeySecretARN string // FIS public key for outbound batch encrypt (Stage 4)
 
 	// Replay mode
 	ReplayMode        bool
@@ -109,6 +118,9 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		return fmt.Errorf("wire aws config: %w", err)
 	}
 
+	// Secrets Manager client (shared by PGP adapters)
+	smClient := secretsmanager.NewFromConfig(awsCfg)
+
 	// S3 store
 	s3Client := awss3.NewFromConfig(awsCfg)
 	fileStore := s3.New(s3Client, cfg.KMSKeyARN)
@@ -152,7 +164,20 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		DeadLetters: deadLetterRepo,
 		Audit:       auditRepo,
 		Obs:         obs,
-		PGPDecrypt:  stage2.NullPGPDecrypt, // TODO: replace with real PGP decrypt
+		PGPDecrypt: func() func(r io.Reader) (io.Reader, error) {
+			if cfg.PGPPrivateKeySecretARN == "" {
+				if cfg.PipelineEnv != "DEV" {
+					log.Fatalf("PGP_PRIVATE_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+				}
+				log.Printf("WARN: using NullPGPDecrypt — DEV environment only")
+				return stage2.NullPGPDecrypt
+			}
+			dec, err := pgpadapter.LoadDecrypter(ctx, smClient, cfg.PGPPrivateKeySecretARN, cfg.PGPPassphraseSecretARN)
+			if err != nil {
+				log.Fatalf("load PGP decrypter: %v", err)
+			}
+			return dec.Decrypt
+		}(),
 	}
 
 	s3stage := &stage3.RowProcessingStage{
@@ -172,7 +197,20 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		BatchFiles:        batchFileRepo,
 		Audit:             auditRepo,
 		Obs:               obs,
-		PGPEncrypt:        stage4.NullPGPEncrypt, // TODO: replace with real PGP encrypt
+		PGPEncrypt: func() func(r io.Reader) (io.Reader, error) {
+			if cfg.PGPFISPublicKeySecretARN == "" {
+				if cfg.PipelineEnv != "DEV" {
+					log.Fatalf("PGP_FIS_PUBLIC_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+				}
+				log.Printf("WARN: using NullPGPEncrypt — DEV environment only")
+				return stage4.NullPGPEncrypt
+			}
+			enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPFISPublicKeySecretARN)
+			if err != nil {
+				log.Fatalf("load PGP encrypter: %v", err)
+			}
+			return enc.Encrypt
+		}(),
 		StagedBucket:      cfg.StagedBucket,
 		FISExchangeBucket: cfg.FISExchangeBucket,
 	}
@@ -263,6 +301,9 @@ func parseConfig() (*PipelineConfig, error) {
 	stagedBucket := flag.String("staged-bucket",      os.Getenv("STAGED_BUCKET"),       "staged S3 bucket")
 	fisBucket    := flag.String("fis-exchange-bucket", os.Getenv("FIS_EXCHANGE_BUCKET"), "fis-exchange S3 bucket")
 	fisCompanyID := flag.String("fis-company-id", os.Getenv("FIS_COMPANY_ID"), "FIS Level 1 company identifier (8 chars)")
+	pgpPrivateKeyARN  := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "Secrets Manager ARN for Morse private key (Stage 2 decrypt)")
+	pgpPassphraseARN  := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "Secrets Manager ARN for private key passphrase, or empty")
+	pgpFISPublicKeyARN := flag.String("pgp-fis-public-key-secret-arn", os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"), "Secrets Manager ARN for FIS public key (Stage 4 encrypt)")
 	replay    := flag.Bool("replay", false, "replay mode — invoked by replay-cli")
 	replaySeq := flag.Int("replay-seq", 0, "row sequence number for replay")
 	flag.Parse()
@@ -292,8 +333,11 @@ func parseConfig() (*PipelineConfig, error) {
 		KMSKeyARN:             *kmsKey,
 		StagedBucket:          *stagedBucket,
 		FISExchangeBucket:     *fisBucket,
-		FISCompanyID:          *fisCompanyID,
-		ReplayMode:            *replay,
+		FISCompanyID:              *fisCompanyID,
+		PGPPrivateKeySecretARN:    *pgpPrivateKeyARN,
+		PGPPassphraseSecretARN:    *pgpPassphraseARN,
+		PGPFISPublicKeySecretARN:  *pgpFISPublicKeyARN,
+		ReplayMode:                *replay,
 		ReturnFileWaitTimeout: 6 * time.Hour,
 	}
 	if *replay && *replaySeq > 0 {

@@ -6,6 +6,7 @@ import { AuroraConstruct } from "../constructs/aurora";
 import { IamConstruct } from "../constructs/iam";
 import { EcsConstruct } from "../constructs/ecs";
 import { SchedulerConstruct } from "../constructs/scheduler";
+import { TriggerConstruct } from "../constructs/trigger";
 
 export interface OneFintechStackProps extends cdk.StackProps {
   environment: "dev" | "tst" | "prd";
@@ -14,6 +15,9 @@ export interface OneFintechStackProps extends cdk.StackProps {
   fisCompanyId: string;
   scheduleCron: string;
   natGateways: number;
+  pgpPrivateKeySecretArn: string;
+  pgpPassphraseSecretArn: string;
+  pgpFisPublicKeySecretArn: string;
 }
 
 /**
@@ -28,7 +32,8 @@ export class OneFintechStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: OneFintechStackProps) {
     super(scope, id, props);
 
-    const { environment: env, auroraMinAcu, auroraMaxAcu, fisCompanyId, scheduleCron, natGateways } = props;
+    const { environment: env, auroraMinAcu, auroraMaxAcu, fisCompanyId, scheduleCron, natGateways,
+            pgpPrivateKeySecretArn, pgpPassphraseSecretArn, pgpFisPublicKeySecretArn } = props;
 
     const networking = new NetworkingConstruct(this, "Networking", { env, natGateways });
     const storage = new StorageConstruct(this, "Storage", { env });
@@ -42,6 +47,9 @@ export class OneFintechStack extends cdk.Stack {
       fisExchangeBucket: storage.fisExchangeBucket,
       dbSecret: aurora.dbSecret,
       kmsKey: storage.kmsKey,
+      pgpPrivateKeySecretArn,
+      pgpPassphraseSecretArn,
+      pgpFisPublicKeySecretArn,
     });
     const ecs = new EcsConstruct(this, "Ecs", {
       env,
@@ -64,6 +72,18 @@ export class OneFintechStack extends cdk.Stack {
       subnetIds: networking.vpc.privateSubnets.map((s) => s.subnetId),
       securityGroupId: ecs.taskSecurityGroup.securityGroupId,
       schedulerRoleArn: iam.schedulerRole.roleArn,
+    });
+
+    // S3 file-arrival trigger: inbound-raw ObjectCreated → ECS RunTask (ADR-006b)
+    new TriggerConstruct(this, "Trigger", {
+      env,
+      inboundBucket: storage.inboundBucket,
+      cluster: ecs.cluster,
+      taskDefinition: ecs.taskDefinition,
+      taskSecurityGroup: ecs.taskSecurityGroup,
+      subnetIds: networking.vpc.privateSubnets.map((s) => s.subnetId),
+      taskRole: iam.taskRole,
+      executionRole: iam.executionRole,
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
