@@ -30,6 +30,8 @@ import (
 	"fmt"
 	"time"
 
+	"strconv"
+
 	"github.com/google/uuid"
 	"github.com/walker-morse/batch/_adapters/aurora"
 	"github.com/walker-morse/batch/_shared/domain"
@@ -47,6 +49,11 @@ type RowProcessingStage struct {
 	DomainState    *aurora.DomainStateRepo
 	Audit          ports.AuditLogWriter
 	Obs            ports.IObservabilityPort
+
+	// programCache memoises GetProgramByTenantAndSubprogram results within a
+	// single Stage 3 run. Key: tenantID+"|"+fisSubprogramID → programs.id UUID.
+	// Avoids N identical DB round-trips when all SRG310 rows share one subprogram.
+	programCache map[string]uuid.UUID
 }
 
 // RowProcessingInput carries everything Stage 3 needs.
@@ -162,6 +169,17 @@ const (
 )
 
 func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG310Row) rowOutcome {
+	// Resolve program UUID from SubprogramID on the SRG row.
+	// This is the FK anchor for consumers.program_id and purses.program_id.
+	// Must succeed before any write — dead-letter the row if the program is unknown.
+	programID, err := s.lookupProgram(ctx, in.BatchFile.TenantID, row.SubprogramID)
+	if err != nil {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			fmt.Sprintf("program_lookup_failed(subprogram=%s): %v", row.SubprogramID, err),
+			row.Raw)
+	}
+
 	// Step 1: Idempotency check — MUST precede all writes (§4.1.1)
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
@@ -202,10 +220,13 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 
 	// Step 3: Write batch_records_rt30 (STAGED)
 	rawJSON, _ := json.Marshal(row.Raw) // PHI — stored for replay; never logged
+	// Parse row.SubprogramID string → int64 for the RT30 record (validated via program lookup above)
 	var subprogramID *int64
-	if in.SubprogramID != 0 {
-		sid := in.SubprogramID
-		subprogramID = &sid
+	if row.SubprogramID != "" {
+		parsedSub, parseErr := strconv.ParseInt(row.SubprogramID, 10, 64)
+		if parseErr == nil {
+			subprogramID = &parsedSub
+		}
 	}
 	rt30 := &aurora.BatchRecordRT30{
 		ID:             uuid.New(),
@@ -254,8 +275,8 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		State:             row.State,
 		ZIP:               row.ZIP,
 		Email:             &row.Email,
-		ProgramID:         in.ProgramID,
-		SubprogramID:      in.SubprogramID,
+		ProgramID:         programID, // resolved from row.SubprogramID via programs table
+		SubprogramID:      func() int64 { if subprogramID != nil { return *subprogramID }; return 0 }(),
 		ContractPBP:       &row.ContractPBP,
 		CustomCardID:      &row.CustomCardID,
 		SourceBatchFileID: in.BatchFile.ID,
@@ -459,6 +480,25 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 	// TODO: look up purse ID and call DomainState.UpdatePurseBalance
 
 	return outcomeStagedOK
+}
+
+// lookupProgram resolves programs.id for a (tenantID, fisSubprogramID) pair.
+// Results are cached on RowProcessingStage.programCache for the lifetime of the
+// Stage 3 run — so the DB is hit at most once per unique subprogram per file.
+func (s *RowProcessingStage) lookupProgram(ctx context.Context, tenantID, fisSubprogramID string) (uuid.UUID, error) {
+	if s.programCache == nil {
+		s.programCache = make(map[string]uuid.UUID)
+	}
+	cacheKey := tenantID + "|" + fisSubprogramID
+	if id, ok := s.programCache[cacheKey]; ok {
+		return id, nil
+	}
+	id, err := s.DomainState.GetProgramByTenantAndSubprogram(ctx, tenantID, fisSubprogramID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	s.programCache[cacheKey] = id
+	return id, nil
 }
 
 // deadLetter writes a failed row to dead_letter_store and returns outcomeDeadLettered.
