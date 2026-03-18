@@ -1,6 +1,6 @@
 module github.com/walker-morse/batch
 
-go 1.22
+go 1.25
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.1
@@ -9,11 +9,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.32.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.6.0
+	github.com/jackc/pgx/v5 v5.8.0
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/text v0.14.0
+	golang.org/x/text v0.35.0
 )
 
 require (
@@ -35,6 +35,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 )

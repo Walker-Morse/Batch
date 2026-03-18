@@ -4,6 +4,13 @@
 **Date:** 2026-02-15  
 **Decider:** Kyle Walker
 
+**Amendment:** 2026-03-18 — Upgraded from Go 1.22 to Go 1.25.8. Seven stdlib CVEs
+(GO-2025-3750, GO-2025-4007, GO-2025-4009, GO-2025-4010, GO-2025-4011,
+GO-2026-4601, GO-2026-4602) identified by govulncheck via reachable paths through
+`golang.org/x/text` (Unicode normalisation) and `github.com/google/uuid`. All fixed
+in go1.25.8. Concurrent dep bumps: `x/text` v0.35.0, `x/crypto` v0.49.0,
+`pgx/v5` v5.8.0. Go 1.22 EOL is February 2026 — upgrade was overdue.
+
 ## Context
 
 The batch pipeline runs as a single ECS Fargate container processing inbound SRG files
