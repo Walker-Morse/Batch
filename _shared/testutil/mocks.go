@@ -313,3 +313,38 @@ func (m *MockDomainCommandRepository) UpdateStatus(_ context.Context, id uuid.UU
 	}
 	return nil
 }
+
+// ─── MockBatchRecordsLister ───────────────────────────────────────────────────
+
+// MockBatchRecordsLister implements ports.BatchRecordsLister for unit tests.
+// Staged maps correlationID.String() → *ports.StagedRecords.
+// Returns empty StagedRecords (not error) for unknown correlation IDs —
+// matches production behaviour of ListStagedByCorrelationID.
+type MockBatchRecordsLister struct {
+	mu      sync.Mutex
+	Staged  map[string]*ports.StagedRecords
+	ListErr error
+}
+
+func NewMockBatchRecordsLister() *MockBatchRecordsLister {
+	return &MockBatchRecordsLister{Staged: make(map[string]*ports.StagedRecords)}
+}
+
+// Register seeds staged records for a given correlation ID.
+func (m *MockBatchRecordsLister) Register(correlationID string, records *ports.StagedRecords) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Staged[correlationID] = records
+}
+
+func (m *MockBatchRecordsLister) ListStagedByCorrelationID(_ context.Context, correlationID uuid.UUID) (*ports.StagedRecords, error) {
+	if m.ListErr != nil {
+		return nil, m.ListErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r, ok := m.Staged[correlationID.String()]; ok {
+		return r, nil
+	}
+	return &ports.StagedRecords{}, nil // empty — structurally valid empty file
+}
