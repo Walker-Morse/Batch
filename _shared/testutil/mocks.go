@@ -7,10 +7,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/walker-morse/batch/_adapters/aurora"
+	"github.com/walker-morse/batch/_shared/domain"
 	"github.com/walker-morse/batch/_shared/ports"
 )
 
@@ -123,15 +126,19 @@ func (m *MockObservability) EventCount(eventType string) int {
 // ─── MockFileStore ───────────────────────────────────────────────────────────
 
 type MockFileStore struct {
-	Objects map[string][]byte
-	Deleted []string
+	Objects     map[string][]byte
+	Deleted     []string
+	GetObjectFn func(ctx context.Context, bucket, key string) (io.ReadCloser, error)
 }
 
 func NewMockFileStore() *MockFileStore {
 	return &MockFileStore{Objects: make(map[string][]byte)}
 }
 
-func (m *MockFileStore) GetObject(_ context.Context, _, key string) (io.ReadCloser, error) {
+func (m *MockFileStore) GetObject(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
+	if m.GetObjectFn != nil {
+		return m.GetObjectFn(ctx, bucket, key)
+	}
 	return nil, nil
 }
 
@@ -312,6 +319,149 @@ func (m *MockDomainCommandRepository) UpdateStatus(_ context.Context, id uuid.UU
 		}
 	}
 	return nil
+}
+
+// ─── MockBatchRecordWriter ────────────────────────────────────────────────────
+
+// MockBatchRecordWriter implements pipeline.BatchRecordWriter for unit tests.
+// Captures inserted records in-memory; no DB required.
+type MockBatchRecordWriter struct {
+	mu      sync.Mutex
+	RT30    []*aurora.BatchRecordRT30
+	RT37    []*aurora.BatchRecordRT37
+	RT60    []*aurora.BatchRecordRT60
+	InsertRT30Err error
+	InsertRT37Err error
+	InsertRT60Err error
+}
+
+func NewMockBatchRecordWriter() *MockBatchRecordWriter {
+	return &MockBatchRecordWriter{}
+}
+
+func (m *MockBatchRecordWriter) InsertRT30(_ context.Context, rec *aurora.BatchRecordRT30) error {
+	if m.InsertRT30Err != nil {
+		return m.InsertRT30Err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.RT30 = append(m.RT30, rec)
+	return nil
+}
+
+func (m *MockBatchRecordWriter) InsertRT37(_ context.Context, rec *aurora.BatchRecordRT37) error {
+	if m.InsertRT37Err != nil {
+		return m.InsertRT37Err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.RT37 = append(m.RT37, rec)
+	return nil
+}
+
+func (m *MockBatchRecordWriter) InsertRT60(_ context.Context, rec *aurora.BatchRecordRT60) error {
+	if m.InsertRT60Err != nil {
+		return m.InsertRT60Err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.RT60 = append(m.RT60, rec)
+	return nil
+}
+
+// ─── MockDomainStateWriter ────────────────────────────────────────────────────
+
+// MockDomainStateWriter implements pipeline.DomainStateWriter for unit tests.
+// Consumers maps tenantID+"|"+clientMemberID → *domain.Consumer (seeded via Register).
+// If GetConsumerByNaturalKey is called for an unknown key, it returns an error
+// matching production behaviour (consumer not found).
+type MockDomainStateWriter struct {
+	mu        sync.Mutex
+	Consumers map[string]*domain.Consumer
+	Cards     []*domain.Card
+	UpsertConsumerErr error
+	InsertCardErr     error
+	GetConsumerErr    error // if set, all GetConsumerByNaturalKey calls return this
+}
+
+func NewMockDomainStateWriter() *MockDomainStateWriter {
+	return &MockDomainStateWriter{Consumers: make(map[string]*domain.Consumer)}
+}
+
+// RegisterConsumer seeds a known consumer for GetConsumerByNaturalKey lookups.
+func (m *MockDomainStateWriter) RegisterConsumer(tenantID, clientMemberID string, c *domain.Consumer) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Consumers[tenantID+"|"+clientMemberID] = c
+}
+
+func (m *MockDomainStateWriter) UpsertConsumer(_ context.Context, c *domain.Consumer) error {
+	if m.UpsertConsumerErr != nil {
+		return m.UpsertConsumerErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Consumers[c.TenantID+"|"+c.ClientMemberID] = c
+	return nil
+}
+
+func (m *MockDomainStateWriter) InsertCard(_ context.Context, c *domain.Card) error {
+	if m.InsertCardErr != nil {
+		return m.InsertCardErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Cards = append(m.Cards, c)
+	return nil
+}
+
+func (m *MockDomainStateWriter) GetConsumerByNaturalKey(_ context.Context, tenantID, clientMemberID string) (*domain.Consumer, error) {
+	if m.GetConsumerErr != nil {
+		return nil, m.GetConsumerErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.Consumers[tenantID+"|"+clientMemberID]; ok {
+		return c, nil
+	}
+	return nil, fmt.Errorf("consumer not found: tenant=%s client_member_id=%s", tenantID, clientMemberID)
+}
+
+// ─── MockFISBatchAssembler ────────────────────────────────────────────────────
+
+// MockFISBatchAssembler implements ports.FISBatchAssembler for unit tests.
+// AssembleResult is returned on success. AssembleErr is returned instead if set.
+type MockFISBatchAssembler struct {
+	AssembleResult *ports.AssembledFile
+	AssembleErr    error
+	Calls          []*ports.AssembleRequest
+}
+
+func NewMockFISBatchAssembler(filename string, recordCount int, body string) *MockFISBatchAssembler {
+	return &MockFISBatchAssembler{
+		AssembleResult: &ports.AssembledFile{
+			Filename:    filename,
+			RecordCount: recordCount,
+			Body:        io.NopCloser(strings.NewReader(body)),
+		},
+	}
+}
+
+func (m *MockFISBatchAssembler) AssembleFile(_ context.Context, req *ports.AssembleRequest) (*ports.AssembledFile, error) {
+	m.Calls = append(m.Calls, req)
+	if m.AssembleErr != nil {
+		return nil, m.AssembleErr
+	}
+	if m.AssembleResult == nil {
+		return nil, nil
+	}
+	// Return a fresh reader each call so tests that call Run() multiple times work.
+	result := &ports.AssembledFile{
+		Filename:    m.AssembleResult.Filename,
+		RecordCount: m.AssembleResult.RecordCount,
+		Body:        io.NopCloser(strings.NewReader(m.AssembleResult.Filename)),
+	}
+	return result, nil
 }
 
 // ─── MockBatchRecordsLister ───────────────────────────────────────────────────

@@ -40,13 +40,30 @@ import (
 	"github.com/walker-morse/batch/member_enrollment/srg"
 )
 
+// BatchRecordWriter is the narrow write interface for Stage 3 batch record staging.
+// Implemented by aurora.BatchRecordsRepo. Defined here (not in ports) to avoid
+// an import cycle: ports cannot import aurora types.
+type BatchRecordWriter interface {
+	InsertRT30(ctx context.Context, rec *aurora.BatchRecordRT30) error
+	InsertRT37(ctx context.Context, rec *aurora.BatchRecordRT37) error
+	InsertRT60(ctx context.Context, rec *aurora.BatchRecordRT60) error
+}
+
+// DomainStateWriter is the narrow read/write interface for Stage 3 domain state.
+// Implemented by aurora.DomainStateRepo. Defined here to avoid the same import cycle.
+type DomainStateWriter interface {
+	UpsertConsumer(ctx context.Context, c *domain.Consumer) error
+	InsertCard(ctx context.Context, c *domain.Card) error
+	GetConsumerByNaturalKey(ctx context.Context, tenantID, clientMemberID string) (*domain.Consumer, error)
+}
+
 // RowProcessingStage implements Stage 3.
 type RowProcessingStage struct {
 	DomainCommands ports.DomainCommandRepository
 	DeadLetters    ports.DeadLetterRepository
 	BatchFiles     ports.BatchFileRepository
-	BatchRecords   *aurora.BatchRecordsRepo
-	DomainState    *aurora.DomainStateRepo
+	BatchRecords   BatchRecordWriter
+	DomainState    DomainStateWriter
 	Programs       ports.ProgramLookup // narrow interface for program resolution (testable)
 	Audit          ports.AuditLogWriter
 	Obs            ports.IObservabilityPort
