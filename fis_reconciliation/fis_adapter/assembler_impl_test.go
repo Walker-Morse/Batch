@@ -14,6 +14,10 @@ import (
 
 // ─── local mocks (avoid import cycle with testutil) ───────────────────────────
 
+// testAssemblerProgramID is the program UUID used across all assembler unit tests.
+// It satisfies the non-nil ProgramID guard in AssembleFile.
+var testAssemblerProgramID = uuid.MustParse("11111111-2222-3333-4444-555555555555")
+
 type mockBatchRecordsLister struct {
 	records *ports.StagedRecords
 	err     error
@@ -68,6 +72,7 @@ func TestAssembleFile_EmptyStagedRecords(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -112,6 +117,7 @@ func TestAssembleFile_RT30RecordsAppear(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -143,6 +149,7 @@ func TestAssembleFile_RT30SequenceOrder(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -177,6 +184,7 @@ func TestAssembleFile_RT60RecordsAppear(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -204,6 +212,7 @@ func TestAssembleFile_RecordCountIntegrity(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -229,6 +238,7 @@ func TestAssembleFile_EachRecordIs400Bytes(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -253,6 +263,7 @@ func TestAssembleFile_FilenameFormat(t *testing.T) {
 	result, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})
@@ -278,6 +289,7 @@ func TestAssembleFile_ListerErrorPropagates(t *testing.T) {
 	_, err := a.AssembleFile(context.Background(), &ports.AssembleRequest{
 		CorrelationID:     uuid.New(),
 		TenantID:          "tenant-001",
+		ProgramID:         testAssemblerProgramID,
 		LogFileIndicator:  '0',
 		TestProdIndicator: 'T',
 	})

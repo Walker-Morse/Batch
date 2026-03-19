@@ -23,6 +23,7 @@ type BatchRecordRT30 struct {
 	Status           string // STAGED|SUBMITTED|COMPLETED|FAILED
 	StagedAt         time.Time
 	ClientMemberID   string
+	ProgramID        uuid.UUID // programs.id — resolved by Stage 3; required by Stage 4 for fis_sequence.Next
 	SubprogramID     *int64
 	PackageID        *string
 	FirstName        *string
@@ -96,7 +97,7 @@ func (r *BatchRecordsRepo) InsertRT30(ctx context.Context, rec *BatchRecordRT30)
 		INSERT INTO public.batch_records_rt30 (
 			id, batch_file_id, domain_command_id, correlation_id,
 			tenant_id, sequence_in_file, status, staged_at,
-			client_member_id, subprogram_id, package_id,
+			client_member_id, program_id, subprogram_id, package_id,
 			first_name, last_name, date_of_birth,
 			address_1, address_2, city, state, zip, email,
 			card_design_id, custom_card_id,
@@ -104,15 +105,15 @@ func (r *BatchRecordsRepo) InsertRT30(ctx context.Context, rec *BatchRecordRT30)
 		) VALUES (
 			$1, $2, $3, $4,
 			$5, $6, $7, $8,
-			$9, $10, $11,
-			$12, $13, $14,
-			$15, $16, $17, $18, $19, $20,
-			$21, $22,
-			$23
+			$9, $10, $11, $12,
+			$13, $14, $15,
+			$16, $17, $18, $19, $20, $21,
+			$22, $23,
+			$24
 		)`,
 		rec.ID, rec.BatchFileID, rec.DomainCommandID, rec.CorrelationID,
 		rec.TenantID, rec.SequenceInFile, rec.Status, rec.StagedAt,
-		rec.ClientMemberID, rec.SubprogramID, rec.PackageID,
+		rec.ClientMemberID, rec.ProgramID, rec.SubprogramID, rec.PackageID,
 		rec.FirstName, rec.LastName, rec.DateOfBirth,
 		rec.Address1, rec.Address2, rec.City, rec.State, rec.ZIP, rec.Email,
 		rec.CardDesignID, rec.CustomCardID,
@@ -217,7 +218,7 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 	// ── RT30 ──────────────────────────────────────────────────────────────────
 	rows30, err := r.pool.Query(ctx, `
 		SELECT id, sequence_in_file,
-		       client_member_id, subprogram_id, package_id,
+		       client_member_id, program_id, subprogram_id, package_id,
 		       first_name, last_name, date_of_birth,
 		       address_1, address_2, city, state, zip, email,
 		       card_design_id, custom_card_id
@@ -236,7 +237,7 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 		rec := &ports.StagedRT30{}
 		err := rows30.Scan(
 			&rec.ID, &rec.SequenceInFile,
-			&rec.ClientMemberID, &rec.SubprogramID, &rec.PackageID,
+			&rec.ClientMemberID, &rec.ProgramID, &rec.SubprogramID, &rec.PackageID,
 			&rec.FirstName, &rec.LastName, &rec.DateOfBirth,
 			&rec.Address1, &rec.Address2, &rec.City, &rec.State, &rec.ZIP, &rec.Email,
 			&rec.CardDesignID, &rec.CustomCardID,

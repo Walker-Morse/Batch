@@ -47,7 +47,11 @@ func (a *AssemblerImpl) AssembleFile(ctx context.Context, req *ports.AssembleReq
 
 	// Get the next sequence number for today (§6.6.1)
 	// Prevents duplicate filename silent suppression (§6.5.5)
-	seq, err := a.sequenceStore.Next(ctx, a.CompanyIDExtended, now)
+	// ProgramID comes from the first staged RT30 row — resolved in Stage 3.
+	if req.ProgramID == (uuid.UUID{}) {
+		return nil, fmt.Errorf("assembler: ProgramID is nil UUID — Stage 3 must resolve programs.id before assembly")
+	}
+	seq, err := a.sequenceStore.Next(ctx, req.ProgramID.String(), now)
 	if err != nil {
 		return nil, fmt.Errorf("assembler: get sequence number: %w", err)
 	}

@@ -261,6 +261,7 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		Status:         "STAGED",
 		StagedAt:       now,
 		ClientMemberID: row.ClientMemberID,
+		ProgramID:      programID, // resolved above via lookupProgram — required by Stage 4 fis_sequence.Next
 		SubprogramID:   subprogramID,
 		FirstName:      strPtrIfNotEmpty(row.FirstName),
 		LastName:       strPtrIfNotEmpty(row.LastName),

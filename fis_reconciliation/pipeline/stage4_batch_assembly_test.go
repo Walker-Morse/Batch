@@ -35,11 +35,12 @@ import (
 // ─── test helpers ─────────────────────────────────────────────────────────────
 
 type stage4Mocks struct {
-	assembler  *testutil.MockFISBatchAssembler
-	files      *mockS3
-	batchFiles *testutil.MockBatchFileRepository
-	audit      *testutil.MockAuditLogWriter
-	obs        *testutil.MockObservability
+	assembler      *testutil.MockFISBatchAssembler
+	files          *mockS3
+	batchFiles     *testutil.MockBatchFileRepository
+	stagedRecords  *testutil.MockBatchRecordsLister
+	audit          *testutil.MockAuditLogWriter
+	obs            *testutil.MockObservability
 }
 
 // mockS3 gives finer control than MockFileStore for stage4 — we need to track
@@ -74,11 +75,12 @@ func (m *mockS3) HeadObject(_ context.Context, _, _ string) (*ports.ObjectMeta, 
 
 func newStage4(pgpFn func(io.Reader) (io.Reader, error)) (*BatchAssemblyStage, *stage4Mocks) {
 	m := &stage4Mocks{
-		assembler:  testutil.NewMockFISBatchAssembler("PROG000106010001.OTC.txt", 42, "FISBODY"),
-		files:      &mockS3{},
-		batchFiles: testutil.NewMockBatchFileRepository(),
-		audit:      &testutil.MockAuditLogWriter{},
-		obs:        &testutil.MockObservability{},
+		assembler:     testutil.NewMockFISBatchAssembler("PROG000106010001.OTC.txt", 42, "FISBODY"),
+		files:         &mockS3{},
+		batchFiles:    testutil.NewMockBatchFileRepository(),
+		stagedRecords: testutil.NewMockBatchRecordsLister(),
+		audit:         &testutil.MockAuditLogWriter{},
+		obs:           &testutil.MockObservability{},
 	}
 	if pgpFn == nil {
 		pgpFn = NullPGPEncrypt
@@ -87,6 +89,7 @@ func newStage4(pgpFn func(io.Reader) (io.Reader, error)) (*BatchAssemblyStage, *
 		Assembler:         m.assembler,
 		Files:             m.files,
 		BatchFiles:        m.batchFiles,
+		StagedRecords:     m.stagedRecords,
 		Audit:             m.audit,
 		Obs:               m.obs,
 		PGPEncrypt:        pgpFn,
@@ -95,6 +98,9 @@ func newStage4(pgpFn func(io.Reader) (io.Reader, error)) (*BatchAssemblyStage, *
 	}
 	return stage, m
 }
+
+// testProgramID is a stable UUID used across stage4 tests for program lookup.
+var testProgramID = uuid.MustParse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
 func seedBF(m *stage4Mocks, tenantID string) *ports.BatchFile {
 	bf := &ports.BatchFile{
@@ -107,6 +113,19 @@ func seedBF(m *stage4Mocks, tenantID string) *ports.BatchFile {
 		UpdatedAt:     time.Now().UTC(),
 	}
 	m.batchFiles.Files[bf.ID] = bf
+	// Seed a staged RT30 row carrying the program UUID so resolveProgramID succeeds.
+	subID := int64(26071)
+	m.stagedRecords.Register(bf.CorrelationID.String(), &ports.StagedRecords{
+		RT30: []*ports.StagedRT30{
+			{
+				ID:             uuid.New(),
+				SequenceInFile: 1,
+				ClientMemberID: "MBR-001",
+				ProgramID:      testProgramID,
+				SubprogramID:   &subID,
+			},
+		},
+	})
 	return bf
 }
 
@@ -172,6 +191,9 @@ func TestStage4_AssemblerCalledWithCorrelationID(t *testing.T) {
 	}
 	if req.TenantID != bf.TenantID {
 		t.Errorf("AssembleRequest.TenantID = %q; want %q", req.TenantID, bf.TenantID)
+	}
+	if req.ProgramID != testProgramID {
+		t.Errorf("AssembleRequest.ProgramID = %s; want %s", req.ProgramID, testProgramID)
 	}
 }
 
@@ -291,5 +313,75 @@ func TestNullPGPEncrypt_Passthrough(t *testing.T) {
 	got, _ := io.ReadAll(r)
 	if !bytes.Equal(got, content) {
 		t.Errorf("NullPGPEncrypt modified content: got %q; want %q", got, content)
+	}
+}
+
+// ─── resolveProgramID error paths ─────────────────────────────────────────────
+
+// TestStage4_ResolveProgramID_NoStagedRows verifies that Stage 4 fails fast
+// when no staged RT30 rows exist for the correlation ID.
+// Without a program UUID, fis_sequence.Next cannot be keyed (§6.6.1).
+func TestStage4_ResolveProgramID_NoStagedRows(t *testing.T) {
+	stage, m := newStage4(nil)
+	bf := &ports.BatchFile{
+		ID:            uuid.New(),
+		CorrelationID: uuid.New(),
+		TenantID:      "rfu-oregon",
+		FileType:      "SRG310",
+		Status:        "PROCESSING",
+		ArrivedAt:     time.Now().UTC(),
+		UpdatedAt:     time.Now().UTC(),
+	}
+	m.batchFiles.Files[bf.ID] = bf
+	// Register empty staged records — no RT30 rows
+	m.stagedRecords.Register(bf.CorrelationID.String(), &ports.StagedRecords{})
+
+	_, err := stage.Run(context.Background(), bf)
+	if err == nil {
+		t.Fatal("expected error when no staged RT30 rows exist")
+	}
+	if !strings.Contains(err.Error(), "no staged RT30 rows") {
+		t.Errorf("error %q should mention no staged RT30 rows", err.Error())
+	}
+	if m.files.putKey != "" {
+		t.Error("S3 put must not happen when program ID cannot be resolved")
+	}
+}
+
+// TestStage4_ResolveProgramID_NilUUID verifies that Stage 4 fails fast
+// when a staged RT30 row has a nil (zero) ProgramID.
+// This guards against rows inserted before migration 006.
+func TestStage4_ResolveProgramID_NilUUID(t *testing.T) {
+	stage, m := newStage4(nil)
+	bf := &ports.BatchFile{
+		ID:            uuid.New(),
+		CorrelationID: uuid.New(),
+		TenantID:      "rfu-oregon",
+		FileType:      "SRG310",
+		Status:        "PROCESSING",
+		ArrivedAt:     time.Now().UTC(),
+		UpdatedAt:     time.Now().UTC(),
+	}
+	m.batchFiles.Files[bf.ID] = bf
+	subID := int64(26071)
+	// Register a row with zero UUID — simulates pre-migration 006 data
+	m.stagedRecords.Register(bf.CorrelationID.String(), &ports.StagedRecords{
+		RT30: []*ports.StagedRT30{
+			{
+				ID:             uuid.New(),
+				SequenceInFile: 1,
+				ClientMemberID: "MBR-001",
+				ProgramID:      uuid.UUID{}, // zero UUID
+				SubprogramID:   &subID,
+			},
+		},
+	})
+
+	_, err := stage.Run(context.Background(), bf)
+	if err == nil {
+		t.Fatal("expected error when RT30 row has nil program_id")
+	}
+	if !strings.Contains(err.Error(), "nil program_id") {
+		t.Errorf("error %q should mention nil program_id", err.Error())
 	}
 }

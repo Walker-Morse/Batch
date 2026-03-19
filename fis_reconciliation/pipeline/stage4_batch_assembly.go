@@ -21,16 +21,18 @@ import (
 	"io"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/walker-morse/batch/_shared/ports"
 )
 
 // BatchAssemblyStage implements Stage 4.
 type BatchAssemblyStage struct {
-	Assembler  ports.FISBatchAssembler
-	Files      ports.FileStore
-	BatchFiles ports.BatchFileRepository
-	Audit      ports.AuditLogWriter
-	Obs        ports.IObservabilityPort
+	Assembler      ports.FISBatchAssembler
+	Files          ports.FileStore
+	BatchFiles     ports.BatchFileRepository
+	StagedRecords  ports.BatchRecordsLister // used to resolve ProgramID before assembly
+	Audit          ports.AuditLogWriter
+	Obs            ports.IObservabilityPort
 	// PGPEncrypt encrypts plaintext using the FIS public key from Secrets Manager.
 	PGPEncrypt func(plaintext io.Reader) (io.Reader, error)
 	// Buckets
@@ -47,10 +49,19 @@ type BatchAssemblyResult struct {
 
 // Run assembles and encrypts the FIS batch file.
 func (s *BatchAssemblyStage) Run(ctx context.Context, batchFile *ports.BatchFile) (*BatchAssemblyResult, error) {
+	// Resolve ProgramID from staged RT30 records before assembly.
+	// Phase 1: all rows in a file share a single program.
+	// The assembler needs programs.id to key fis_sequence.Next (§6.6.1).
+	programID, err := s.resolveProgramID(ctx, batchFile)
+	if err != nil {
+		return nil, fmt.Errorf("stage4: resolve program ID: %w", err)
+	}
+
 	// Assemble the FIS batch file via the adapter seam (ADR-001)
 	assembled, err := s.Assembler.AssembleFile(ctx, &ports.AssembleRequest{
 		CorrelationID:     batchFile.CorrelationID,
 		TenantID:          batchFile.TenantID,
+		ProgramID:         programID,
 		LogFileIndicator:  '0', // hardcoded per §6.6.3
 		TestProdIndicator: testProdIndicator(), // from PIPELINE_ENV
 	})
@@ -119,6 +130,25 @@ func (s *BatchAssemblyStage) Run(ctx context.Context, batchFile *ports.BatchFile
 		Filename:    assembled.Filename,
 		RecordCount: assembled.RecordCount,
 	}, nil
+}
+
+// resolveProgramID queries staged RT30 records and returns the program UUID
+// from the first row. Phase 1 guarantees all rows in a file share one program.
+// Returns an error if no staged RT30 rows exist — Stage 4 cannot proceed
+// without a valid programs.id to key fis_sequence.Next (§6.6.1).
+func (s *BatchAssemblyStage) resolveProgramID(ctx context.Context, batchFile *ports.BatchFile) (uuid.UUID, error) {
+	staged, err := s.StagedRecords.ListStagedByCorrelationID(ctx, batchFile.CorrelationID)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("resolveProgramID: list staged records: %w", err)
+	}
+	if len(staged.RT30) == 0 {
+		return uuid.UUID{}, fmt.Errorf("resolveProgramID: no staged RT30 rows for correlation_id=%s — cannot determine program", batchFile.CorrelationID)
+	}
+	pid := staged.RT30[0].ProgramID
+	if pid == (uuid.UUID{}) {
+		return uuid.UUID{}, fmt.Errorf("resolveProgramID: RT30 row has nil program_id — was Stage 3 run after migration 006?")
+	}
+	return pid, nil
 }
 
 // NullPGPEncrypt is a passthrough for local DEV testing.

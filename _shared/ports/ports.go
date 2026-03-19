@@ -237,6 +237,9 @@ type LogEvent struct {
 type AssembleRequest struct {
 	CorrelationID uuid.UUID
 	TenantID      string
+	// ProgramID is the programs.id UUID for this file — sourced from the first
+	// staged RT30 row. Required to key fis_sequence.Next (§6.6.1).
+	ProgramID uuid.UUID
 	// LogFileIndicator MUST be '0' (return all records) — hardcoded in adapter,
 	// not overridable at runtime (§6.6.3). Required for Stage 7 to capture
 	// FIS-assigned card IDs and purse numbers for every enrolled member.
@@ -293,6 +296,7 @@ type StagedRT30 struct {
 	ID             uuid.UUID
 	SequenceInFile int
 	ClientMemberID string
+	ProgramID      uuid.UUID // programs.id — passed to fis_sequence.Next in Stage 4
 	SubprogramID   *int64
 	PackageID      *string
 	FirstName      *string

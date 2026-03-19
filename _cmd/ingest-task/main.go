@@ -275,6 +275,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Assembler:         assembler,
 			Files:             fileStore,
 			BatchFiles:        batchFileRepo,
+			StagedRecords:     batchRecordsRepo,
 			Audit:             auditRepo,
 			Obs:               obs,
 			PGPEncrypt:        pgpEncrypt,
