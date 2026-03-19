@@ -153,7 +153,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	batchRecordsRepo := aurora.NewBatchRecordsRepo(pool)
 	domainStateRepo  := aurora.NewDomainStateRepo(pool)
 
-	obs := &observability.NoopObservability{} // TODO: wire real Datadog adapter
+	obs := observability.NewCloudWatchAdapter(envOrDefault("PIPELINE_ENV", "DEV"))
 
 	seqStore  := aurora.NewFISSequenceRepo(pool)
 	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore, batchRecordsRepo)
