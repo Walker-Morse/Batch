@@ -341,7 +341,10 @@ type BatchRecordsLister interface {
 // BatchRecordsReconciler is the narrow interface for Stage 7 return file processing.
 // Implemented by aurora.BatchRecordsRepo.
 type BatchRecordsReconciler interface {
-	GetStagedByCorrelationAndSequence(ctx context.Context, correlationID uuid.UUID, sequenceInFile int, recordType string) (recordID uuid.UUID, domainCommandID uuid.UUID, err error)
+	// GetStagedByCorrelationAndSequence looks up a staged record by its composite key.
+	// Returns recordID, domainCommandID, benefitPeriod, and any error.
+	// benefitPeriod is ISO YYYY-MM from the domain_commands row — used by the RT60
+	// path to stamp the correct purse without relying on wall-clock time.
+	GetStagedByCorrelationAndSequence(ctx context.Context, correlationID uuid.UUID, sequenceInFile int, recordType string) (recordID uuid.UUID, domainCommandID uuid.UUID, benefitPeriod string, err error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, recordType string, status string, fisResultCode, fisResultMessage *string) error
 }
-

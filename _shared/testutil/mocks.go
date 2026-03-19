@@ -593,14 +593,21 @@ func (m *MockFISTransport) PollForReturn(_ context.Context, _ uuid.UUID, _ time.
 // ─── MockBatchRecordsReconciler ───────────────────────────────────────────────
 
 // MockBatchRecordsReconciler implements ports.BatchRecordsReconciler for Stage 7 tests.
-// StagedRows maps "correlationID|seq|type" → (recordID, domainCommandID).
+// StagedRows maps "correlationID|seq|type" → stagedRowEntry{recordID, cmdID, benefitPeriod}.
 // StatusUpdates captures all UpdateStatus calls for assertion.
 type MockBatchRecordsReconciler struct {
 	mu            sync.Mutex
-	StagedRows    map[string][2]uuid.UUID // key → [recordID, cmdID]
+	StagedRows    map[string]stagedRowEntry
 	StatusUpdates []BatchRecordStatusUpdate
 	GetStagedErr  error
 	UpdateErr     error
+}
+
+// stagedRowEntry holds the values returned by GetStagedByCorrelationAndSequence.
+type stagedRowEntry struct {
+	RecordID      uuid.UUID
+	CmdID         uuid.UUID
+	BenefitPeriod string
 }
 
 type BatchRecordStatusUpdate struct {
@@ -611,28 +618,29 @@ type BatchRecordStatusUpdate struct {
 }
 
 func NewMockBatchRecordsReconciler() *MockBatchRecordsReconciler {
-	return &MockBatchRecordsReconciler{StagedRows: make(map[string][2]uuid.UUID)}
+	return &MockBatchRecordsReconciler{StagedRows: make(map[string]stagedRowEntry)}
 }
 
-// Register seeds a (recordID, domainCommandID) pair for lookup.
-func (m *MockBatchRecordsReconciler) Register(correlationID uuid.UUID, seq int, recordType string, recordID, cmdID uuid.UUID) {
+// Register seeds a (recordID, domainCommandID, benefitPeriod) triple for lookup.
+// benefitPeriod is ISO YYYY-MM — must match what was written to domain_commands at Stage 3.
+func (m *MockBatchRecordsReconciler) Register(correlationID uuid.UUID, seq int, recordType string, recordID, cmdID uuid.UUID, benefitPeriod string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := fmt.Sprintf("%s|%d|%s", correlationID, seq, recordType)
-	m.StagedRows[key] = [2]uuid.UUID{recordID, cmdID}
+	m.StagedRows[key] = stagedRowEntry{RecordID: recordID, CmdID: cmdID, BenefitPeriod: benefitPeriod}
 }
 
-func (m *MockBatchRecordsReconciler) GetStagedByCorrelationAndSequence(_ context.Context, correlationID uuid.UUID, seq int, recordType string) (uuid.UUID, uuid.UUID, error) {
+func (m *MockBatchRecordsReconciler) GetStagedByCorrelationAndSequence(_ context.Context, correlationID uuid.UUID, seq int, recordType string) (uuid.UUID, uuid.UUID, string, error) {
 	if m.GetStagedErr != nil {
-		return uuid.Nil, uuid.Nil, m.GetStagedErr
+		return uuid.Nil, uuid.Nil, "", m.GetStagedErr
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := fmt.Sprintf("%s|%d|%s", correlationID, seq, recordType)
-	if ids, ok := m.StagedRows[key]; ok {
-		return ids[0], ids[1], nil
+	if entry, ok := m.StagedRows[key]; ok {
+		return entry.RecordID, entry.CmdID, entry.BenefitPeriod, nil
 	}
-	return uuid.Nil, uuid.Nil, fmt.Errorf("staged row not found: %s", key)
+	return uuid.Nil, uuid.Nil, "", fmt.Errorf("staged row not found: %s", key)
 }
 
 func (m *MockBatchRecordsReconciler) UpdateStatus(_ context.Context, id uuid.UUID, recordType, status string, fisResultCode, _ *string) error {

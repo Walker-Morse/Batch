@@ -315,18 +315,22 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 	return result, nil
 }
 
-
 // GetStagedByCorrelationAndSequence looks up a single staged record by its
 // (correlation_id, sequence_in_file) composite key. Used by Stage 7 to match
 // return file records to their staged counterparts.
 // recordType must be "RT30", "RT37", or "RT60".
-// Returns (uuid.Nil, uuid.Nil, error) if no matching row is found.
+// Returns (uuid.Nil, uuid.Nil, "", error) if no matching row is found.
+//
+// benefitPeriod is sourced from the domain_commands row via JOIN — it is the
+// ISO YYYY-MM period under which the command was originally submitted. Stage 7
+// uses it for the RT60 path to stamp the correct purse without relying on
+// wall-clock time, which fails on cross-month batches and replay scenarios.
 func (r *BatchRecordsRepo) GetStagedByCorrelationAndSequence(
 	ctx context.Context,
 	correlationID uuid.UUID,
 	sequenceInFile int,
 	recordType string,
-) (recordID uuid.UUID, domainCommandID uuid.UUID, err error) {
+) (recordID uuid.UUID, domainCommandID uuid.UUID, benefitPeriod string, err error) {
 	var table string
 	switch recordType {
 	case "RT30":
@@ -336,19 +340,23 @@ func (r *BatchRecordsRepo) GetStagedByCorrelationAndSequence(
 	case "RT60":
 		table = "batch_records_rt60"
 	default:
-		return uuid.Nil, uuid.Nil, fmt.Errorf("batch_records.GetStaged: unknown record type %q", recordType)
+		return uuid.Nil, uuid.Nil, "", fmt.Errorf("batch_records.GetStaged: unknown record type %q", recordType)
 	}
 
+	// JOIN domain_commands to retrieve benefit_period alongside the record IDs.
+	// The domain_commands row is guaranteed to exist: Stage 3 writes it before
+	// the batch_records row (idempotency contract, §4.1.1).
 	query := fmt.Sprintf(`
-		SELECT id, domain_command_id
-		FROM public.%s
-		WHERE correlation_id = $1
-		  AND sequence_in_file = $2
+		SELECT br.id, br.domain_command_id, dc.benefit_period
+		FROM public.%s br
+		JOIN public.domain_commands dc ON dc.id = br.domain_command_id
+		WHERE br.correlation_id = $1
+		  AND br.sequence_in_file = $2
 		LIMIT 1`, table)
 
-	err = r.pool.QueryRow(ctx, query, correlationID, sequenceInFile).Scan(&recordID, &domainCommandID)
+	err = r.pool.QueryRow(ctx, query, correlationID, sequenceInFile).Scan(&recordID, &domainCommandID, &benefitPeriod)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, fmt.Errorf("batch_records.GetStaged(%s seq=%d): %w", recordType, sequenceInFile, err)
+		return uuid.Nil, uuid.Nil, "", fmt.Errorf("batch_records.GetStaged(%s seq=%d): %w", recordType, sequenceInFile, err)
 	}
-	return recordID, domainCommandID, nil
+	return recordID, domainCommandID, benefitPeriod, nil
 }

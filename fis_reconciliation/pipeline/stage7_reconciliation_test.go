@@ -5,7 +5,8 @@ package pipeline
 // Coverage:
 //   - Happy path RT30: batch_record COMPLETED, domain_command Completed,
 //     FISPersonID + FISCUID stamped on consumer, FISCardID + issued_at on card
-//   - Happy path RT60: batch_record COMPLETED, FISPurseNumber stamped on purse
+//   - Happy path RT60: batch_record COMPLETED, FISPurseNumber stamped on purse,
+//     BenefitPeriod sourced from staged row (not wall-clock time)
 //   - Individual RT99: batch_record FAILED, domain_command Failed, no identifiers stamped
 //   - RT99 full-file halt: status → HALTED, dead letter written, batch.halt.triggered emitted
 //   - Parse failure: error returned
@@ -150,7 +151,7 @@ func TestStage7_RT30_HappyPath(t *testing.T) {
 	consumerID := uuid.New()
 	cardID := uuid.New()
 
-	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID)
+	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID, "2026-06")
 	consumer := &domain.Consumer{ID: consumerID, TenantID: batchFile.TenantID, ClientMemberID: "MBR-001"}
 	m.domainState.RegisterConsumer(batchFile.TenantID, "MBR-001", consumer)
 	m.domainState.RegisterCard(consumerID, &domain.Card{ID: cardID, ConsumerID: consumerID})
@@ -201,7 +202,8 @@ func TestStage7_RT30_HappyPath(t *testing.T) {
 	}
 }
 
-// TestStage7_RT60_HappyPath verifies FISPurseNumber is stamped on purse.
+// TestStage7_RT60_HappyPath verifies FISPurseNumber is stamped on purse and that
+// BenefitPeriod is sourced from the staged row — not derived from wall-clock time.
 func TestStage7_RT60_HappyPath(t *testing.T) {
 	stage, m := newStage7WithMocks()
 	batchFile := makeBatchFileTransferred(m.batchFiles)
@@ -210,7 +212,8 @@ func TestStage7_RT60_HappyPath(t *testing.T) {
 	cmdID := uuid.New()
 	consumerID := uuid.New()
 
-	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTFundLoad, recordID, cmdID)
+	const wantBenefitPeriod = "2026-05"
+	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTFundLoad, recordID, cmdID, wantBenefitPeriod)
 	m.domainState.RegisterConsumer(batchFile.TenantID, "MBR-001", &domain.Consumer{
 		ID: consumerID, TenantID: batchFile.TenantID, ClientMemberID: "MBR-001",
 	})
@@ -229,6 +232,11 @@ func TestStage7_RT60_HappyPath(t *testing.T) {
 	if m.domainState.PurseFISUpdates[0].FISNumber != 42 {
 		t.Errorf("FISPurseNumber = %d; want 42", m.domainState.PurseFISUpdates[0].FISNumber)
 	}
+	// Core regression: BenefitPeriod must come from the staged row, not time.Now().
+	if m.domainState.PurseFISUpdates[0].BenefitPeriod != wantBenefitPeriod {
+		t.Errorf("BenefitPeriod = %q; want %q — benefit_period must be sourced from staged batch_records row, not wall-clock time",
+			m.domainState.PurseFISUpdates[0].BenefitPeriod, wantBenefitPeriod)
+	}
 }
 
 // TestStage7_IndividualRT99_Fails marks record FAILED without halting file.
@@ -238,14 +246,14 @@ func TestStage7_IndividualRT99_MarksFailed(t *testing.T) {
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
-	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTPreProcessingHalt, recordID, cmdID)
+	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTPreProcessingHalt, recordID, cmdID, "2026-06")
 
 	// Single RT99 = full-file halt — use two records to simulate individual failure
 	// Individual RT99: appears alongside other records (not the only record)
 	rt30Success := buildReturnRecord(fis_adapter.RTNewAccount, "MBR-001", "000", nil)
 	rt99Individual := buildReturnRecord(fis_adapter.RTPreProcessingHalt, "", "E01", map[string]string{"msg": "invalid member"})
 
-	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID)
+	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID, "2026-06")
 
 	err := stage.Run(context.Background(), batchFile, buildReturnFile(rt30Success, rt99Individual))
 
@@ -301,7 +309,7 @@ func TestStage7_RecordReconcileError_NonFatal(t *testing.T) {
 	// Seed seq=2 successfully, leave seq=1 unseeded (GetStaged will fail)
 	recordID := uuid.New()
 	cmdID := uuid.New()
-	m.batchRecords.Register(batchFile.CorrelationID, 2, fis_adapter.RTNewAccount, recordID, cmdID)
+	m.batchRecords.Register(batchFile.CorrelationID, 2, fis_adapter.RTNewAccount, recordID, cmdID, "2026-06")
 	m.domainState.RegisterConsumer(batchFile.TenantID, "MBR-002", &domain.Consumer{
 		ID: uuid.New(), TenantID: batchFile.TenantID, ClientMemberID: "MBR-002",
 	})
@@ -357,7 +365,7 @@ func TestStage7_DomainCommandStatusUpdated(t *testing.T) {
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
-	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID)
+	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID, "2026-06")
 	// Seed consumer+card so identifier stamping doesn't fail
 	consumerID := uuid.New()
 	m.domainState.RegisterConsumer(batchFile.TenantID, "MBR-001", &domain.Consumer{

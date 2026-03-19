@@ -131,8 +131,8 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 // reconcileRecord processes a single return record: updates batch_records,
 // domain_commands, domain state identifiers, and writes a reconciliation fact.
 func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord) error {
-	// Look up the staged batch record by sequence
-	recordID, cmdID, err := s.BatchRecords.GetStagedByCorrelationAndSequence(
+	// Look up the staged batch record by sequence, capturing benefit_period.
+	recordID, cmdID, benefitPeriod, err := s.BatchRecords.GetStagedByCorrelationAndSequence(
 		ctx, batchFile.CorrelationID, rec.SequenceInFile, rec.RecordType,
 	)
 	if err != nil {
@@ -168,7 +168,7 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 
 	// On success: stamp FIS-assigned identifiers onto domain state
 	if rec.FISResultCode == "000" {
-		if err := s.stampFISIdentifiers(ctx, batchFile, rec); err != nil {
+		if err := s.stampFISIdentifiers(ctx, batchFile, rec, benefitPeriod); err != nil {
 			// Non-fatal — log the gap; identifiers can be replayed separately
 			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 				EventType:     "stage7.identifier_stamp_failed",
@@ -184,9 +184,9 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 
 	// Write reconciliation fact for Tableau dashboard (§4.3.10)
 	_ = s.Mart.WriteReconciliationFact(ctx, &ports.ReconciliationFact{
-		BatchFileID:      batchFile.ID,
+		BatchFileID:       batchFile.ID,
 		RowSequenceNumber: rec.SequenceInFile,
-		FISResultCode:    rec.FISResultCode,
+		FISResultCode:     rec.FISResultCode,
 	})
 
 	return nil
@@ -194,9 +194,11 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 
 // stampFISIdentifiers updates domain state with FIS-assigned identifiers.
 // RT30: consumer gets FISPersonID + FISCUID; card gets FISCardID + issued_at.
-// RT60: purse gets FISPurseNumber.
+// RT60: purse gets FISPurseNumber. benefitPeriod (ISO YYYY-MM) is sourced from
+//       the staged batch_records row via GetStagedByCorrelationAndSequence —
+//       never derived from wall-clock time (cross-month batches and replay safety).
 // RT37: no new identifiers assigned by FIS on card status updates.
-func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord) error {
+func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord, benefitPeriod string) error {
 	switch rec.RecordType {
 	case fis_adapter.RTNewAccount: // RT30
 		if rec.FISPersonID == nil || rec.FISCUID == nil || rec.FISCardID == nil {
@@ -225,9 +227,9 @@ func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile
 		if err != nil {
 			return fmt.Errorf("get_consumer_for_purse seq=%d: %w", rec.SequenceInFile, err)
 		}
-		// BenefitPeriod is not in the return record — derive from the current month.
-		// Phase 1 assumption: return file processed same calendar month as submission.
-		benefitPeriod := time.Now().UTC().Format("2006-01")
+		// benefitPeriod is the ISO YYYY-MM period from the staged domain_commands row.
+		// It was set at Stage 3 from the SRG file and is the authoritative source —
+		// do not derive from time.Now() (breaks cross-month batches and replay).
 		if err := s.DomainState.UpdatePurseFISNumber(ctx, consumer.ID, benefitPeriod, *rec.FISPurseNumber); err != nil {
 			return fmt.Errorf("update_purse_fis_number seq=%d: %w", rec.SequenceInFile, err)
 		}
