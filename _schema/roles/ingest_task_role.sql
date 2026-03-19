@@ -24,6 +24,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ingest_task_role;
 REVOKE UPDATE, DELETE ON public.audit_log FROM ingest_task_role;
 
 -- tableau_ro: read-only access to reporting schema only
+CREATE SCHEMA IF NOT EXISTS reporting;
 CREATE ROLE tableau_ro NOLOGIN;
 GRANT USAGE ON SCHEMA reporting TO tableau_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA reporting TO tableau_ro;

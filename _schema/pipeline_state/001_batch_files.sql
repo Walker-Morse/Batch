@@ -6,7 +6,7 @@
 -- STALLED and HALTED are legal terminal-pending states.
 
 CREATE TABLE public.batch_files (
-    id               BIGSERIAL PRIMARY KEY,
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     correlation_id   UUID NOT NULL UNIQUE,
     tenant_id        TEXT NOT NULL,
     client_id        TEXT NOT NULL,
