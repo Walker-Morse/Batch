@@ -46,7 +46,7 @@ export class IamConstruct extends Construct {
     this.taskRole = new iam.Role(this, "TaskRole", {
       roleName: `onefintech-${props.env}-ingest-task-role`,
       assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-      description: "One Fintech ingest-task — scoped to pipeline resources only",
+      description: "One Fintech ingest-task - scoped to pipeline resources only",
     });
 
     this.taskRole.addToPolicy(new iam.PolicyStatement({
@@ -116,7 +116,7 @@ export class IamConstruct extends Construct {
     this.schedulerRole = new iam.Role(this, "SchedulerRole", {
       roleName: `onefintech-${props.env}-scheduler-role`,
       assumedBy: new iam.ServicePrincipal("scheduler.amazonaws.com"),
-      description: "EventBridge Scheduler → ECS RunTask for nightly batch delivery (ADR-007)",
+      description: "EventBridge Scheduler -> ECS RunTask for nightly batch delivery (ADR-007)",
     });
 
     cdk.Tags.of(this).add("Project", "OneFintechFIS");

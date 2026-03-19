@@ -90,12 +90,12 @@ export class EcsConstruct extends Construct {
       allowAllOutbound: false,
     });
     this.taskSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443),
-      "HTTPS — AWS APIs via VPC endpoints");
+      "HTTPS - AWS APIs via VPC endpoints");
     this.taskSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432),
       "PostgreSQL to RDS Proxy");
     // TODO: lock to FIS Transfer Family endpoint IP once confirmed (Open Item #19)
     this.taskSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22),
-      "SFTP to FIS Transfer Family (Stage 5 — lock down IP before TST)");
+      "SFTP to FIS Transfer Family (Stage 5 - lock down IP before TST)");
 
     cdk.Tags.of(this).add("Project", "OneFintechFIS");
     cdk.Tags.of(this).add("Environment", props.env);

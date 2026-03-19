@@ -31,19 +31,19 @@ export class AuroraConstruct extends Construct {
 
     const dbSg = new ec2.SecurityGroup(this, "DbSg", {
       vpc: props.vpc,
-      description: "Aurora cluster — allow RDS Proxy only",
+      description: "Aurora cluster - allow RDS Proxy only",
       allowAllOutbound: false,
     });
     const proxySg = new ec2.SecurityGroup(this, "ProxySg", {
       vpc: props.vpc,
-      description: "RDS Proxy — allow ECS task SG",
+      description: "RDS Proxy - allow ECS task SG",
       allowAllOutbound: false,
     });
     dbSg.addIngressRule(proxySg, ec2.Port.tcp(5432), "RDS Proxy to Aurora");
 
     this.cluster = new rds.DatabaseCluster(this, "Cluster", {
       engine: rds.DatabaseClusterEngine.auroraPostgres({
-        version: rds.AuroraPostgresEngineVersion.VER_15_4,
+        version: rds.AuroraPostgresEngineVersion.VER_16_6,
       }),
       writer: rds.ClusterInstance.serverlessV2("writer", { scaleWithWriter: true }),
       serverlessV2MinCapacity: props.minAcu,

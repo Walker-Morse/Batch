@@ -6,10 +6,10 @@ import { OneFintechStack } from "../lib/stacks/onefintech-stack";
 const app = new cdk.App();
 
 // ── DEV ──────────────────────────────────────────────────────────────────────
-// TODO: replace PLACEHOLDER_ACCOUNT_ID with real DEV AWS account ID before first deploy
+// TODO: replace 307871782435 with real DEV AWS account ID before first deploy
 new OneFintechStack(app, "OneFintechDev", {
   env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT ?? "PLACEHOLDER_ACCOUNT_ID",
+    account: process.env.CDK_DEFAULT_ACCOUNT ?? "307871782435",
     region: process.env.CDK_DEFAULT_REGION ?? "us-east-1",
   },
   environment: "dev",

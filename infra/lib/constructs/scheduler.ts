@@ -42,7 +42,7 @@ export class SchedulerConstruct extends Construct {
 
     new scheduler.CfnSchedule(this, "NightlySchedule", {
       name: `onefintech-${props.env}-nightly-delivery`,
-      description: "Nightly FIS batch delivery gate — batch.assemble.nightly (ADR-007)",
+      description: "Nightly FIS batch delivery gate - batch.assemble.nightly (ADR-007)",
       scheduleExpression: props.scheduleCron,
       scheduleExpressionTimezone: "UTC",
       flexibleTimeWindow: { mode: "FLEXIBLE", maximumWindowInMinutes: 15 },

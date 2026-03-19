@@ -19,7 +19,7 @@ export interface TriggerProps {
 }
 
 /**
- * TriggerConstruct — S3 ObjectCreated → EventBridge → ECS RunTask (ADR-006b).
+ * TriggerConstruct — S3 ObjectCreated → EventBridge -> ECS RunTask (ADR-006b).
  *
  * Wires the file-arrival trigger path:
  *   inbound-raw S3 ObjectCreated event
@@ -52,7 +52,7 @@ export class TriggerConstruct extends Construct {
     this.triggerRole = new iam.Role(this, "TriggerRole", {
       roleName: `onefintech-${props.env}-s3-trigger-role`,
       assumedBy: new iam.ServicePrincipal("events.amazonaws.com"),
-      description: "EventBridge → ECS RunTask for S3 file-arrival trigger (ADR-006b)",
+      description: "EventBridge -> ECS RunTask for S3 file-arrival trigger (ADR-006b)",
     });
     this.triggerRole.addToPolicy(new iam.PolicyStatement({
       sid: "AllowEcsRunTask",
@@ -74,7 +74,7 @@ export class TriggerConstruct extends Construct {
     // EventBridge rule: S3 ObjectCreated on inbound-raw bucket
     const rule = new events.Rule(this, "S3InboundTriggerRule", {
       ruleName: `onefintech-${props.env}-s3-inbound-trigger`,
-      description: "S3 ObjectCreated on inbound-raw → ECS ingest-task (ADR-006b)",
+      description: "S3 ObjectCreated on inbound-raw -> ECS ingest-task (ADR-006b)",
       eventPattern: {
         source: ["aws.s3"],
         detailType: ["Object Created"],
