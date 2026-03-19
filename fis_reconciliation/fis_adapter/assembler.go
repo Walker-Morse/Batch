@@ -51,42 +51,20 @@ const (
 
 // RT record types (§6.6.2).
 const (
-	RTFileHeader  = "RT10" // first record in every file
-	RTBatchHeader = "RT20" // opens each client batch
-	RTNewAccount  = "RT30" // new member enrollment + card issuance
-	RTCardUpdate  = "RT37" // card status update (suspend, unsuspend, close)
-	RTFundLoad    = "RT60" // purse load or period-end sweep
-	RTAccountSettings = "RT62"
+	RTFileHeader        = "RT10" // first record in every file
+	RTBatchHeader       = "RT20" // opens each client batch
+	RTNewAccount        = "RT30" // new member enrollment + card issuance
+	RTCardUpdate        = "RT37" // card status update (suspend, unsuspend, close)
+	RTFundLoad          = "RT60" // purse load or period-end sweep
+	RTAccountSettings   = "RT62"
 	RTPreProcessingHalt = "RT99" // FIS file-level rejection OR individual record error
-	RTBatchTrailer = "RT80" // closes each RT20 batch — exact count required
-	RTFileTrailer  = "RT90" // last record in every file — total/batch/detail counts required
+	RTBatchTrailer      = "RT80" // closes each RT20 batch — exact count required
+	RTFileTrailer       = "RT90" // last record in every file — total/batch/detail counts required
 )
-
-// Assembler implements ports.FISBatchAssembler.
-type Assembler struct {
-	// programID is the 8-character FIS program identifier for file naming.
-	// Open Item #31: obtain from Selvi Marappan before Batch Assembly sprint (Apr 27).
-	programID string
-	// sequenceStore persists the per-day per-program-ID file sequence counter.
-	// Must survive container restarts — stored in batch_files table (§6.6.1).
-	sequenceStore SequenceStore
-}
 
 // SequenceStore persists the per-day file sequence number (§6.6.1).
 type SequenceStore interface {
 	Next(ctx context.Context, programID string, date time.Time) (int, error)
-}
-
-// AssembleFile produces a complete FIS batch file.
-// Structure: RT10 → RT20 → [data records] → RT80 → RT90.
-// RT90 is written LAST after all data records are confirmed.
-// A count mismatch in RT80 or RT90 causes an RT99 pre-processing halt (§6.5.1).
-//
-// File splitting is applied if row count exceeds 100,000 (§5.2a, Open Item #28).
-// Split files each receive the next sequence number in the series.
-func (a *Assembler) AssembleFile(ctx context.Context, req *ports.AssembleRequest) (*ports.AssembledFile, error) {
-	_ = req
-	return nil, fmt.Errorf("not implemented — see §5.3 Batch Assembly sprint (Apr 27 target)")
 }
 
 // BuildFilename constructs the FIS-prescribed filename per §6.6.1.
@@ -120,11 +98,11 @@ func IsRT99Halt(returnFileRecordCount int, firstRecordType string) bool {
 // For RT30: FISPersonID, FISCUID, and FISCardID are populated on success.
 // For RT60: FISPurseNumber is populated on success.
 type ReturnRecord struct {
-	RecordType     string  // RT30|RT37|RT60|RT99|RT10|RT20|RT80|RT90
-	SequenceInFile int     // 1-based row sequence — matches sequence_in_file
-	ClientMemberID string  // matches staged batch_records row
-	FISResultCode  string  // "000" = success; other = error
-	FISResultMsg   string  // human-readable result description
+	RecordType     string // RT30|RT37|RT60|RT99|RT10|RT20|RT80|RT90
+	SequenceInFile int    // 1-based row sequence — matches sequence_in_file
+	ClientMemberID string // matches staged batch_records row
+	FISResultCode  string // "000" = success; other = error
+	FISResultMsg   string // human-readable result description
 	// RT30 return fields — populated on success
 	FISPersonID *string
 	FISCUID     *string
@@ -215,3 +193,10 @@ func ParseReturnFile(body io.Reader) ([]*ReturnRecord, error) {
 
 	return records, nil
 }
+
+// ─── compile-time interface satisfaction ─────────────────────────────────────
+
+// Verify that AssemblerImpl satisfies ports.FISBatchAssembler at compile time.
+// AssemblerImpl is the production implementation; it lives in assembler_impl.go.
+// The old Assembler type has been removed — use NewAssembler() to get an AssemblerImpl.
+var _ ports.FISBatchAssembler = (*AssemblerImpl)(nil)
