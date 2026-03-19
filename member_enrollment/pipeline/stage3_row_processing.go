@@ -55,6 +55,7 @@ type DomainStateWriter interface {
 	UpsertConsumer(ctx context.Context, c *domain.Consumer) error
 	InsertCard(ctx context.Context, c *domain.Card) error
 	GetConsumerByNaturalKey(ctx context.Context, tenantID, clientMemberID string) (*domain.Consumer, error)
+	GetCardByConsumerID(ctx context.Context, consumerID uuid.UUID) (*domain.Card, error)
 	// Purse sub-ledger — required for FBO integrity (§I.2).
 	// Balance updated at RT60 write time, not deferred until FIS return.
 	GetPurseByConsumerAndBenefitPeriod(ctx context.Context, consumerID uuid.UUID, benefitPeriod string) (*domain.Purse, error)
@@ -392,6 +393,12 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 			string(domain.FailureRowProcessing),
 			"consumer_not_found: RT37 requires prior RT30 completion", row.Raw)
 	}
+	rt37Card, err := s.DomainState.GetCardByConsumerID(ctx, consumer.ID)
+	if err != nil || fisCardIDOrEmpty(rt37Card) == "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"rt37_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
+	}
 
 	rawJSON, _ := json.Marshal(row.Raw)
 	rt37 := &aurora.BatchRecordRT37{
@@ -400,16 +407,9 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
 		Status: "STAGED", StagedAt: now,
 		ClientMemberID: row.ClientMemberID,
-		// fis_card_id from consumer — nil if RT30 not yet completed (Stage 7 not run)
-		FISCardID:      fisCardIDOrEmpty(consumer),
+		FISCardID:      fisCardIDOrEmpty(rt37Card),
 		CardStatusCode: commandTypeToCardStatus(commandType),
 		RawPayload:     rawJSON,
-	}
-	// If fis_card_id is empty, this will fail DB NOT NULL constraint — dead letter it
-	if rt37.FISCardID == "" {
-		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
-			string(domain.FailureRowProcessing),
-			"rt37_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
 	}
 	if err := s.BatchRecords.InsertRT37(ctx, rt37); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
@@ -458,14 +458,15 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 			fmt.Sprintf("domain_command_insert_failed: %v", err), row.Raw)
 	}
 
-	// RT60 requires fis_card_id
+	// RT60 requires fis_card_id — look it up from consumers → cards
 	consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, in.BatchFile.TenantID, row.ClientMemberID)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			"consumer_not_found: RT60 requires prior RT30 completion", row.Raw)
 	}
-	if fisCardIDOrEmpty(consumer) == "" {
+	rt60Card, err := s.DomainState.GetCardByConsumerID(ctx, consumer.ID)
+	if err != nil || fisCardIDOrEmpty(rt60Card) == "" {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			"rt60_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
@@ -485,7 +486,7 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 		Status: "STAGED", StagedAt: now,
 		ATCode:         &atCode,
 		ClientMemberID: row.ClientMemberID,
-		FISCardID:      fisCardIDOrEmpty(consumer),
+		FISCardID:      fisCardIDOrEmpty(rt60Card),
 		AmountCents:    row.AmountCents,
 		EffectiveDate:  row.EffectiveDate,
 		ExpiryDate:     &expiryDate,
@@ -629,12 +630,11 @@ func commandTypeToCardStatus(commandType string) int16 {
 	}
 }
 
-func fisCardIDOrEmpty(c *domain.Consumer) string {
-	// Consumer doesn't directly hold fis_card_id — that's on the card entity.
-	// For now, consumer.FISCUID can bridge to card lookup.
-	// TODO: accept card as parameter once card lookup is wired.
-	// This returns empty until Stage 7 populates fis_card_id on the card row.
-	return ""
+func fisCardIDOrEmpty(c *domain.Card) string {
+	if c == nil || c.FISCardID == nil {
+		return ""
+	}
+	return *c.FISCardID
 }
 
 // ─── small helpers ────────────────────────────────────────────────────────────

@@ -388,6 +388,7 @@ type MockDomainStateWriter struct {
 	mu        sync.Mutex
 	Consumers map[string]*domain.Consumer
 	Cards     []*domain.Card
+	CardsByConsumerID map[uuid.UUID]*domain.Card
 	Purses    map[string]*domain.Purse
 	// Captured writes
 	BalanceUpdates []PurseBalanceUpdate
@@ -395,6 +396,7 @@ type MockDomainStateWriter struct {
 	UpsertConsumerErr        error
 	InsertCardErr            error
 	GetConsumerErr           error // if set, all GetConsumerByNaturalKey calls return this
+	GetCardErr               error // if set, all GetCardByConsumerID calls return this
 	GetPurseErr              error // if set, all GetPurseByConsumerAndBenefitPeriod calls return this
 	UpdatePurseBalanceErr    error
 }
@@ -407,8 +409,9 @@ type PurseBalanceUpdate struct {
 
 func NewMockDomainStateWriter() *MockDomainStateWriter {
 	return &MockDomainStateWriter{
-		Consumers: make(map[string]*domain.Consumer),
-		Purses:    make(map[string]*domain.Purse),
+		Consumers:         make(map[string]*domain.Consumer),
+		CardsByConsumerID: make(map[uuid.UUID]*domain.Card),
+		Purses:            make(map[string]*domain.Purse),
 	}
 }
 
@@ -417,6 +420,13 @@ func (m *MockDomainStateWriter) RegisterConsumer(tenantID, clientMemberID string
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.Consumers[tenantID+"|"+clientMemberID] = c
+}
+
+// RegisterCard seeds a card for GetCardByConsumerID lookups.
+func (m *MockDomainStateWriter) RegisterCard(consumerID uuid.UUID, c *domain.Card) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.CardsByConsumerID[consumerID] = c
 }
 
 func (m *MockDomainStateWriter) UpsertConsumer(_ context.Context, c *domain.Consumer) error {
@@ -437,6 +447,18 @@ func (m *MockDomainStateWriter) InsertCard(_ context.Context, c *domain.Card) er
 	defer m.mu.Unlock()
 	m.Cards = append(m.Cards, c)
 	return nil
+}
+
+func (m *MockDomainStateWriter) GetCardByConsumerID(_ context.Context, consumerID uuid.UUID) (*domain.Card, error) {
+	if m.GetCardErr != nil {
+		return nil, m.GetCardErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.CardsByConsumerID[consumerID]; ok {
+		return c, nil
+	}
+	return nil, fmt.Errorf("card not found for consumer %s", consumerID)
 }
 
 func (m *MockDomainStateWriter) GetConsumerByNaturalKey(_ context.Context, tenantID, clientMemberID string) (*domain.Consumer, error) {

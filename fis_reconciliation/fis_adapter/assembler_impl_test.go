@@ -134,9 +134,9 @@ func TestAssembleFile_RT30SequenceOrder(t *testing.T) {
 	subID := int64(1)
 	records := &ports.StagedRecords{
 		RT30: []*ports.StagedRT30{
-			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "FIRST", SubprogramID: &subID},
-			{ID: uuid.New(), SequenceInFile: 2, ClientMemberID: "SECOND", SubprogramID: &subID},
-			{ID: uuid.New(), SequenceInFile: 3, ClientMemberID: "THIRD", SubprogramID: &subID},
+			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "FIRST", SubprogramID: &subID, FirstName: ptr("Jane"), LastName: ptr("First")},
+			{ID: uuid.New(), SequenceInFile: 2, ClientMemberID: "SECOND", SubprogramID: &subID, FirstName: ptr("Jane"), LastName: ptr("Second")},
+			{ID: uuid.New(), SequenceInFile: 3, ClientMemberID: "THIRD", SubprogramID: &subID, FirstName: ptr("Jane"), LastName: ptr("Third")},
 		},
 	}
 	a := newTestAssembler(records)
@@ -166,7 +166,7 @@ func TestAssembleFile_RT60RecordsAppear(t *testing.T) {
 				ID:             uuid.New(),
 				SequenceInFile: 1,
 				ClientMemberID: "MBR-RT60",
-				FISCardID:      "",
+				FISCardID:      "CARD-001",
 				ATCode:         ptr("AT01"),
 				AmountCents:    5000,
 				EffectiveDate:  eff,
@@ -196,8 +196,8 @@ func TestAssembleFile_RecordCountIntegrity(t *testing.T) {
 	subID := int64(1)
 	records := &ports.StagedRecords{
 		RT30: []*ports.StagedRT30{
-			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "A", SubprogramID: &subID},
-			{ID: uuid.New(), SequenceInFile: 2, ClientMemberID: "B", SubprogramID: &subID},
+			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "A", SubprogramID: &subID, FirstName: ptr("Jane"), LastName: ptr("Smith")},
+			{ID: uuid.New(), SequenceInFile: 2, ClientMemberID: "B", SubprogramID: &subID, FirstName: ptr("John"), LastName: ptr("Doe")},
 		},
 	}
 	a := newTestAssembler(records)
@@ -222,7 +222,7 @@ func TestAssembleFile_EachRecordIs400Bytes(t *testing.T) {
 	subID := int64(1)
 	records := &ports.StagedRecords{
 		RT30: []*ports.StagedRT30{
-			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "MBR-WIDTH", SubprogramID: &subID},
+			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "MBR-WIDTH", SubprogramID: &subID, FirstName: ptr("Jane"), LastName: ptr("Smith")},
 		},
 	}
 	a := newTestAssembler(records)

@@ -38,7 +38,7 @@ import (
 
 // srg310CSV returns a minimal valid SRG310 CSV with n data rows.
 func srg310CSV(n int) string {
-	header := "client_member_id,subprogram_id,first_name,last_name,dob,address1,address2,city,state,zip,email,benefit_period,benefit_type,contract_pbp,card_design_id,custom_card_id,package_id\n"
+	header := "client_member_id,subprogram_id,first_name,last_name,date_of_birth,address_1,address_2,city,state,zip,email,benefit_period,benefit_type,contract_pbp,card_design_id,custom_card_id,package_id\n"
 	var sb strings.Builder
 	sb.WriteString(header)
 	for i := 0; i < n; i++ {

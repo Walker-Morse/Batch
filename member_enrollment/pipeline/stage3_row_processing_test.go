@@ -681,6 +681,14 @@ func seedConsumerWithCard(m *stage3Mocks, bf *ports.BatchFile, clientMemberID st
 		ClientMemberID: clientMemberID,
 	}
 	m.state.RegisterConsumer(bf.TenantID, clientMemberID, c)
+	fisCardID := "CARD-001"
+	card := &domain.Card{
+		ID:         uuid.New(),
+		TenantID:   bf.TenantID,
+		ConsumerID: c.ID,
+		FISCardID:  &fisCardID,
+	}
+	m.state.RegisterCard(c.ID, card)
 	return c
 }
 
