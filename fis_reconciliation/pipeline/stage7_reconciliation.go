@@ -10,13 +10,6 @@
 //   → emit "batch.halt.triggered" log event
 //   → page on-call immediately (CloudWatch alarm → Datadog P0)
 //
-//   This is DISTINCT from individual record RT99 failures (FIS processes all other
-//   records and returns RT99 only for the failed record). Read §6.5.1 carefully.
-//
-// For each successful RT30: stamp FISPersonID + FISCUID on consumers, FISCardID + issued_at on cards.
-// For each successful RT60: stamp FISPurseNumber on purses.
-// Domain commands transitioned: Accepted → Completed (success) or Failed (RT99 individual).
-//
 // Status transition: TRANSFERRED → COMPLETE (or HALTED on RT99 full-file halt)
 package pipeline
 
@@ -33,8 +26,6 @@ import (
 )
 
 // DomainStateReconciler is the narrow interface for Stage 7 domain state updates.
-// Defined here (not in ports) to avoid an import cycle: ports cannot import
-// aurora or domain types. Implemented by aurora.DomainStateRepo.
 type DomainStateReconciler interface {
 	GetConsumerByNaturalKey(ctx context.Context, tenantID, clientMemberID string) (*domain.Consumer, error)
 	GetCardByConsumerID(ctx context.Context, consumerID uuid.UUID) (*domain.Card, error)
@@ -56,35 +47,28 @@ type ReconciliationStage struct {
 }
 
 // Run ingests the FIS return file stream and reconciles every result record.
-// returnBody is consumed and closed by this method.
 func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFile, returnBody io.ReadCloser) error {
 	defer returnBody.Close()
 
-	// Parse the full return file into records
 	records, err := fis_adapter.ParseReturnFile(returnBody)
 	if err != nil {
 		return fmt.Errorf("stage7: parse return file: %w", err)
 	}
 
-	// RT99 full-file halt detection (§6.5.1)
-	// Exactly one record AND it is RT99 → entire file rejected before processing
 	dataRecords := dataRecordsOnly(records)
 	if fis_adapter.IsRT99Halt(len(records), firstRecordType(records)) {
 		return s.handleFullFileHalt(ctx, batchFile, records)
 	}
 
-	// Process each data record
 	completed, failed := 0, 0
 	for _, rec := range dataRecords {
 		if err := s.reconcileRecord(ctx, batchFile, rec); err != nil {
-			// Log but continue — one bad reconciliation must not abort the file.
-			// The individual record remains STAGED; ops can replay.
 			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 				EventType:     "stage7.record_reconcile_error",
 				Level:         "ERROR",
-				CorrelationID: &batchFile.CorrelationID,
-				TenantID:      &batchFile.TenantID,
-				BatchFileID:   &batchFile.ID,
+				CorrelationID: batchFile.CorrelationID,
+				TenantID:      batchFile.TenantID,
+				BatchFileID:   batchFile.ID,
 				Stage:         strPtr("stage7_reconciliation"),
 				Message:       fmt.Sprintf("reconcile error seq=%d type=%s", rec.SequenceInFile, rec.RecordType),
 				Error:         strPtr(err.Error()),
@@ -99,11 +83,11 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 		}
 	}
 
-	// Transition batch_files → COMPLETE
 	if err := s.BatchFiles.UpdateStatus(ctx, batchFile.ID, string(domain.BatchFileComplete), time.Now().UTC()); err != nil {
 		return fmt.Errorf("stage7: update status COMPLETE: %w", err)
 	}
 
+	total := len(dataRecords)
 	_ = s.Audit.Write(ctx, &ports.AuditEntry{
 		TenantID:      batchFile.TenantID,
 		EntityType:    "batch_files",
@@ -112,26 +96,27 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 		NewState:      "COMPLETE",
 		ChangedBy:     "ingest-task:stage7",
 		CorrelationID: &batchFile.CorrelationID,
-		Notes:         strPtr(fmt.Sprintf("reconciled: completed=%d failed=%d total=%d", completed, failed, len(dataRecords))),
+		Notes:         strPtr(fmt.Sprintf("reconciled: completed=%d failed=%d total=%d", completed, failed, total)),
 	})
 
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "stage7.complete",
 		Level:         "INFO",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage7_reconciliation"),
-		Message:       fmt.Sprintf("complete: completed=%d failed=%d total=%d", completed, failed, len(dataRecords)),
+		Completed:     &completed,
+		Failed:        &failed,
+		Total:         &total,
+		Message:       fmt.Sprintf("complete: completed=%d failed=%d total=%d", completed, failed, total),
 	})
 
 	return nil
 }
 
-// reconcileRecord processes a single return record: updates batch_records,
-// domain_commands, domain state identifiers, and writes a reconciliation fact.
+// reconcileRecord processes a single return record.
 func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord) error {
-	// Look up the staged batch record by sequence, capturing benefit_period.
 	recordID, cmdID, benefitPeriod, err := s.BatchRecords.GetStagedByCorrelationAndSequence(
 		ctx, batchFile.CorrelationID, rec.SequenceInFile, rec.RecordType,
 	)
@@ -151,12 +136,10 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 		cmdStatus = string(domain.CommandFailed)
 	}
 
-	// Update batch record status
 	if err := s.BatchRecords.UpdateStatus(ctx, recordID, rec.RecordType, batchStatus, resultCode, resultMsg); err != nil {
 		return fmt.Errorf("batch_records.UpdateStatus seq=%d: %w", rec.SequenceInFile, err)
 	}
 
-	// Update domain command status
 	var failureReason *string
 	if cmdStatus == string(domain.CommandFailed) {
 		r := fmt.Sprintf("fis_result_code=%s", rec.FISResultCode)
@@ -166,15 +149,14 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 		return fmt.Errorf("domain_commands.UpdateStatus seq=%d: %w", rec.SequenceInFile, err)
 	}
 
-	// On success: stamp FIS-assigned identifiers onto domain state
 	if rec.FISResultCode == "000" {
-		if err := s.stampFISIdentifiers(ctx, batchFile, rec, benefitPeriod); err != nil {
-			// Non-fatal — log the gap; identifiers can be replayed separately
+		if err := s.stampFISIdentifiers(ctx, batchFile, rec, benefitPeriod, cmdID); err != nil {
 			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 				EventType:     "stage7.identifier_stamp_failed",
 				Level:         "ERROR",
-				CorrelationID: &batchFile.CorrelationID,
-				TenantID:      &batchFile.TenantID,
+				CorrelationID: batchFile.CorrelationID,
+				TenantID:      batchFile.TenantID,
+				BatchFileID:   batchFile.ID,
 				Stage:         strPtr("stage7_reconciliation"),
 				Message:       fmt.Sprintf("FIS identifier stamp failed seq=%d type=%s", rec.SequenceInFile, rec.RecordType),
 				Error:         strPtr(err.Error()),
@@ -182,7 +164,6 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 		}
 	}
 
-	// Write reconciliation fact for Tableau dashboard (§4.3.10)
 	_ = s.Mart.WriteReconciliationFact(ctx, &ports.ReconciliationFact{
 		BatchFileID:       batchFile.ID,
 		RowSequenceNumber: rec.SequenceInFile,
@@ -193,16 +174,11 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 }
 
 // stampFISIdentifiers updates domain state with FIS-assigned identifiers.
-// RT30: consumer gets FISPersonID + FISCUID; card gets FISCardID + issued_at.
-// RT60: purse gets FISPurseNumber. benefitPeriod (ISO YYYY-MM) is sourced from
-//       the staged batch_records row via GetStagedByCorrelationAndSequence —
-//       never derived from wall-clock time (cross-month batches and replay safety).
-// RT37: no new identifiers assigned by FIS on card status updates.
-func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord, benefitPeriod string) error {
+func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile *ports.BatchFile, rec *fis_adapter.ReturnRecord, benefitPeriod string, cmdID uuid.UUID) error {
 	switch rec.RecordType {
 	case fis_adapter.RTNewAccount: // RT30
 		if rec.FISPersonID == nil || rec.FISCUID == nil || rec.FISCardID == nil {
-			return nil // identifiers not yet available — opt-in pending (Open Item Selvi Marappan)
+			return nil
 		}
 		consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, batchFile.TenantID, rec.ClientMemberID)
 		if err != nil {
@@ -218,6 +194,22 @@ func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile
 		if err := s.DomainState.UpdateCardFISCardID(ctx, card.ID, *rec.FISCardID, time.Now().UTC()); err != nil {
 			return fmt.Errorf("update_card_fis_id seq=%d: %w", rec.SequenceInFile, err)
 		}
+		// member.enrolled — the most important business event
+		seq := rec.SequenceInFile
+		frc := rec.FISResultCode
+		_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+			EventType:         "member.enrolled",
+			Level:             "INFO",
+			CorrelationID:     batchFile.CorrelationID,
+			TenantID:          batchFile.TenantID,
+			BatchFileID:       batchFile.ID,
+			Stage:             strPtr("stage7_reconciliation"),
+			RowSequenceNumber: &seq,
+			DomainCommandID:   &cmdID,
+			BenefitPeriod:     &benefitPeriod,
+			FISResultCode:     &frc,
+			Message:           fmt.Sprintf("member enrolled: seq=%d cmd=%s", rec.SequenceInFile, cmdID),
+		})
 
 	case fis_adapter.RTFundLoad: // RT60
 		if rec.FISPurseNumber == nil {
@@ -227,9 +219,6 @@ func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile
 		if err != nil {
 			return fmt.Errorf("get_consumer_for_purse seq=%d: %w", rec.SequenceInFile, err)
 		}
-		// benefitPeriod is the ISO YYYY-MM period from the staged domain_commands row.
-		// It was set at Stage 3 from the SRG file and is the authoritative source —
-		// do not derive from time.Now() (breaks cross-month batches and replay).
 		if err := s.DomainState.UpdatePurseFISNumber(ctx, consumer.ID, benefitPeriod, *rec.FISPurseNumber); err != nil {
 			return fmt.Errorf("update_purse_fis_number seq=%d: %w", rec.SequenceInFile, err)
 		}
@@ -238,21 +227,17 @@ func (s *ReconciliationStage) stampFISIdentifiers(ctx context.Context, batchFile
 }
 
 // handleFullFileHalt processes an RT99 full-file pre-processing halt (§6.5.1).
-// Dead-letters ALL staged records for this batch file and transitions to HALTED.
 func (s *ReconciliationStage) handleFullFileHalt(ctx context.Context, batchFile *ports.BatchFile, records []*fis_adapter.ReturnRecord) error {
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "batch.halt.triggered",
 		Level:         "ERROR",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage7_reconciliation"),
 		Message:       "RT99 full-file pre-processing halt — FIS rejected entire file before processing; ALL members dead-lettered; page on-call P0",
 	})
 
-	// Dead-letter the file-level failure — individual row dead letters are not
-	// written here because FIS never processed them; the staged records remain
-	// intact for replay after root cause is resolved.
 	_ = s.DeadLetters.Write(ctx, &ports.DeadLetterEntry{
 		ID:            uuid.New(),
 		CorrelationID: batchFile.CorrelationID,
@@ -283,7 +268,6 @@ func (s *ReconciliationStage) handleFullFileHalt(ctx context.Context, batchFile 
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-// dataRecordsOnly filters out structural records (RT10/RT20/RT80/RT90/RT99).
 func dataRecordsOnly(records []*fis_adapter.ReturnRecord) []*fis_adapter.ReturnRecord {
 	var out []*fis_adapter.ReturnRecord
 	for _, r := range records {
@@ -295,7 +279,6 @@ func dataRecordsOnly(records []*fis_adapter.ReturnRecord) []*fis_adapter.ReturnR
 	return out
 }
 
-// firstRecordType returns the RecordType of the first record, or "" if empty.
 func firstRecordType(records []*fis_adapter.ReturnRecord) string {
 	if len(records) == 0 {
 		return ""
@@ -303,7 +286,6 @@ func firstRecordType(records []*fis_adapter.ReturnRecord) string {
 	return records[0].RecordType
 }
 
-// rt99ResultCode extracts the FIS result code from the RT99 record.
 func rt99ResultCode(records []*fis_adapter.ReturnRecord) string {
 	for _, r := range records {
 		if r.RecordType == fis_adapter.RTPreProcessingHalt {
@@ -312,5 +294,3 @@ func rt99ResultCode(records []*fis_adapter.ReturnRecord) string {
 	}
 	return "unknown"
 }
-
-// Compile-time interface satisfaction is verified in _adapters/aurora package tests.

@@ -27,23 +27,23 @@ import (
 
 // BatchAssemblyStage implements Stage 4.
 type BatchAssemblyStage struct {
-	Assembler      ports.FISBatchAssembler
-	Files          ports.FileStore
-	BatchFiles     ports.BatchFileRepository
-	StagedRecords  ports.BatchRecordsLister // used to resolve ProgramID before assembly
-	Audit          ports.AuditLogWriter
-	Obs            ports.IObservabilityPort
+	Assembler     ports.FISBatchAssembler
+	Files         ports.FileStore
+	BatchFiles    ports.BatchFileRepository
+	StagedRecords ports.BatchRecordsLister // used to resolve ProgramID before assembly
+	Audit         ports.AuditLogWriter
+	Obs           ports.IObservabilityPort
 	// PGPEncrypt encrypts plaintext using the FIS public key from Secrets Manager.
 	PGPEncrypt func(plaintext io.Reader) (io.Reader, error)
 	// Buckets
-	StagedBucket     string // staged/ prefix — plaintext; MUST be deleted after Stage 4
+	StagedBucket      string // staged/ prefix — plaintext; MUST be deleted after Stage 4
 	FISExchangeBucket string // fis-exchange/ prefix — PGP-encrypted outbound files
 }
 
 // BatchAssemblyResult carries the assembled file location for Stage 5.
 type BatchAssemblyResult struct {
-	S3Key    string // fis-exchange S3 key of the PGP-encrypted batch file
-	Filename string // FIS-prescribed filename (§6.6.1)
+	S3Key       string // fis-exchange S3 key of the PGP-encrypted batch file
+	Filename    string // FIS-prescribed filename (§6.6.1)
 	RecordCount int
 }
 
@@ -91,8 +91,9 @@ func (s *BatchAssemblyStage) Run(ctx context.Context, batchFile *ports.BatchFile
 		_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 			EventType:     "stage4.staged_delete_failed",
 			Level:         "ERROR",
-			CorrelationID: &batchFile.CorrelationID,
-			TenantID:      &batchFile.TenantID,
+			CorrelationID: batchFile.CorrelationID,
+			TenantID:      batchFile.TenantID,
+			BatchFileID:   batchFile.ID,
 			Stage:         strPtr("stage4_batch_assembly"),
 			Message:       "WARN: plaintext staged object delete failed — S3 lifecycle policy is safety backstop",
 			Error:         strPtr(err.Error()),
@@ -115,13 +116,17 @@ func (s *BatchAssemblyStage) Run(ctx context.Context, batchFile *ports.BatchFile
 		Notes:         strPtr(fmt.Sprintf("filename=%s records=%d s3_key=%s", assembled.Filename, assembled.RecordCount, s3Key)),
 	})
 
+	rc := assembled.RecordCount
+	fn := assembled.Filename
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "stage4.complete",
 		Level:         "INFO",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage4_batch_assembly"),
+		Filename:      &fn,
+		RecordCount:   &rc,
 		Message:       fmt.Sprintf("assembled: filename=%s records=%d", assembled.Filename, assembled.RecordCount),
 	})
 

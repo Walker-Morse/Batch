@@ -5,8 +5,6 @@
 //
 // Processing order per row (MANDATORY — do not reorder):
 //   1. Idempotency check: FindDuplicate on domain_commands composite key
-//      (correlation_id, client_member_id, command_type, benefit_period)
-//      → if Accepted or Completed exists: skip (return Duplicate)
 //   2. Insert domain_commands row with status=Accepted
 //   3. Write batch_records_rt30/rt37/rt60 with status=STAGED
 //   4. Write domain state: consumers, cards, purses (upsert)
@@ -16,21 +14,14 @@
 //   - Write to dead_letter_store with failure_stage="row_processing"
 //   - Increment failure counter
 //   - Continue to next row (never abort the file on a single row failure)
-//
-// On Stage 3 completion:
-//   - Compare staged_count to batch_files.record_count
-//   - If staged_count < record_count: transition batch_files → STALLED
-//   - STALLED: emit "batch.stalled" log event; do NOT proceed to Stage 4
-//   - Resolution: replay-cli tool (Open Item #24)
 package pipeline
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/walker-morse/batch/_adapters/aurora"
@@ -41,8 +32,6 @@ import (
 )
 
 // BatchRecordWriter is the narrow write interface for Stage 3 batch record staging.
-// Implemented by aurora.BatchRecordsRepo. Defined here (not in ports) to avoid
-// an import cycle: ports cannot import aurora types.
 type BatchRecordWriter interface {
 	InsertRT30(ctx context.Context, rec *aurora.BatchRecordRT30) error
 	InsertRT37(ctx context.Context, rec *aurora.BatchRecordRT37) error
@@ -50,14 +39,11 @@ type BatchRecordWriter interface {
 }
 
 // DomainStateWriter is the narrow read/write interface for Stage 3 domain state.
-// Implemented by aurora.DomainStateRepo. Defined here to avoid the same import cycle.
 type DomainStateWriter interface {
 	UpsertConsumer(ctx context.Context, c *domain.Consumer) error
 	InsertCard(ctx context.Context, c *domain.Card) error
 	GetConsumerByNaturalKey(ctx context.Context, tenantID, clientMemberID string) (*domain.Consumer, error)
 	GetCardByConsumerID(ctx context.Context, consumerID uuid.UUID) (*domain.Card, error)
-	// Purse sub-ledger — required for FBO integrity (§I.2).
-	// Balance updated at RT60 write time, not deferred until FIS return.
 	GetPurseByConsumerAndBenefitPeriod(ctx context.Context, consumerID uuid.UUID, benefitPeriod string) (*domain.Purse, error)
 	UpdatePurseBalance(ctx context.Context, id uuid.UUID, balanceCents int64) error
 }
@@ -69,14 +55,10 @@ type RowProcessingStage struct {
 	BatchFiles     ports.BatchFileRepository
 	BatchRecords   BatchRecordWriter
 	DomainState    DomainStateWriter
-	Programs       ports.ProgramLookup // narrow interface for program resolution (testable)
+	Programs       ports.ProgramLookup
 	Audit          ports.AuditLogWriter
 	Obs            ports.IObservabilityPort
-
-	// programCache memoises GetProgramByTenantAndSubprogram results within a
-	// single Stage 3 run. Key: tenantID+"|"+fisSubprogramID → programs.id UUID.
-	// Avoids N identical DB round-trips when all SRG310 rows share one subprogram.
-	programCache map[string]uuid.UUID
+	programCache   map[string]uuid.UUID
 }
 
 // RowProcessingInput carries everything Stage 3 needs.
@@ -89,28 +71,24 @@ type RowProcessingInput struct {
 	SubprogramID int64
 }
 
-// Result captures the outcome of Stage 3.
+// RowProcessingResult captures the outcome of Stage 3.
 type RowProcessingResult struct {
 	StagedCount    int
 	FailedCount    int
 	DuplicateCount int
-	// Stalled is true if unresolved dead letters prevent Stage 4 from proceeding.
-	Stalled bool
+	Stalled        bool
 }
 
 // Run processes all rows sequentially.
 func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*RowProcessingResult, error) {
 	result := &RowProcessingResult{}
 
-	// Transition batch_files → PROCESSING
 	if err := s.BatchFiles.UpdateStatus(ctx, in.BatchFile.ID, "PROCESSING", time.Now().UTC()); err != nil {
 		return nil, fmt.Errorf("stage3: transition to PROCESSING: %w", err)
 	}
 
-	// Process SRG310 rows (ENROLL)
 	for _, row := range in.SRG310Rows {
-		outcome := s.processSRG310Row(ctx, in, row)
-		switch outcome {
+		switch s.processSRG310Row(ctx, in, row) {
 		case outcomeStagedOK:
 			result.StagedCount++
 		case outcomeDuplicate:
@@ -120,10 +98,8 @@ func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*
 		}
 	}
 
-	// Process SRG315 rows (UPDATE/SUSPEND/TERMINATE)
 	for _, row := range in.SRG315Rows {
-		outcome := s.processSRG315Row(ctx, in, row)
-		switch outcome {
+		switch s.processSRG315Row(ctx, in, row) {
 		case outcomeStagedOK:
 			result.StagedCount++
 		case outcomeDuplicate:
@@ -133,10 +109,8 @@ func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*
 		}
 	}
 
-	// Process SRG320 rows (LOAD)
 	for _, row := range in.SRG320Rows {
-		outcome := s.processSRG320Row(ctx, in, row)
-		switch outcome {
+		switch s.processSRG320Row(ctx, in, row) {
 		case outcomeStagedOK:
 			result.StagedCount++
 		case outcomeDuplicate:
@@ -146,20 +120,22 @@ func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*
 		}
 	}
 
-	// Check for STALLED condition: unresolved dead letters
 	totalExpected := len(in.SRG310Rows) + len(in.SRG315Rows) + len(in.SRG320Rows)
 	if result.FailedCount > 0 {
 		unresolved, _ := s.DeadLetters.ListUnresolved(ctx, in.BatchFile.CorrelationID)
 		if len(unresolved) > 0 {
 			result.Stalled = true
 			_ = s.BatchFiles.UpdateStatus(ctx, in.BatchFile.ID, "STALLED", time.Now().UTC())
+			failed := len(unresolved)
 			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 				EventType:     observability.EventBatchStalled,
 				Level:         "WARN",
-				CorrelationID: &in.BatchFile.CorrelationID,
-				TenantID:      &in.BatchFile.TenantID,
-				BatchFileID:   &in.BatchFile.ID,
+				CorrelationID: in.BatchFile.CorrelationID,
+				TenantID:      in.BatchFile.TenantID,
+				BatchFileID:   in.BatchFile.ID,
 				Stage:         strPtr("stage3_row_processing"),
+				Failed:        &failed,
+				Total:         &totalExpected,
 				Message: fmt.Sprintf(
 					"batch STALLED: %d unresolved dead letters of %d total rows",
 					len(unresolved), totalExpected,
@@ -169,13 +145,34 @@ func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*
 		}
 	}
 
+	staged := result.StagedCount
+	dups := result.DuplicateCount
+	failed := result.FailedCount
+	rt30 := 0; rt37 := 0; rt60 := 0
+	for range in.SRG310Rows { rt30++ }
+	for range in.SRG315Rows { rt37++ }
+	for range in.SRG320Rows { rt60++ }
+	// Adjust for dead-lettered rows (counted in FailedCount, not record type counts)
+	dlRate := "0.0%"
+	total := staged + dups + failed
+	if total > 0 {
+		dlRate = fmt.Sprintf("%.1f%%", float64(failed)/float64(total)*100)
+	}
+
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
-		EventType:     "stage3.complete",
-		Level:         "INFO",
-		CorrelationID: &in.BatchFile.CorrelationID,
-		TenantID:      &in.BatchFile.TenantID,
-		BatchFileID:   &in.BatchFile.ID,
-		Stage:         strPtr("stage3_row_processing"),
+		EventType:      "stage3.complete",
+		Level:          "INFO",
+		CorrelationID:  in.BatchFile.CorrelationID,
+		TenantID:       in.BatchFile.TenantID,
+		BatchFileID:    in.BatchFile.ID,
+		Stage:          strPtr("stage3_row_processing"),
+		Staged:         &staged,
+		RT30Count:      &rt30,
+		RT37Count:      &rt37,
+		RT60Count:      &rt60,
+		Duplicates:     &dups,
+		Failed:         &failed,
+		DeadLetterRate: &dlRate,
 		Message: fmt.Sprintf("stage3 complete: staged=%d duplicates=%d failed=%d",
 			result.StagedCount, result.DuplicateCount, result.FailedCount),
 	})
@@ -186,24 +183,21 @@ func (s *RowProcessingStage) Run(ctx context.Context, in *RowProcessingInput) (*
 type rowOutcome int
 
 const (
-	outcomeStagedOK    rowOutcome = iota
+	outcomeStagedOK rowOutcome = iota
 	outcomeDuplicate
 	outcomeDeadLettered
 )
 
 func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG310Row) rowOutcome {
-	// Resolve program UUID from SubprogramID on the SRG row.
-	// This is the FK anchor for consumers.program_id and purses.program_id.
-	// Must succeed before any write — dead-letter the row if the program is unknown.
 	programID, err := s.lookupProgram(ctx, in.BatchFile.TenantID, row.SubprogramID)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("program_lookup_failed(subprogram=%s): %v", row.SubprogramID, err),
+			"DATA_GAP",
 			row.Raw)
 	}
 
-	// Step 1: Idempotency check — MUST precede all writes (§4.1.1)
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
 		string(domain.CommandEnroll), row.BenefitPeriod,
@@ -213,55 +207,45 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("idempotency_check_failed: %v", err),
+			"SYSTEM_ERROR",
 			row.Raw)
 	}
 	if existing != nil {
-		return outcomeDuplicate // already processed — skip safely
+		return outcomeDuplicate
 	}
 
-	// Step 2: Insert domain_commands — this is the write-side CQRS record
 	cmdID := uuid.New()
 	now := time.Now().UTC()
 	cmd := &ports.DomainCommand{
-		ID:             cmdID,
-		CorrelationID:  in.BatchFile.CorrelationID,
-		TenantID:       in.BatchFile.TenantID,
-		ClientMemberID: row.ClientMemberID,
-		CommandType:    string(domain.CommandEnroll),
-		BenefitPeriod:  row.BenefitPeriod,
-		Status:         string(domain.CommandAccepted),
-		BatchFileID:    in.BatchFile.ID,
-		SequenceInFile: row.SequenceInFile,
-		CreatedAt:      now,
+		ID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, ClientMemberID: row.ClientMemberID,
+		CommandType: string(domain.CommandEnroll), BenefitPeriod: row.BenefitPeriod,
+		Status: string(domain.CommandAccepted),
+		BatchFileID: in.BatchFile.ID, SequenceInFile: row.SequenceInFile,
+		CreatedAt: now,
 	}
 	if err := s.DomainCommands.Insert(ctx, cmd); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("domain_command_insert_failed: %v", err),
+			"PROCESSING_ERROR",
 			row.Raw)
 	}
 
-	// Step 3: Write batch_records_rt30 (STAGED)
-	rawJSON, _ := json.Marshal(row.Raw) // PHI — stored for replay; never logged
-	// Parse row.SubprogramID string → int64 for the RT30 record (validated via program lookup above)
+	rawJSON, _ := json.Marshal(row.Raw)
 	var subprogramID *int64
 	if row.SubprogramID != "" {
-		parsedSub, parseErr := strconv.ParseInt(row.SubprogramID, 10, 64)
-		if parseErr == nil {
-			subprogramID = &parsedSub
+		if parsed, parseErr := strconv.ParseInt(row.SubprogramID, 10, 64); parseErr == nil {
+			subprogramID = &parsed
 		}
 	}
 	rt30 := &aurora.BatchRecordRT30{
-		ID:             uuid.New(),
-		BatchFileID:    in.BatchFile.ID,
-		DomainCommandID: cmdID,
-		CorrelationID:  in.BatchFile.CorrelationID,
-		TenantID:       in.BatchFile.TenantID,
-		SequenceInFile: row.SequenceInFile,
-		Status:         "STAGED",
-		StagedAt:       now,
+		ID: uuid.New(), BatchFileID: in.BatchFile.ID,
+		DomainCommandID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
+		Status: "STAGED", StagedAt: now,
 		ClientMemberID: row.ClientMemberID,
-		ProgramID:      programID, // resolved above via lookupProgram — required by Stage 4 fis_sequence.Next
+		ProgramID:      programID,
 		SubprogramID:   subprogramID,
 		FirstName:      strPtrIfNotEmpty(row.FirstName),
 		LastName:       strPtrIfNotEmpty(row.LastName),
@@ -281,67 +265,48 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("rt30_insert_failed: %v", err),
+			"PROCESSING_ERROR",
 			row.Raw)
 	}
 
-	// Step 4: Write domain state — Consumer upsert
 	consumer := &domain.Consumer{
-		ID:                uuid.New(),
-		TenantID:          in.BatchFile.TenantID,
-		ClientMemberID:    row.ClientMemberID,
-		Status:            domain.ConsumerActive,
-		FirstName:         row.FirstName,
-		LastName:          row.LastName,
-		DOB:               row.DOB,
-		Address1:          row.Address1,
-		Address2:          &row.Address2,
-		City:              row.City,
-		State:             row.State,
-		ZIP:               row.ZIP,
-		Email:             &row.Email,
-		ProgramID:         programID, // resolved from row.SubprogramID via programs table
-		SubprogramID:      func() int64 { if subprogramID != nil { return *subprogramID }; return 0 }(),
-		ContractPBP:       &row.ContractPBP,
-		CustomCardID:      &row.CustomCardID,
-		SourceBatchFileID: in.BatchFile.ID,
-		CreatedAt:         now,
-		UpdatedAt:         now,
+		ID: uuid.New(), TenantID: in.BatchFile.TenantID,
+		ClientMemberID: row.ClientMemberID, Status: domain.ConsumerActive,
+		FirstName: row.FirstName, LastName: row.LastName, DOB: row.DOB,
+		Address1: row.Address1, Address2: &row.Address2,
+		City: row.City, State: row.State, ZIP: row.ZIP, Email: &row.Email,
+		ProgramID: programID,
+		SubprogramID: func() int64 { if subprogramID != nil { return *subprogramID }; return 0 }(),
+		ContractPBP: &row.ContractPBP, CustomCardID: &row.CustomCardID,
+		SourceBatchFileID: in.BatchFile.ID, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := s.DomainState.UpsertConsumer(ctx, consumer); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("consumer_upsert_failed: %v", err),
+			"SYSTEM_ERROR",
 			row.Raw)
 	}
 
-	// Card starts as Ready (status=1) — FIS assigns card ID after RT30 return (Stage 7)
 	card := &domain.Card{
-		ID:                uuid.New(),
-		TenantID:          in.BatchFile.TenantID,
-		ConsumerID:        consumer.ID,
-		ClientMemberID:    row.ClientMemberID,
-		Status:            domain.CardReady,
-		CardDesignID:      &row.CardDesignID,
-		PackageID:         &row.PackageID,
-		SourceBatchFileID: in.BatchFile.ID,
-		CreatedAt:         now,
-		UpdatedAt:         now,
+		ID: uuid.New(), TenantID: in.BatchFile.TenantID,
+		ConsumerID: consumer.ID, ClientMemberID: row.ClientMemberID,
+		Status: domain.CardReady, CardDesignID: &row.CardDesignID,
+		PackageID: &row.PackageID, SourceBatchFileID: in.BatchFile.ID,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := s.DomainState.InsertCard(ctx, card); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("card_insert_failed: %v", err),
+			"SYSTEM_ERROR",
 			row.Raw)
 	}
 
-	// Step 5: Audit log
 	_ = s.Audit.Write(ctx, &ports.AuditEntry{
-		TenantID:       in.BatchFile.TenantID,
-		EntityType:     "consumers",
-		EntityID:       consumer.ID.String(),
-		NewState:       "ACTIVE",
-		ChangedBy:      "ingest-task:stage3",
-		CorrelationID:  &in.BatchFile.CorrelationID,
+		TenantID: in.BatchFile.TenantID, EntityType: "consumers",
+		EntityID: consumer.ID.String(), NewState: "ACTIVE",
+		ChangedBy: "ingest-task:stage3", CorrelationID: &in.BatchFile.CorrelationID,
 		ClientMemberID: &row.ClientMemberID,
 	})
 
@@ -354,19 +319,18 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("unknown_srg315_event_type: %q", row.EventType),
+			"DATA_GAP",
 			row.Raw)
 	}
 
-	// Idempotency check
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
-		commandType, row.BenefitPeriod,
-		in.BatchFile.CorrelationID,
+		commandType, row.BenefitPeriod, in.BatchFile.CorrelationID,
 	)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("idempotency_check_failed: %v", err), row.Raw)
+			fmt.Sprintf("idempotency_check_failed: %v", err), "SYSTEM_ERROR", row.Raw)
 	}
 	if existing != nil {
 		return outcomeDuplicate
@@ -384,25 +348,24 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 	}); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("domain_command_insert_failed: %v", err), row.Raw)
+			fmt.Sprintf("domain_command_insert_failed: %v", err), "PROCESSING_ERROR", row.Raw)
 	}
 
-	// RT37 requires fis_card_id — look it up from consumers → cards
 	consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, in.BatchFile.TenantID, row.ClientMemberID)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			"consumer_not_found: RT37 requires prior RT30 completion", row.Raw)
+			"consumer_not_found: RT37 requires prior RT30 completion", "DATA_GAP", row.Raw)
 	}
 	rt37Card, err := s.DomainState.GetCardByConsumerID(ctx, consumer.ID)
 	if err != nil || fisCardIDOrEmpty(rt37Card) == "" {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			"rt37_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
+			"rt37_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", "DATA_GAP", row.Raw)
 	}
 
 	rawJSON, _ := json.Marshal(row.Raw)
-	rt37 := &aurora.BatchRecordRT37{
+	if err := s.BatchRecords.InsertRT37(ctx, &aurora.BatchRecordRT37{
 		ID: uuid.New(), BatchFileID: in.BatchFile.ID,
 		DomainCommandID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
 		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
@@ -411,11 +374,10 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 		FISCardID:      fisCardIDOrEmpty(rt37Card),
 		CardStatusCode: commandTypeToCardStatus(commandType),
 		RawPayload:     rawJSON,
-	}
-	if err := s.BatchRecords.InsertRT37(ctx, rt37); err != nil {
+	}); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("rt37_insert_failed: %v", err), row.Raw)
+			fmt.Sprintf("rt37_insert_failed: %v", err), "PROCESSING_ERROR", row.Raw)
 	}
 
 	return outcomeStagedOK
@@ -426,19 +388,17 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 	if commandType == "" {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("unknown_srg320_command_type: %q", row.CommandType), row.Raw)
+			fmt.Sprintf("unknown_srg320_command_type: %q", row.CommandType), "DATA_GAP", row.Raw)
 	}
 
-	// Idempotency check
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
-		commandType, row.BenefitPeriod,
-		in.BatchFile.CorrelationID,
+		commandType, row.BenefitPeriod, in.BatchFile.CorrelationID,
 	)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("idempotency_check_failed: %v", err), row.Raw)
+			fmt.Sprintf("idempotency_check_failed: %v", err), "SYSTEM_ERROR", row.Raw)
 	}
 	if existing != nil {
 		return outcomeDuplicate
@@ -456,31 +416,30 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 	}); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("domain_command_insert_failed: %v", err), row.Raw)
+			fmt.Sprintf("domain_command_insert_failed: %v", err), "PROCESSING_ERROR", row.Raw)
 	}
 
-	// RT60 requires fis_card_id — look it up from consumers → cards
 	consumer, err := s.DomainState.GetConsumerByNaturalKey(ctx, in.BatchFile.TenantID, row.ClientMemberID)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			"consumer_not_found: RT60 requires prior RT30 completion", row.Raw)
+			"consumer_not_found: RT60 requires prior RT30 completion", "DATA_GAP", row.Raw)
 	}
 	rt60Card, err := s.DomainState.GetCardByConsumerID(ctx, consumer.ID)
 	if err != nil || fisCardIDOrEmpty(rt60Card) == "" {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			"rt60_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", row.Raw)
+			"rt60_missing_fis_card_id: RT30 not yet reconciled (Stage 7 pending)", "DATA_GAP", row.Raw)
 	}
 
-	atCode := "AT01" // load
+	atCode := "AT01"
 	if commandType == string(domain.CommandSweep) {
-		atCode = "AT30" // period-end sweep
+		atCode = "AT30"
 	}
 
 	rawJSON, _ := json.Marshal(row.Raw)
 	expiryDate := row.ExpiryDate
-	rt60 := &aurora.BatchRecordRT60{
+	if err := s.BatchRecords.InsertRT60(ctx, &aurora.BatchRecordRT60{
 		ID: uuid.New(), BatchFileID: in.BatchFile.ID,
 		DomainCommandID: cmdID, CorrelationID: in.BatchFile.CorrelationID,
 		TenantID: in.BatchFile.TenantID, SequenceInFile: row.SequenceInFile,
@@ -492,43 +451,35 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 		EffectiveDate:  row.EffectiveDate,
 		ExpiryDate:     &expiryDate,
 		RawPayload:     rawJSON,
-	}
-	if err := s.BatchRecords.InsertRT60(ctx, rt60); err != nil {
+	}); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("rt60_insert_failed: %v", err), row.Raw)
+			fmt.Sprintf("rt60_insert_failed: %v", err), "PROCESSING_ERROR", row.Raw)
 	}
 
-	// Update One Fintech sub-ledger balance immediately — not deferred (§I.2).
-	// FBO integrity requirement: balance reflects accepted command at write time.
 	purse, err := s.DomainState.GetPurseByConsumerAndBenefitPeriod(ctx, consumer.ID, row.BenefitPeriod)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("purse_lookup_failed: %v", err), row.Raw)
+			fmt.Sprintf("purse_lookup_failed: %v", err), "DATA_GAP", row.Raw)
 	}
 
 	var newBalance int64
 	if commandType == string(domain.CommandSweep) {
-		// AT30 period-end sweep zeroes the purse — contract deadline (SOW §2.1, §3.3)
 		newBalance = 0
 	} else {
-		// AT01 load: add to current balance
 		newBalance = purse.AvailableBalanceCents + row.AmountCents
 	}
 
 	if err := s.DomainState.UpdatePurseBalance(ctx, purse.ID, newBalance); err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
-			fmt.Sprintf("purse_balance_update_failed: %v", err), row.Raw)
+			fmt.Sprintf("purse_balance_update_failed: %v", err), "SYSTEM_ERROR", row.Raw)
 	}
 
 	return outcomeStagedOK
 }
 
-// lookupProgram resolves programs.id for a (tenantID, fisSubprogramID) pair.
-// Results are cached on RowProcessingStage.programCache for the lifetime of the
-// Stage 3 run — so the DB is hit at most once per unique subprogram per file.
 func (s *RowProcessingStage) lookupProgram(ctx context.Context, tenantID, fisSubprogramID string) (uuid.UUID, error) {
 	if s.programCache == nil {
 		s.programCache = make(map[string]uuid.UUID)
@@ -545,44 +496,39 @@ func (s *RowProcessingStage) lookupProgram(ctx context.Context, tenantID, fisSub
 	return id, nil
 }
 
-// deadLetter writes a failed row to dead_letter_store and returns outcomeDeadLettered.
-// The failure_reason must contain only a structured code — NO PHI ever (§6.5.2, §7.2).
-// rawRecord contains PHI and is stored in message_body — never logged.
+// deadLetter writes a failed row to dead_letter_store.
+// failureCategory must be one of: DATA_GAP | DUPLICATE | PROCESSING_ERROR | SYSTEM_ERROR
 func (s *RowProcessingStage) deadLetter(
 	ctx context.Context,
 	in *RowProcessingInput,
 	seq int,
 	clientMemberID string,
 	failureStage string,
-	failureReason string, // structured code only — no PHI
-	rawRecord map[string]string, // PHI — stored as JSONB; never log
+	failureReason string,
+	failureCategory string,
+	rawRecord map[string]string,
 ) rowOutcome {
-	msgBody, _ := json.Marshal(rawRecord) // PHI — stored but never logged
+	msgBody, _ := json.Marshal(rawRecord)
 	batchFileID := in.BatchFile.ID
 	_ = s.DeadLetters.Write(ctx, &ports.DeadLetterEntry{
-		ID:                uuid.New(),
-		CorrelationID:     in.BatchFile.CorrelationID,
-		BatchFileID:       &batchFileID,
-		RowSequenceNumber: &seq,
-		TenantID:          in.BatchFile.TenantID,
-		ClientMemberID:    &clientMemberID,
-		FailureStage:      failureStage,
-		FailureReason:     failureReason,
-		MessageBody:       msgBody,
-		RetryCount:        0,
-		CreatedAt:         time.Now().UTC(),
+		ID: uuid.New(), CorrelationID: in.BatchFile.CorrelationID,
+		BatchFileID: &batchFileID, RowSequenceNumber: &seq,
+		TenantID: in.BatchFile.TenantID, ClientMemberID: &clientMemberID,
+		FailureStage: failureStage, FailureReason: failureReason,
+		MessageBody: msgBody, RetryCount: 0, CreatedAt: time.Now().UTC(),
 	})
 
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:         observability.EventDeadLetterWritten,
 		Level:             "WARN",
-		CorrelationID:     &in.BatchFile.CorrelationID,
-		TenantID:          &in.BatchFile.TenantID,
-		BatchFileID:       &in.BatchFile.ID,
+		CorrelationID:     in.BatchFile.CorrelationID,
+		TenantID:          in.BatchFile.TenantID,
+		BatchFileID:       in.BatchFile.ID,
 		RowSequenceNumber: &seq,
 		Stage:             strPtr(failureStage),
-		// failure_reason logged here (structured code only — no PHI)
-		Message: fmt.Sprintf("dead_letter: seq=%d reason=%s", seq, failureReason),
+		FailureCategory:   &failureCategory,
+		Error:             strPtr(failureReason),
+		Message:           fmt.Sprintf("dead_letter: seq=%d reason=%s", seq, failureReason),
 	})
 
 	return outcomeDeadLettered
@@ -621,13 +567,13 @@ func srg320CommandTypeToCommand(commandType string) string {
 func commandTypeToCardStatus(commandType string) int16 {
 	switch commandType {
 	case string(domain.CommandUpdate):
-		return 2 // Active
+		return 2
 	case string(domain.CommandSuspend):
-		return 6 // Suspended
+		return 6
 	case string(domain.CommandTerminate):
-		return 7 // Closed
+		return 7
 	default:
-		return 6 // Default to suspended for unknown
+		return 6
 	}
 }
 
@@ -637,8 +583,6 @@ func fisCardIDOrEmpty(c *domain.Card) string {
 	}
 	return *c.FISCardID
 }
-
-// ─── small helpers ────────────────────────────────────────────────────────────
 
 func strPtrIfNotEmpty(s string) *string {
 	if s == "" {

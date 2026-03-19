@@ -29,11 +29,11 @@ import (
 
 // ValidationStage implements Stage 2 of the ingest-task pipeline.
 type ValidationStage struct {
-	Files      ports.FileStore
-	BatchFiles ports.BatchFileRepository
+	Files       ports.FileStore
+	BatchFiles  ports.BatchFileRepository
 	DeadLetters ports.DeadLetterRepository
-	Audit      ports.AuditLogWriter
-	Obs        ports.IObservabilityPort
+	Audit       ports.AuditLogWriter
+	Obs         ports.IObservabilityPort
 	// PGPDecrypt decrypts a PGP-encrypted reader using the client's private key.
 	// Key loaded from Secrets Manager at task startup.
 	// Use NullPGPDecrypt for local DEV testing only — never in TST or PRD.
@@ -42,11 +42,11 @@ type ValidationStage struct {
 
 // ValidationResult carries parsed rows and per-row errors from Stage 2.
 type ValidationResult struct {
-	SRG310Rows  []*srg.SRG310Row
-	SRG315Rows  []*srg.SRG315Row
-	SRG320Rows  []*srg.SRG320Row
-	ParseErrors []srg.ParseError
-	TotalRows   int
+	SRG310Rows   []*srg.SRG310Row
+	SRG315Rows   []*srg.SRG315Row
+	SRG320Rows   []*srg.SRG320Row
+	ParseErrors  []srg.ParseError
+	TotalRows    int
 	PlaintextSHA string
 }
 
@@ -105,6 +105,13 @@ func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s
 		_ = s.BatchFiles.IncrementMalformedCount(ctx, batchFile.ID)
 	}
 
+	total := result.TotalRows
+	malformed := len(parseErrs)
+	malformedRate := "0.0%"
+	if total > 0 {
+		malformedRate = fmt.Sprintf("%.1f%%", float64(malformed)/float64(total)*100)
+	}
+
 	_ = s.Audit.Write(ctx, &ports.AuditEntry{
 		TenantID:      batchFile.TenantID,
 		EntityType:    "batch_files",
@@ -120,10 +127,13 @@ func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "stage2.complete",
 		Level:         "INFO",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage2_validation"),
+		Total:         &total,
+		Malformed:     &malformed,
+		MalformedRate: &malformedRate,
 		Message: fmt.Sprintf("validation complete: total=%d malformed=%d",
 			result.TotalRows, len(parseErrs)),
 	})
@@ -138,9 +148,9 @@ func (s *ValidationStage) halt(ctx context.Context, batchFile *ports.BatchFile, 
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "batch.halt.triggered",
 		Level:         "ERROR",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage2_validation"),
 		Message:       "batch HALTED at stage2",
 		Error:         strPtr(err.Error()),

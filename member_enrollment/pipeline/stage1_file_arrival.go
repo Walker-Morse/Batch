@@ -57,8 +57,9 @@ func (s *FileArrivalStage) Run(ctx context.Context, in *FileArrivalInput) (*port
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     observability.EventFileArrived,
 		Level:         "INFO",
-		CorrelationID: &in.CorrelationID,
-		TenantID:      &in.TenantID,
+		CorrelationID: in.CorrelationID,
+		TenantID:      in.TenantID,
+		BatchFileID:   uuid.Nil, // batch_files row not yet written
 		ClientID:      &in.ClientID,
 		Stage:         strPtr("stage1_file_arrival"),
 		Message:       "file arrived — computing sha256 and writing non-repudiation row",
@@ -103,9 +104,9 @@ func (s *FileArrivalStage) Run(ctx context.Context, in *FileArrivalInput) (*port
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     observability.EventFileArrived,
 		Level:         "INFO",
-		CorrelationID: &in.CorrelationID,
-		TenantID:      &in.TenantID,
-		BatchFileID:   &f.ID,
+		CorrelationID: f.CorrelationID,
+		TenantID:      f.TenantID,
+		BatchFileID:   f.ID,
 		Stage:         strPtr("stage1_file_arrival"),
 		Message:       "batch_files row written — non-repudiation anchor established",
 	})

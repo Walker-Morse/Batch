@@ -1,27 +1,7 @@
 // Stage 6 — Return File Wait (§5.1, §6.5.6):
 //   Container remains alive and polls S3 for the FIS return file.
 //
-// The container running through Stage 5 (FIS Transfer) is the natural compute unit
-// for Stage 6 — this is why the single-container architecture was chosen (ADR-003).
-// Fargate billing accrues for the full wait duration (up to 6 hours).
-//
-// Timeout: 6 hours default — matches FIS SLA (~45-60 min / 50K records).
-// Confirm with Kendra Williams before TST provisioning (Open Item #25).
-// If FIS SLA is confirmed shorter, reduce timeout to control Fargate cost.
-//
-// FIS-side processing model (§5.2a):
-//   - Each client has a dedicated FIS batch loader
-//   - Files are processed FIFO within a single client
-//   - A second file submitted while the first is processing must wait
-//   - Stage 6 timeout must account for FIFO queuing depth on multi-submission days
-//
-// On timeout:
-//   - emit "dead.letter.alert" log event
-//   - transition batch_files → STALLED
-//   - CloudWatch alarm fires → Datadog P1 alert → on-call notification
-//   - On-call triage: confirm whether return file was never generated (FIS never
-//     processed the file — check for duplicate filename) vs. return file arrived
-//     but was missed
+// Status transition: TRANSFERRED → (Stage 7 handles COMPLETE/HALTED)
 package pipeline
 
 import (
@@ -51,8 +31,6 @@ type ReturnFileWaitResult struct {
 }
 
 // Run polls for the FIS return file within the configured timeout.
-// Returns the return file stream for Stage 7 consumption on success.
-// On timeout: transitions batch_files → STALLED, emits dead.letter.alert, returns error.
 func (s *ReturnFileWaitStage) Run(ctx context.Context, batchFile *ports.BatchFile) (*ReturnFileWaitResult, error) {
 	if s.Timeout == 0 {
 		s.Timeout = 6 * time.Hour
@@ -64,9 +42,9 @@ func (s *ReturnFileWaitStage) Run(ctx context.Context, batchFile *ports.BatchFil
 		_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 			EventType:     "dead.letter.alert",
 			Level:         "ERROR",
-			CorrelationID: &batchFile.CorrelationID,
-			TenantID:      &batchFile.TenantID,
-			BatchFileID:   &batchFile.ID,
+			CorrelationID: batchFile.CorrelationID,
+			TenantID:      batchFile.TenantID,
+			BatchFileID:   batchFile.ID,
 			Stage:         strPtr("stage6_return_file_wait"),
 			Message:       fmt.Sprintf("return file wait timeout after %s — batch STALLED; on-call: check FIS duplicate filename vs. missed return", s.Timeout),
 			Error:         strPtr(err.Error()),
@@ -91,9 +69,9 @@ func (s *ReturnFileWaitStage) Run(ctx context.Context, batchFile *ports.BatchFil
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:     "stage6.complete",
 		Level:         "INFO",
-		CorrelationID: &batchFile.CorrelationID,
-		TenantID:      &batchFile.TenantID,
-		BatchFileID:   &batchFile.ID,
+		CorrelationID: batchFile.CorrelationID,
+		TenantID:      batchFile.TenantID,
+		BatchFileID:   batchFile.ID,
 		Stage:         strPtr("stage6_return_file_wait"),
 		Message:       "return file received",
 	})
