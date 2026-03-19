@@ -24,7 +24,7 @@ build:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go build $(ALL_PKGS)
 
 test:
-	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test $(ALL_PKGS)
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -count=1 -race -timeout 120s $(ALL_PKGS)
 
 test-verbose:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -v $(ALL_PKGS)

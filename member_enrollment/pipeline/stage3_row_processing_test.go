@@ -675,12 +675,10 @@ func TestTimePtrIfNotZero(t *testing.T) {
 // seedConsumerWithCard seeds a consumer with a resolved fis_card_id so the RT60
 // path doesn't dead-letter on the card check.
 func seedConsumerWithCard(m *stage3Mocks, bf *ports.BatchFile, clientMemberID string) *domain.Consumer {
-	fisCard := "CARD-001"
 	c := &domain.Consumer{
 		ID:             uuid.New(),
 		TenantID:       bf.TenantID,
 		ClientMemberID: clientMemberID,
-		FISCardID:      &fisCard,
 	}
 	m.state.RegisterConsumer(bf.TenantID, clientMemberID, c)
 	return c

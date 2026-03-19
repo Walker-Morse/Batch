@@ -22,7 +22,7 @@ jobs:
       # Use make test to include _-prefixed packages (_shared, _schema, etc.)
       # bare `go test ./...` silently excludes them.
       - name: Test
-        run: make test -count=1 -race -timeout 120s
+        run: make test
       - name: Smoke (Option A — in-process, no infrastructure)
         run: make smoke
 
