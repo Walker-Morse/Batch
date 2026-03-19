@@ -25,7 +25,7 @@ package pipeline
 //	srgEventToCommandType — all known/unknown event types
 //	srg320CommandTypeToCommand — all known/unknown command types
 //	commandTypeToCardStatus — all known/unknown command types
-//	fisCardIDOrEmpty — always returns empty (pre-Stage-7)
+//	fisCardIDOrEmpty — returns card FISCardID or empty string if card/ID nil
 //	strPtrIfNotEmpty / timePtrIfNotZero — edge cases
 
 import (
@@ -485,7 +485,7 @@ func TestSRG315Row_ConsumerNotFound_DeadLettered(t *testing.T) {
 func TestSRG315Row_MissingFISCardID_DeadLettered(t *testing.T) {
 	stage, m := newStage3WithMocks()
 	bf := seedBatchFile(m, "rfu-oregon")
-	// Consumer exists but has no FIS card ID (fisCardIDOrEmpty returns "")
+	// Consumer exists but has no card registered → GetCardByConsumerID fails → dead-lettered
 	m.state.RegisterConsumer(bf.TenantID, "MBR-001", &domain.Consumer{
 		ID:             uuid.New(),
 		TenantID:       bf.TenantID,
@@ -635,13 +635,21 @@ func TestCommandTypeToCardStatus(t *testing.T) {
 	}
 }
 
-// TestFISCardIDOrEmpty verifies that fisCardIDOrEmpty always returns ""
-// before Stage 7 populates the card's FIS card ID. This is the documented
-// pre-Stage-7 behaviour (see TODO in stage3_row_processing.go).
+// TestFISCardIDOrEmpty verifies fisCardIDOrEmpty returns "" for nil card or nil FISCardID,
+// and returns the ID string when FISCardID is set (populated by Stage 7 RT30 reconciliation).
 func TestFISCardIDOrEmpty(t *testing.T) {
-	c := &domain.Consumer{ID: uuid.New(), TenantID: "rfu-oregon", ClientMemberID: "MBR-001"}
-	if got := fisCardIDOrEmpty(c); got != "" {
-		t.Errorf("fisCardIDOrEmpty() = %q; want empty string (Stage 7 not yet run)", got)
+	// nil card → empty
+	if got := fisCardIDOrEmpty(nil); got != "" {
+		t.Errorf("nil card: got %q; want empty", got)
+	}
+	// card with nil FISCardID → empty (Stage 7 not yet run)
+	if got := fisCardIDOrEmpty(&domain.Card{}); got != "" {
+		t.Errorf("nil FISCardID: got %q; want empty", got)
+	}
+	// card with FISCardID set → returns value
+	id := "CARD-001"
+	if got := fisCardIDOrEmpty(&domain.Card{FISCardID: &id}); got != "CARD-001" {
+		t.Errorf("set FISCardID: got %q; want CARD-001", got)
 	}
 }
 
