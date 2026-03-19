@@ -49,12 +49,17 @@ func (a *AssemblerImpl) AssembleFile(ctx context.Context, req *ports.AssembleReq
 	// Get the next sequence number for today (§6.6.1)
 	// Prevents duplicate filename silent suppression (§6.5.5)
 	// ProgramID comes from the first staged RT30 row — resolved in Stage 3.
+	// For empty files (zero staged rows), ProgramID is uuid.Nil and seq defaults
+	// to 1 — no collision risk since FIS ignores empty files.
+	var seq int
 	if req.ProgramID == (uuid.UUID{}) {
-		return nil, fmt.Errorf("assembler: ProgramID is nil UUID — Stage 3 must resolve programs.id before assembly")
-	}
-	seq, err := a.sequenceStore.Next(ctx, req.ProgramID.String(), now)
-	if err != nil {
-		return nil, fmt.Errorf("assembler: get sequence number: %w", err)
+		seq = 1
+	} else {
+		var seqErr error
+		seq, seqErr = a.sequenceStore.Next(ctx, req.ProgramID.String(), now)
+		if seqErr != nil {
+			return nil, fmt.Errorf("assembler: get sequence number: %w", seqErr)
+		}
 	}
 
 	filename := BuildFilename(a.CompanyIDExtended[:8], now, seq, "issuance")

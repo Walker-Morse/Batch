@@ -318,9 +318,9 @@ func TestNullPGPEncrypt_Passthrough(t *testing.T) {
 
 // ─── resolveProgramID error paths ─────────────────────────────────────────────
 
-// TestStage4_ResolveProgramID_NoStagedRows verifies that Stage 4 fails fast
-// when no staged RT30 rows exist for the correlation ID.
-// Without a program UUID, fis_sequence.Next cannot be keyed (§6.6.1).
+// TestStage4_ResolveProgramID_NoStagedRows verifies that Stage 4 succeeds on an
+// empty file (zero staged RT30 rows). The assembler produces a valid header+trailer
+// file with seq=1 — no fis_sequence.Next call, no collision risk on empty files.
 func TestStage4_ResolveProgramID_NoStagedRows(t *testing.T) {
 	stage, m := newStage4(nil)
 	bf := &ports.BatchFile{
@@ -333,18 +333,20 @@ func TestStage4_ResolveProgramID_NoStagedRows(t *testing.T) {
 		UpdatedAt:     time.Now().UTC(),
 	}
 	m.batchFiles.Files[bf.ID] = bf
-	// Register empty staged records — no RT30 rows
+	// Register empty staged records — no RT30 rows (all-dead-lettered or empty file)
 	m.stagedRecords.Register(bf.CorrelationID.String(), &ports.StagedRecords{})
 
 	_, err := stage.Run(context.Background(), bf)
-	if err == nil {
-		t.Fatal("expected error when no staged RT30 rows exist")
+	if err != nil {
+		t.Fatalf("Run() must succeed on empty file (zero staged rows); got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "no staged RT30 rows") {
-		t.Errorf("error %q should mention no staged RT30 rows", err.Error())
+	// Assembler must still be called — it produces a valid header+trailer file
+	if len(m.assembler.Calls) != 1 {
+		t.Errorf("assembler called %d times; want 1", len(m.assembler.Calls))
 	}
-	if m.files.putKey != "" {
-		t.Error("S3 put must not happen when program ID cannot be resolved")
+	// ProgramID must be zero UUID — no program to look up
+	if m.assembler.Calls[0].ProgramID != (uuid.UUID{}) {
+		t.Errorf("expected zero ProgramID for empty file; got %s", m.assembler.Calls[0].ProgramID)
 	}
 }
 

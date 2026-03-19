@@ -185,11 +185,23 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 	programID := uuid.New()
 	programLookup.Register(smokeTenantID, smokeSubprogramID, programID)
 
+	// stagedRecordsMock is used by Stage 4 to resolve ProgramID from staged RT30 rows.
+	// Seeded with the same programID Stage 3 will write, so resolveProgramID succeeds.
+	stagedRecordsMock := testutil.NewMockBatchRecordsLister()
+
 	// MockFISBatchAssembler returns a fake assembled file for Stage 4 to encrypt and store
 	assembler := testutil.NewMockFISBatchAssembler("MORSEUSA01060126001.batch.txt", 1, "fake-fis-record-content")
 
 	// ── Wire stages ────────────────────────────────────────────────────────
 	correlationID := uuid.New()
+	// Seed stagedRecordsMock so Stage 4 resolveProgramID returns programID.
+	// Stage 3 writes to batchRecords (write side); Stage 4 reads from stagedRecordsMock (read side).
+	subID := int64(26071)
+	stagedRecordsMock.Register(correlationID.String(), &ports.StagedRecords{
+		RT30: []*ports.StagedRT30{
+			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "SMOKE-001", ProgramID: programID, SubprogramID: &subID},
+		},
+	})
 	cfg := &PipelineConfig{
 		CorrelationID:     correlationID,
 		TenantID:          smokeTenantID,
@@ -232,6 +244,7 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			Assembler:         assembler,
 			Files:             fileStore,
 			BatchFiles:        batchFiles,
+			StagedRecords:     stagedRecordsMock,
 			Audit:             audit,
 			Obs:               obs,
 			PGPEncrypt:        stage4.NullPGPEncrypt,
@@ -370,7 +383,8 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 		"SMOKE-BAD,John,Bad,,456 Error Rd,Portland,OR,97202,2026-06,26071,OTC\n", // empty DOB
 	)
 	fileStore.objects[smokeBucket+"/"+smokeSRGKey] = badSRG
-	programLookup.Register(smokeTenantID, smokeSubprogramID, uuid.New())
+	programID2 := uuid.New()
+	programLookup.Register(smokeTenantID, smokeSubprogramID, programID2)
 
 	assembler := testutil.NewMockFISBatchAssembler("MORSEUSA01060126001.batch.txt", 1, "fake")
 
@@ -385,6 +399,13 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 		StagedBucket:      smokeStagedBucket,
 		FISExchangeBucket: smokeFISBucket,
 	}
+	subID2 := int64(26071)
+	stagedRecordsMock2 := testutil.NewMockBatchRecordsLister()
+	stagedRecordsMock2.Register(cfg.CorrelationID.String(), &ports.StagedRecords{
+		RT30: []*ports.StagedRT30{
+			{ID: uuid.New(), SequenceInFile: 1, ClientMemberID: "SMOKE-001", ProgramID: programID2, SubprogramID: &subID2},
+		},
+	})
 
 	deps := &PipelineDeps{
 		Stage1: &stage1.FileArrivalStage{Files: fileStore, BatchFiles: batchFiles, Audit: audit, Obs: obs},
@@ -398,7 +419,9 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 			Audit: audit, Obs: obs,
 		},
 		Stage4: &stage4.BatchAssemblyStage{
-			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles, Audit: audit, Obs: obs,
+			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles,
+			StagedRecords: stagedRecordsMock2,
+			Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage5: &stage5.FISTransferStage{
@@ -473,7 +496,9 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 			Audit: audit, Obs: obs,
 		},
 		Stage4: &stage4.BatchAssemblyStage{
-			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles, Audit: audit, Obs: obs,
+			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles,
+			StagedRecords: testutil.NewMockBatchRecordsLister(),
+			Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage5: &stage5.FISTransferStage{

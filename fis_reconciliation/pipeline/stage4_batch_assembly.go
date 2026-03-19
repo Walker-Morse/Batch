@@ -134,15 +134,18 @@ func (s *BatchAssemblyStage) Run(ctx context.Context, batchFile *ports.BatchFile
 
 // resolveProgramID queries staged RT30 records and returns the program UUID
 // from the first row. Phase 1 guarantees all rows in a file share one program.
-// Returns an error if no staged RT30 rows exist — Stage 4 cannot proceed
-// without a valid programs.id to key fis_sequence.Next (§6.6.1).
+// Returns uuid.Nil (not an error) when no staged RT30 rows exist — this occurs
+// for empty or all-dead-lettered files. The assembler skips fis_sequence.Next
+// for zero-record files (no filename collision risk on empty files).
 func (s *BatchAssemblyStage) resolveProgramID(ctx context.Context, batchFile *ports.BatchFile) (uuid.UUID, error) {
 	staged, err := s.StagedRecords.ListStagedByCorrelationID(ctx, batchFile.CorrelationID)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("resolveProgramID: list staged records: %w", err)
 	}
 	if len(staged.RT30) == 0 {
-		return uuid.UUID{}, fmt.Errorf("resolveProgramID: no staged RT30 rows for correlation_id=%s — cannot determine program", batchFile.CorrelationID)
+		// Empty or all-dead-lettered file — no program UUID available or needed.
+		// Assembler will produce a valid header+trailer file with zero data records.
+		return uuid.UUID{}, nil
 	}
 	pid := staged.RT30[0].ProgramID
 	if pid == (uuid.UUID{}) {
