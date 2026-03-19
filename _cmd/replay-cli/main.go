@@ -8,27 +8,35 @@
 //   replay-cli --correlation-id <uuid> --row-seq <n>
 //   replay-cli --correlation-id <uuid> --dry-run
 //
-// Replay is safe to invoke multiple times:
-//   Layer 1: file-level SHA-256 on batch_files
-//   Layer 2: record-level domain_commands composite key
-//   Layer 3: FIS-level clientReferenceNumber
-//
+// Replay is safe to invoke multiple times (three-layer idempotency — §6.5.4).
 // Do NOT replay records with failure_reason indicating a code defect.
-// Wait for a hotfix to be deployed first (§6.5.3 triage guidance).
-// See docs/runbooks/dead_letter_triage.md for the full triage procedure.
+// See _docs/runbooks/dead_letter_triage.md for triage procedure.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/walker-morse/batch/_adapters/aurora"
+	"github.com/walker-morse/batch/_shared/observability"
+	"github.com/walker-morse/batch/dead_letter/replay"
 )
 
 func main() {
-	correlationID := flag.String("correlation-id", "", "correlation UUID of the batch file")
+	correlationID := flag.String("correlation-id", "", "correlation UUID of the batch file (required)")
 	rowSeq        := flag.Int("row-seq", 0, "specific row sequence number (0 = replay all unresolved)")
-	dryRun        := flag.Bool("dry-run", false, "preview without executing")
+	dryRun        := flag.Bool("dry-run", false, "preview without executing replay")
+	dbHost        := flag.String("db-host",     os.Getenv("DB_HOST"),     "Aurora RDS Proxy endpoint")
+	dbName        := flag.String("db-name",     os.Getenv("DB_NAME"),     "database name")
+	dbUser        := flag.String("db-user",     os.Getenv("DB_USER"),     "database user")
+	dbPass        := flag.String("db-password", os.Getenv("DB_PASSWORD"), "database password")
+	dbSSL         := flag.String("db-ssl",      envOrDefault("DB_SSL", "require"), "sslmode")
+	ingestBin     := flag.String("ingest-task", "ingest-task", "path to ingest-task binary")
 	flag.Parse()
 
 	if *correlationID == "" {
@@ -37,11 +45,62 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Printf("replay-cli: correlation_id=%s row_seq=%d dry_run=%v",
-		*correlationID, *rowSeq, *dryRun)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
-	// TODO: connect to Aurora via Secrets Manager credentials
-	// TODO: list unresolved dead_letter_store rows for correlation_id
-	// TODO: for each: invoke ingest-task with --replay flag
-	// TODO: set replayed_at on dead_letter_store row
+	pool, err := aurora.NewPool(ctx, aurora.Config{
+		Host:     *dbHost,
+		Database: *dbName,
+		User:     *dbUser,
+		Password: *dbPass,
+		SSLMode:  *dbSSL,
+	})
+	if err != nil {
+		log.Fatalf("replay-cli: connect aurora: %v", err)
+	}
+	defer pool.Close()
+
+	deadLetterRepo := aurora.NewDeadLetterRepo(pool)
+	obs := &observability.NoopObservability{}
+
+	// ExtraArgs carries the DB connection flags so the replayed ingest-task
+	// invocation can connect to the same database.
+	extraArgs := []string{
+		"--db-host", *dbHost,
+		"--db-name", *dbName,
+		"--db-user", *dbUser,
+		"--db-password", *dbPass,
+		"--db-ssl", *dbSSL,
+		"--env", envOrDefault("PIPELINE_ENV", "DEV"),
+		"--region", envOrDefault("AWS_REGION", "us-east-1"),
+	}
+
+	r := &replay.Replayer{
+		DeadLetters:    deadLetterRepo,
+		Obs:            obs,
+		IngestTaskPath: *ingestBin,
+		ExtraArgs:      extraArgs,
+	}
+
+	result, err := r.Replay(ctx, *correlationID, *rowSeq, *dryRun)
+	if err != nil {
+		log.Fatalf("replay-cli: %v", err)
+	}
+
+	log.Printf("replay-cli complete: total=%d replayed=%d skipped=%d failed=%d",
+		result.Total, result.Replayed, result.Skipped, result.Failed)
+
+	if len(result.Errors) > 0 {
+		for _, e := range result.Errors {
+			log.Printf("replay-cli error: %s", e)
+		}
+		os.Exit(1)
+	}
+}
+
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }

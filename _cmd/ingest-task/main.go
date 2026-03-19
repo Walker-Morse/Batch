@@ -6,9 +6,9 @@
 //   Stage 2 — Validation         PGP decrypt → SRG parse → dead-letter malformed rows
 //   Stage 3 — Row Processing     Sequential row-by-row: idempotency → domain writes → staging
 //   Stage 4 — Batch Assembly     FIS 400-byte fixed-width records → PGP-encrypt → S3
-//   Stage 5 — FIS Transfer       AWS Transfer Family → FIS Prepaid Sunrise SFTP
-//   Stage 6 — Return File Wait   Poll S3 for FIS return file (6h timeout)
-//   Stage 7 — Reconciliation     Match results → update status → MCO report
+//   Stage 5 — FIS Transfer       SSH/SCP → FIS Transfer Family SFTP endpoint
+//   Stage 6 — Return File Wait   Poll fis-exchange S3 for FIS return file (6h timeout)
+//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers
 //
 // Adapters are wired here and injected into stages via port interfaces.
 // No stage imports an adapter directly — all dependencies flow through ports (ADR-001).
@@ -32,11 +32,15 @@ import (
 	"github.com/walker-morse/batch/_adapters/aurora"
 	pgpadapter "github.com/walker-morse/batch/_adapters/pgp"
 	"github.com/walker-morse/batch/_adapters/s3"
+	adtransport "github.com/walker-morse/batch/_adapters/transport"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/walker-morse/batch/_shared/observability"
 	"github.com/walker-morse/batch/_shared/ports"
 	"github.com/walker-morse/batch/fis_reconciliation/fis_adapter"
 	stage4 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage5 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage6 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage7 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
 	stage1 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage2 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage3 "github.com/walker-morse/batch/member_enrollment/pipeline"
@@ -58,22 +62,27 @@ type PipelineConfig struct {
 	DBHost     string
 	DBName     string
 	DBUser     string
-	DBPassword string // from Secrets Manager in prod; env var for local dev
+	DBPassword string
 	DBSSLMode  string
 
 	// S3
 	KMSKeyARN         string
 	StagedBucket      string
 	FISExchangeBucket string
+	ReturnFilePrefix  string // S3 prefix for FIS return files; default "return/"
 
 	// FIS assembler
-	FISCompanyID string // Morse LLC FIS Level 1 client identifier (8 chars)
+	FISCompanyID string
 
-	// PGP key references (Secrets Manager ARNs — never plaintext key material in config)
-	// Empty strings trigger NullPGP passthrough — only allowed when PipelineEnv == "DEV".
-	PGPPrivateKeySecretARN   string // Morse private key for inbound SRG decrypt (Stage 2)
-	PGPPassphraseSecretARN   string // passphrase for private key, or "" if key is unencrypted
-	PGPFISPublicKeySecretARN string // FIS public key for outbound batch encrypt (Stage 4)
+	// PGP key ARNs (Secrets Manager). Empty = NullPGP passthrough (DEV only).
+	PGPPrivateKeySecretARN   string
+	PGPPassphraseSecretARN   string
+	PGPFISPublicKeySecretARN string
+
+	// FIS SFTP (Stage 5). Empty = transport skipped in DEV mode.
+	FISSFTPHostSecretARN       string // Secrets Manager ARN for FIS SFTP host
+	FISSFTPUserSecretARN       string // Secrets Manager ARN for FIS SFTP username
+	FISSFTPPrivateKeySecretARN string // Secrets Manager ARN for SSH private key PEM
 
 	// Replay mode
 	ReplayMode        bool
@@ -82,14 +91,16 @@ type PipelineConfig struct {
 	ReturnFileWaitTimeout time.Duration
 }
 
-// PipelineDeps holds all wired port implementations for the pipeline.
-// Constructed by wireDeps() in production, or by tests with fake implementations.
-// Separating wiring from execution makes the pipeline testable without AWS.
+// PipelineDeps holds all wired port implementations.
+// Constructed by wireDeps() in production, by tests with fake implementations.
 type PipelineDeps struct {
 	Stage1 *stage1.FileArrivalStage
 	Stage2 *stage2.ValidationStage
 	Stage3 *stage3.RowProcessingStage
 	Stage4 *stage4.BatchAssemblyStage
+	Stage5 *stage5.FISTransferStage
+	Stage6 *stage6.ReturnFileWaitStage
+	Stage7 *stage7.ReconciliationStage
 }
 
 func main() {
@@ -114,7 +125,6 @@ func main() {
 // wireDeps constructs all real infrastructure adapters and wires them into stages.
 // This is the only function that touches AWS SDK, Aurora, or Secrets Manager.
 func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
-	// Aurora connection pool (via RDS Proxy)
 	pool, err := aurora.NewPool(ctx, aurora.Config{
 		Host:     cfg.DBHost,
 		Database: cfg.DBName,
@@ -125,23 +135,17 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	if err != nil {
 		return nil, fmt.Errorf("wire aurora: %w", err)
 	}
-	// Note: pool.Close() is deferred in run — not here, so the caller owns lifetime.
 
-	// AWS SDK config
 	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(cfg.Region))
 	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("wire aws config: %w", err)
 	}
 
-	// Secrets Manager client (shared by PGP adapters)
 	smClient := secretsmanager.NewFromConfig(awsCfg)
-
-	// S3 store
 	s3Client := awss3.NewFromConfig(awsCfg)
 	fileStore := s3.New(s3Client, cfg.KMSKeyARN)
 
-	// Aurora repositories
 	batchFileRepo    := aurora.NewBatchFileRepo(pool)
 	domainCmdRepo    := aurora.NewDomainCommandRepo(pool)
 	deadLetterRepo   := aurora.NewDeadLetterRepo(pool)
@@ -149,10 +153,8 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	batchRecordsRepo := aurora.NewBatchRecordsRepo(pool)
 	domainStateRepo  := aurora.NewDomainStateRepo(pool)
 
-	// Observability
-	obs := &observability.NoopObservability{} // TODO: replace with real Datadog adapter
+	obs := &observability.NoopObservability{} // TODO: wire real Datadog adapter
 
-	// FIS batch assembler
 	seqStore  := aurora.NewFISSequenceRepo(pool)
 	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore, batchRecordsRepo)
 
@@ -167,9 +169,9 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	if cfg.PGPPrivateKeySecretARN == "" {
 		if cfg.PipelineEnv != "DEV" {
 			pool.Close()
-			return nil, fmt.Errorf("PGP_PRIVATE_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+			return nil, fmt.Errorf("PGP_PRIVATE_KEY_SECRET_ARN required in %s", cfg.PipelineEnv)
 		}
-		log.Printf("WARN: using NullPGPDecrypt — DEV environment only")
+		log.Printf("WARN: NullPGPDecrypt — DEV only")
 		pgpDecrypt = stage2.NullPGPDecrypt
 	} else {
 		dec, err := pgpadapter.LoadDecrypter(ctx, smClient, cfg.PGPPrivateKeySecretARN, cfg.PGPPassphraseSecretARN)
@@ -185,9 +187,9 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	if cfg.PGPFISPublicKeySecretARN == "" {
 		if cfg.PipelineEnv != "DEV" {
 			pool.Close()
-			return nil, fmt.Errorf("PGP_FIS_PUBLIC_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+			return nil, fmt.Errorf("PGP_FIS_PUBLIC_KEY_SECRET_ARN required in %s", cfg.PipelineEnv)
 		}
-		log.Printf("WARN: using NullPGPEncrypt — DEV environment only")
+		log.Printf("WARN: NullPGPEncrypt — DEV only")
 		pgpEncrypt = stage4.NullPGPEncrypt
 	} else {
 		enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPFISPublicKeySecretARN)
@@ -197,6 +199,52 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 		}
 		pgpEncrypt = enc.Encrypt
 	}
+
+	// FIS transport (Stages 5 + 6)
+	// In DEV without SFTP credentials, a NullTransport is used so the pipeline
+	// can be exercised through Stage 4 without FIS connectivity.
+	var fisTransport ports.FISTransport
+	if cfg.FISSFTPHostSecretARN == "" || cfg.FISSFTPPrivateKeySecretARN == "" {
+		if cfg.PipelineEnv != "DEV" {
+			pool.Close()
+			return nil, fmt.Errorf("FIS SFTP secrets required in %s", cfg.PipelineEnv)
+		}
+		log.Printf("WARN: NullFISTransport — DEV only; Stages 5–6 will no-op")
+		fisTransport = &nullFISTransport{}
+	} else {
+		sftpHost, err := getSecretString(ctx, smClient, cfg.FISSFTPHostSecretARN)
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("load FIS SFTP host: %w", err)
+		}
+		sftpUser, err := getSecretString(ctx, smClient, cfg.FISSFTPUserSecretARN)
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("load FIS SFTP user: %w", err)
+		}
+		sftpKey, err := getSecretString(ctx, smClient, cfg.FISSFTPPrivateKeySecretARN)
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("load FIS SFTP private key: %w", err)
+		}
+
+		returnPrefix := cfg.ReturnFilePrefix
+		if returnPrefix == "" {
+			returnPrefix = "return/"
+		}
+		fisTransport = &adtransport.FISTransportAdapter{
+			SFTPHost:          sftpHost,
+			SFTPUser:          sftpUser,
+			SFTPPrivateKey:    []byte(sftpKey),
+			S3Client:          s3Client,
+			FISExchangeBucket: cfg.FISExchangeBucket,
+			ReturnFilePrefix:  returnPrefix,
+		}
+	}
+
+	// MartWriter: data mart ETL is deferred (OI #27 — DM-03 XTRACT contract unconfirmed).
+	// NoopMartWriter satisfies the port; replace with aurora.MartRepo when sprint begins.
+	var martWriter ports.MartWriter = &noopMartWriter{}
 
 	return &PipelineDeps{
 		Stage1: &stage1.FileArrivalStage{
@@ -233,11 +281,36 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			StagedBucket:      cfg.StagedBucket,
 			FISExchangeBucket: cfg.FISExchangeBucket,
 		},
+		Stage5: &stage5.FISTransferStage{
+			Transport:         fisTransport,
+			Files:             fileStore,
+			BatchFiles:        batchFileRepo,
+			Audit:             auditRepo,
+			Obs:               obs,
+			FISExchangeBucket: cfg.FISExchangeBucket,
+		},
+		Stage6: &stage6.ReturnFileWaitStage{
+			Transport:  fisTransport,
+			BatchFiles: batchFileRepo,
+			Audit:      auditRepo,
+			Obs:        obs,
+			Timeout:    cfg.ReturnFileWaitTimeout,
+		},
+		Stage7: &stage7.ReconciliationStage{
+			BatchFiles:     batchFileRepo,
+			BatchRecords:   batchRecordsRepo,
+			DomainCommands: domainCmdRepo,
+			DomainState:    domainStateRepo,
+			DeadLetters:    deadLetterRepo,
+			Audit:          auditRepo,
+			Mart:           martWriter,
+			Obs:            obs,
+		},
 	}, nil
 }
 
-// runWithDeps executes the pipeline using pre-wired dependencies.
-// All infrastructure concerns are resolved before this function is called.
+// runWithDeps executes the full pipeline using pre-wired dependencies.
+// All infrastructure concerns are resolved before this is called.
 // This is the testable core of the ingest-task.
 func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) error {
 	log.Printf("ingest-task starting: correlation_id=%s tenant=%s file_type=%s env=%s",
@@ -285,44 +358,115 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	if err != nil {
 		return fmt.Errorf("stage4: %w", err)
 	}
+	log.Printf("stage4 complete: filename=%s records=%d", assemblyResult.Filename, assemblyResult.RecordCount)
 
-	log.Printf("stage4 complete: filename=%s s3_key=%s", assemblyResult.Filename, assemblyResult.S3Key)
+	// Stage 5 — FIS Transfer
+	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
+		return fmt.Errorf("stage5: %w", err)
+	}
+	log.Printf("stage5 complete: transferred=%s", assemblyResult.Filename)
 
-	// Stages 5–7: FIS Transfer, Return File Wait, Reconciliation
-	// TODO: implement stages 5–7 (FIS SFTP transport, return file polling, reconciliation)
-	log.Printf("ingest-task stages 5-7 not yet implemented — batch assembled at s3_key=%s", assemblyResult.S3Key)
+	// Stage 6 — Return File Wait
+	waitResult, err := deps.Stage6.Run(ctx, batchFile)
+	if err != nil {
+		// STALLED — dead.letter.alert already emitted inside Stage 6.
+		// Return the error so ECS marks the task as failed (CloudWatch alarm fires).
+		return fmt.Errorf("stage6: %w", err)
+	}
+	log.Printf("stage6 complete: return file received")
 
-	log.Printf("ingest-task complete: correlation_id=%s", cfg.CorrelationID)
+	// Stage 7 — Reconciliation
+	if err := deps.Stage7.Run(ctx, batchFile, waitResult.Body); err != nil {
+		return fmt.Errorf("stage7: %w", err)
+	}
+
+	log.Printf("ingest-task complete: correlation_id=%s status=COMPLETE", cfg.CorrelationID)
 	return nil
 }
 
+// ─── Noop adapters for DEV / deferred features ───────────────────────────────
+
+// nullFISTransport is a no-op FISTransport for DEV environments where FIS
+// SFTP credentials are not configured. Deliver succeeds silently; PollForReturn
+// returns an empty return file so Stage 7 runs without real FIS data.
+// Never use in TST or PRD.
+type nullFISTransport struct{}
+
+func (n *nullFISTransport) Deliver(_ context.Context, _ io.Reader, filename string) error {
+	log.Printf("NullFISTransport.Deliver: no-op (DEV) filename=%s", filename)
+	return nil
+}
+
+func (n *nullFISTransport) PollForReturn(_ context.Context, correlationID uuid.UUID, _ time.Duration) (io.ReadCloser, error) {
+	log.Printf("NullFISTransport.PollForReturn: returning empty return file (DEV) correlation_id=%s", correlationID)
+	// Return an empty but structurally valid return file body.
+	// Stage 7 ParseReturnFile will produce zero records — clean empty completion.
+	return io.NopCloser(emptyReader{}), nil
+}
+
+type emptyReader struct{}
+
+func (emptyReader) Read(_ []byte) (int, error) { return 0, io.EOF }
+
+// noopMartWriter satisfies ports.MartWriter until aurora.MartRepo is implemented.
+// The data mart reporting layer is deferred pending DM-03 XTRACT contract
+// confirmation (Open Item #27, Kendra Williams).
+type noopMartWriter struct{}
+
+func (n *noopMartWriter) UpsertMember(_ context.Context, _ *ports.MemberRecord) (int64, error)       { return 0, nil }
+func (n *noopMartWriter) UpsertCard(_ context.Context, _ *ports.CardRecord) (int64, error)           { return 0, nil }
+func (n *noopMartWriter) UpsertPurse(_ context.Context, _ *ports.PurseRecord) (int64, error)         { return 0, nil }
+func (n *noopMartWriter) WriteEnrollmentFact(_ context.Context, _ *ports.EnrollmentFact) error       { return nil }
+func (n *noopMartWriter) WritePurseLifecycleFact(_ context.Context, _ *ports.PurseLifecycleFact) error { return nil }
+func (n *noopMartWriter) WriteReconciliationFact(_ context.Context, _ *ports.ReconciliationFact) error { return nil }
+
+// ─── Config helpers ───────────────────────────────────────────────────────────
+
+func getSecretString(ctx context.Context, sm *secretsmanager.Client, arn string) (string, error) {
+	out, err := sm.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: &arn,
+	})
+	if err != nil {
+		return "", fmt.Errorf("GetSecretValue(%s): %w", arn, err)
+	}
+	if out.SecretString == nil {
+		return "", fmt.Errorf("GetSecretValue(%s): nil SecretString", arn)
+	}
+	return *out.SecretString, nil
+}
+
 func parseConfig() (*PipelineConfig, error) {
-	corrIDStr    := flag.String("correlation-id", os.Getenv("CORRELATION_ID"), "correlation UUID")
-	tenantID     := flag.String("tenant-id",      os.Getenv("TENANT_ID"),      "health plan client tenant ID")
-	clientID     := flag.String("client-id",      os.Getenv("CLIENT_ID"),      "Morse client code")
-	s3Bucket     := flag.String("s3-bucket",      os.Getenv("S3_BUCKET"),      "inbound S3 bucket")
-	s3Key        := flag.String("s3-key",         os.Getenv("S3_KEY"),         "S3 object key")
-	fileType     := flag.String("file-type",      os.Getenv("FILE_TYPE"),      "SRG310|SRG315|SRG320")
-	region       := flag.String("region",         envOrDefault("AWS_REGION", "us-east-1"), "AWS region")
-	pipelineEnv  := flag.String("env",            envOrDefault("PIPELINE_ENV", "DEV"), "DEV|TST|PRD")
-	dbHost       := flag.String("db-host",        os.Getenv("DB_HOST"),        "Aurora RDS Proxy endpoint")
-	dbName       := flag.String("db-name",        os.Getenv("DB_NAME"),        "database name")
-	dbUser       := flag.String("db-user",        os.Getenv("DB_USER"),        "database user")
-	dbPass       := flag.String("db-password",    os.Getenv("DB_PASSWORD"),    "database password")
-	dbSSL        := flag.String("db-ssl",         envOrDefault("DB_SSL", "require"), "sslmode")
-	kmsKey       := flag.String("kms-key-arn",    os.Getenv("KMS_KEY_ARN"),   "KMS key ARN for SSE")
-	stagedBucket := flag.String("staged-bucket",       os.Getenv("STAGED_BUCKET"),       "staged S3 bucket")
-	fisBucket    := flag.String("fis-exchange-bucket",  os.Getenv("FIS_EXCHANGE_BUCKET"),  "fis-exchange S3 bucket")
-	fisCompanyID := flag.String("fis-company-id",       os.Getenv("FIS_COMPANY_ID"),       "FIS Level 1 company identifier (8 chars)")
-	pgpPrivateKeyARN   := flag.String("pgp-private-key-secret-arn",    os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),    "Secrets Manager ARN for Morse private key (Stage 2 decrypt)")
-	pgpPassphraseARN   := flag.String("pgp-passphrase-secret-arn",     os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),     "Secrets Manager ARN for private key passphrase, or empty")
-	pgpFISPublicKeyARN := flag.String("pgp-fis-public-key-secret-arn", os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"), "Secrets Manager ARN for FIS public key (Stage 4 encrypt)")
-	replay    := flag.Bool("replay", false, "replay mode — invoked by replay-cli")
-	replaySeq := flag.Int("replay-seq", 0, "row sequence number for replay")
+	corrIDStr             := flag.String("correlation-id",              os.Getenv("CORRELATION_ID"),              "correlation UUID")
+	tenantID              := flag.String("tenant-id",                   os.Getenv("TENANT_ID"),                   "health plan tenant ID")
+	clientID              := flag.String("client-id",                   os.Getenv("CLIENT_ID"),                   "Morse client code")
+	s3Bucket              := flag.String("s3-bucket",                   os.Getenv("S3_BUCKET"),                   "inbound S3 bucket")
+	s3Key                 := flag.String("s3-key",                      os.Getenv("S3_KEY"),                      "S3 object key")
+	fileType              := flag.String("file-type",                   os.Getenv("FILE_TYPE"),                   "SRG310|SRG315|SRG320")
+	region                := flag.String("region",                      envOrDefault("AWS_REGION", "us-east-1"),  "AWS region")
+	pipelineEnv           := flag.String("env",                         envOrDefault("PIPELINE_ENV", "DEV"),      "DEV|TST|PRD")
+	dbHost                := flag.String("db-host",                     os.Getenv("DB_HOST"),                     "Aurora RDS Proxy endpoint")
+	dbName                := flag.String("db-name",                     os.Getenv("DB_NAME"),                     "database name")
+	dbUser                := flag.String("db-user",                     os.Getenv("DB_USER"),                     "database user")
+	dbPass                := flag.String("db-password",                 os.Getenv("DB_PASSWORD"),                 "database password")
+	dbSSL                 := flag.String("db-ssl",                      envOrDefault("DB_SSL", "require"),        "sslmode")
+	kmsKey                := flag.String("kms-key-arn",                 os.Getenv("KMS_KEY_ARN"),                 "KMS key ARN")
+	stagedBucket          := flag.String("staged-bucket",               os.Getenv("STAGED_BUCKET"),               "staged S3 bucket")
+	fisBucket             := flag.String("fis-exchange-bucket",         os.Getenv("FIS_EXCHANGE_BUCKET"),         "fis-exchange S3 bucket")
+	returnPrefix          := flag.String("return-prefix",               envOrDefault("RETURN_FILE_PREFIX", "return/"), "S3 prefix for FIS return files")
+	fisCompanyID          := flag.String("fis-company-id",              os.Getenv("FIS_COMPANY_ID"),              "FIS company ID (8 chars)")
+	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",  os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),  "ARN: Morse PGP private key")
+	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",   os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),   "ARN: PGP passphrase")
+	pgpFISPublicKeyARN    := flag.String("pgp-fis-public-key-secret-arn", os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"), "ARN: FIS PGP public key")
+	sftpHostARN           := flag.String("fis-sftp-host-secret-arn",    os.Getenv("FIS_SFTP_HOST_SECRET_ARN"),    "ARN: FIS SFTP host")
+	sftpUserARN           := flag.String("fis-sftp-user-secret-arn",    os.Getenv("FIS_SFTP_USER_SECRET_ARN"),    "ARN: FIS SFTP user")
+	sftpKeyARN            := flag.String("fis-sftp-key-secret-arn",     os.Getenv("FIS_SFTP_KEY_SECRET_ARN"),     "ARN: FIS SSH private key PEM")
+	replay                := flag.Bool("replay", false, "replay mode")
+	replaySeq             := flag.Int("replay-seq", 0, "row sequence for replay")
+	returnTimeout         := flag.Duration("return-file-timeout",       6*time.Hour,                              "Stage 6 return file wait timeout")
 	flag.Parse()
 
 	if *corrIDStr == "" {
-		return nil, fmt.Errorf("correlation-id is required")
+		return nil, fmt.Errorf("--correlation-id is required")
 	}
 	id, err := uuid.Parse(*corrIDStr)
 	if err != nil {
@@ -346,12 +490,16 @@ func parseConfig() (*PipelineConfig, error) {
 		KMSKeyARN:                *kmsKey,
 		StagedBucket:             *stagedBucket,
 		FISExchangeBucket:        *fisBucket,
+		ReturnFilePrefix:         *returnPrefix,
 		FISCompanyID:             *fisCompanyID,
 		PGPPrivateKeySecretARN:   *pgpPrivateKeyARN,
 		PGPPassphraseSecretARN:   *pgpPassphraseARN,
 		PGPFISPublicKeySecretARN: *pgpFISPublicKeyARN,
+		FISSFTPHostSecretARN:     *sftpHostARN,
+		FISSFTPUserSecretARN:     *sftpUserARN,
+		FISSFTPPrivateKeySecretARN: *sftpKeyARN,
 		ReplayMode:               *replay,
-		ReturnFileWaitTimeout:    6 * time.Hour,
+		ReturnFileWaitTimeout:    *returnTimeout,
 	}
 	if *replay && *replaySeq > 0 {
 		seq := *replaySeq

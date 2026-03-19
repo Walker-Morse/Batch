@@ -53,6 +53,9 @@ import (
 	"github.com/walker-morse/batch/_shared/ports"
 	"github.com/walker-morse/batch/_shared/testutil"
 	stage4 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage5 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage6 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	stage7 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
 	stage1 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage2 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage3 "github.com/walker-morse/batch/member_enrollment/pipeline"
@@ -235,6 +238,31 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			StagedBucket:      smokeStagedBucket,
 			FISExchangeBucket: smokeFISBucket,
 		},
+		Stage5: &stage5.FISTransferStage{
+			Transport:         &nullFISTransport{},
+			Files:             fileStore,
+			BatchFiles:        batchFiles,
+			Audit:             audit,
+			Obs:               obs,
+			FISExchangeBucket: smokeFISBucket,
+		},
+		Stage6: &stage6.ReturnFileWaitStage{
+			Transport:  &nullFISTransport{},
+			BatchFiles: batchFiles,
+			Audit:      audit,
+			Obs:        obs,
+			Timeout:    100 * time.Millisecond,
+		},
+		Stage7: &stage7.ReconciliationStage{
+			BatchFiles:     batchFiles,
+			BatchRecords:   testutil.NewMockBatchRecordsReconciler(),
+			DomainCommands: domainCmds,
+			DomainState:    testutil.NewMockDomainStateReconciler(),
+			DeadLetters:    deadLetters,
+			Audit:          audit,
+			Mart:           &testutil.MockMartWriter{},
+			Obs:            obs,
+		},
 	}
 
 	// ── Execute ────────────────────────────────────────────────────────────
@@ -262,8 +290,8 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 	if batchFile == nil {
 		t.Fatal("no batch_files row found for correlation_id")
 	}
-	if batchFile.Status != "ASSEMBLED" {
-		t.Errorf("batch_file.Status = %q; want ASSEMBLED (Stage 4 terminus)", batchFile.Status)
+	if batchFile.Status != "COMPLETE" {
+		t.Errorf("batch_file.Status = %q; want COMPLETE (Stages 1-7 complete)", batchFile.Status)
 	}
 
 	// No dead letters — clean one-row SRG310 should parse without errors
@@ -373,6 +401,19 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles, Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
+		Stage5: &stage5.FISTransferStage{
+			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
+		},
+		Stage6: &stage6.ReturnFileWaitStage{
+			Transport: &nullFISTransport{}, BatchFiles: batchFiles,
+			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,
+		},
+		Stage7: &stage7.ReconciliationStage{
+			BatchFiles: batchFiles, BatchRecords: testutil.NewMockBatchRecordsReconciler(),
+			DomainCommands: domainCmds, DomainState: testutil.NewMockDomainStateReconciler(),
+			DeadLetters: deadLetters, Audit: audit, Mart: &testutil.MockMartWriter{}, Obs: obs,
+		},
 	}
 
 	err := runWithDeps(ctx, cfg, deps)
@@ -434,6 +475,19 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 		Stage4: &stage4.BatchAssemblyStage{
 			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles, Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
+		},
+		Stage5: &stage5.FISTransferStage{
+			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
+		},
+		Stage6: &stage6.ReturnFileWaitStage{
+			Transport: &nullFISTransport{}, BatchFiles: batchFiles,
+			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,
+		},
+		Stage7: &stage7.ReconciliationStage{
+			BatchFiles: batchFiles, BatchRecords: testutil.NewMockBatchRecordsReconciler(),
+			DomainCommands: domainCmds, DomainState: testutil.NewMockDomainStateReconciler(),
+			DeadLetters: deadLetters, Audit: audit, Mart: &testutil.MockMartWriter{}, Obs: obs,
 		},
 	}
 
