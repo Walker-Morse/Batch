@@ -7,6 +7,7 @@ import { IamConstruct } from "../constructs/iam";
 import { EcsConstruct } from "../constructs/ecs";
 import { SchedulerConstruct } from "../constructs/scheduler";
 import { TriggerConstruct } from "../constructs/trigger";
+import { SftpConstruct } from "../constructs/sftp";
 
 export interface OneFintechStackProps extends cdk.StackProps {
   environment: "dev" | "tst" | "prd";
@@ -26,6 +27,7 @@ export interface OneFintechStackProps extends cdk.StackProps {
  * Topology (ADR-003, ADR-005, ADR-007, ADR-008):
  *   VPC → Aurora Serverless v2 (RDS Proxy) → ECS Fargate (ingest-task)
  *   S3 (inbound-raw, staged, fis-exchange) → EventBridge Scheduler → ECS RunTask
+ *   Transfer Family SFTP → inbound-raw → EventBridge → ECS RunTask
  *   Secrets Manager → KMS → IAM task role (least-privilege per §5.4.5)
  */
 export class OneFintechStack extends cdk.Stack {
@@ -84,6 +86,14 @@ export class OneFintechStack extends cdk.Stack {
       subnetIds: networking.vpc.privateSubnets.map((s) => s.subnetId),
       taskRole: iam.taskRole,
       executionRole: iam.executionRole,
+    });
+
+    // SFTP ingress: MCO clients upload SRG files via Transfer Family → inbound-raw
+    new SftpConstruct(this, "Sftp", {
+      env,
+      inboundBucket: storage.inboundBucket,
+      kmsKey: storage.kmsKey,
+      vpc: networking.vpc,
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
