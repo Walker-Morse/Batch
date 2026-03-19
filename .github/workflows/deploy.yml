@@ -19,7 +19,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.8"
-      - run: go test ./... -count=1 -race -timeout 120s
+      # Use make test to include _-prefixed packages (_shared, _schema, etc.)
+      # bare `go test ./...` silently excludes them.
+      - name: Test
+        run: make test -count=1 -race -timeout 120s
+      - name: Smoke (Option A — in-process, no infrastructure)
+        run: make smoke
 
   build-and-push:
     name: Build and Push to ECR

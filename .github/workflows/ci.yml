@@ -15,15 +15,21 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25.8'
 
       # Go's ./... excludes _-prefixed directories (_shared, _schema, etc.)
-      # All packages must be listed explicitly.
+      # All packages must be listed explicitly — use Makefile targets.
       - name: Vet
         run: make vet
 
       - name: Test
         run: make test
+
+      # Option A smoke test — in-process wiring, no infrastructure required.
+      # Exercises Stages 1–4 with fake dependencies.
+      # Catches wiring regressions, interface mismatches, nil pointer panics.
+      - name: Smoke (Option A — in-process, no infrastructure)
+        run: make smoke
 
       - name: Vulnerability scan (govulncheck — OWASP Addendum F)
         run: |
