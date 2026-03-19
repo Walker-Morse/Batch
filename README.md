@@ -1,7 +1,7 @@
 # One Fintech — FIS Prepaid Sunrise Batch ETL Integration
 
 **Operator:** Morse LLC · **Brand:** Speak Benefits  
-**First client:** Rogue Foods United (RFU), Oregon Medicaid food benefit programme  
+**First client:** Rogue Foods United (RFU), Oregon Medicaid food benefit program 
 **Go-live target:** June 1, 2026 · **RFU programme start:** July 1, 2026  
 **Language:** Go (ADR-002) · **Infrastructure:** AWS  
 **HLD version:** v00.01.25 (2026-03-17)
