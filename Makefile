@@ -18,7 +18,7 @@ ALL_PKGS := \
 	./_shared/... \
 	./_cmd/...
 
-.PHONY: build test vet lint
+.PHONY: build test test-verbose vet smoke smoke-integration
 
 build:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go build $(ALL_PKGS)
@@ -31,3 +31,17 @@ test-verbose:
 
 vet:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go vet $(ALL_PKGS)
+
+# Option A smoke test — in-process wiring, no infrastructure required.
+# Exercises Stages 1–4 with fake dependencies.
+# Run before every deployment to catch wiring regressions.
+smoke:
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -tags smoke -v -run TestSmoke ./_cmd/ingest-task/
+
+# Option B smoke test — integration against live Postgres + S3.
+# Requires: docker compose up (see _docs/SMOKE_TEST_OPTION_B.md)
+# Status: blocked — awaiting DEV environment confirmation (John Stevens).
+smoke-integration:
+	@echo "Option B smoke test requires docker compose. See _docs/SMOKE_TEST_OPTION_B.md"
+	@echo "Status: blocked — awaiting DEV environment (John Stevens)"
+	@exit 1

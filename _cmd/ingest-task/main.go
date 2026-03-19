@@ -82,6 +82,16 @@ type PipelineConfig struct {
 	ReturnFileWaitTimeout time.Duration
 }
 
+// PipelineDeps holds all wired port implementations for the pipeline.
+// Constructed by wireDeps() in production, or by tests with fake implementations.
+// Separating wiring from execution makes the pipeline testable without AWS.
+type PipelineDeps struct {
+	Stage1 *stage1.FileArrivalStage
+	Stage2 *stage2.ValidationStage
+	Stage3 *stage3.RowProcessingStage
+	Stage4 *stage4.BatchAssemblyStage
+}
+
 func main() {
 	cfg, err := parseConfig()
 	if err != nil {
@@ -91,14 +101,19 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	if err := run(ctx, cfg); err != nil {
+	deps, err := wireDeps(ctx, cfg)
+	if err != nil {
+		log.Fatalf("wire: %v", err)
+	}
+
+	if err := runWithDeps(ctx, cfg, deps); err != nil {
 		log.Fatalf("ingest-task: %v", err)
 	}
 }
 
-func run(ctx context.Context, cfg *PipelineConfig) error {
-	// ── Wire infrastructure adapters ─────────────────────────────────────────
-
+// wireDeps constructs all real infrastructure adapters and wires them into stages.
+// This is the only function that touches AWS SDK, Aurora, or Secrets Manager.
+func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	// Aurora connection pool (via RDS Proxy)
 	pool, err := aurora.NewPool(ctx, aurora.Config{
 		Host:     cfg.DBHost,
@@ -108,14 +123,15 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		SSLMode:  cfg.DBSSLMode,
 	})
 	if err != nil {
-		return fmt.Errorf("wire aurora: %w", err)
+		return nil, fmt.Errorf("wire aurora: %w", err)
 	}
-	defer pool.Close()
+	// Note: pool.Close() is deferred in run — not here, so the caller owns lifetime.
 
 	// AWS SDK config
 	awsCfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(cfg.Region))
 	if err != nil {
-		return fmt.Errorf("wire aws config: %w", err)
+		pool.Close()
+		return nil, fmt.Errorf("wire aws config: %w", err)
 	}
 
 	// Secrets Manager client (shared by PGP adapters)
@@ -126,103 +142,109 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 	fileStore := s3.New(s3Client, cfg.KMSKeyARN)
 
 	// Aurora repositories
-	batchFileRepo   := aurora.NewBatchFileRepo(pool)
-	domainCmdRepo   := aurora.NewDomainCommandRepo(pool)
-	deadLetterRepo  := aurora.NewDeadLetterRepo(pool)
-	auditRepo       := aurora.NewAuditLogRepo(pool)
+	batchFileRepo    := aurora.NewBatchFileRepo(pool)
+	domainCmdRepo    := aurora.NewDomainCommandRepo(pool)
+	deadLetterRepo   := aurora.NewDeadLetterRepo(pool)
+	auditRepo        := aurora.NewAuditLogRepo(pool)
 	batchRecordsRepo := aurora.NewBatchRecordsRepo(pool)
 	domainStateRepo  := aurora.NewDomainStateRepo(pool)
 
-	// Observability (structured logging to stdout → Datadog Agent sidecar → Datadog)
-	// Zero PHI guarantee enforced in LogEvent — only correlation_id, tenant_id, etc.
+	// Observability
 	obs := &observability.NoopObservability{} // TODO: replace with real Datadog adapter
 
-	// FIS batch assembler — owns all FIS record format knowledge (ADR-001)
-	// SequenceStore uses batchFileRepo to persist per-day sequence counter
-	// FISSequenceRepo persists per-day sequence numbers in Aurora (§6.6.1).
-	// Replaces the hardcoded stub that returned 1 — FIS silently discards duplicate filenames (§6.5.5).
-	seqStore := aurora.NewFISSequenceRepo(pool)
+	// FIS batch assembler
+	seqStore  := aurora.NewFISSequenceRepo(pool)
 	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore, batchRecordsRepo)
 
 	testProdIndicator := byte('P')
 	if cfg.PipelineEnv == "DEV" {
 		testProdIndicator = 'T'
 	}
+	_ = testProdIndicator
 
-	// ── Construct pipeline stages ─────────────────────────────────────────────
-
-	s1 := &stage1.FileArrivalStage{
-		Files:      fileStore,
-		BatchFiles: batchFileRepo,
-		Audit:      auditRepo,
-		Obs:        obs,
+	// PGP decrypt (Stage 2)
+	var pgpDecrypt func(io.Reader) (io.Reader, error)
+	if cfg.PGPPrivateKeySecretARN == "" {
+		if cfg.PipelineEnv != "DEV" {
+			pool.Close()
+			return nil, fmt.Errorf("PGP_PRIVATE_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+		}
+		log.Printf("WARN: using NullPGPDecrypt — DEV environment only")
+		pgpDecrypt = stage2.NullPGPDecrypt
+	} else {
+		dec, err := pgpadapter.LoadDecrypter(ctx, smClient, cfg.PGPPrivateKeySecretARN, cfg.PGPPassphraseSecretARN)
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("load PGP decrypter: %w", err)
+		}
+		pgpDecrypt = dec.Decrypt
 	}
 
-	s2 := &stage2.ValidationStage{
-		Files:       fileStore,
-		BatchFiles:  batchFileRepo,
-		DeadLetters: deadLetterRepo,
-		Audit:       auditRepo,
-		Obs:         obs,
-		PGPDecrypt: func() func(r io.Reader) (io.Reader, error) {
-			if cfg.PGPPrivateKeySecretARN == "" {
-				if cfg.PipelineEnv != "DEV" {
-					log.Fatalf("PGP_PRIVATE_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
-				}
-				log.Printf("WARN: using NullPGPDecrypt — DEV environment only")
-				return stage2.NullPGPDecrypt
-			}
-			dec, err := pgpadapter.LoadDecrypter(ctx, smClient, cfg.PGPPrivateKeySecretARN, cfg.PGPPassphraseSecretARN)
-			if err != nil {
-				log.Fatalf("load PGP decrypter: %v", err)
-			}
-			return dec.Decrypt
-		}(),
+	// PGP encrypt (Stage 4)
+	var pgpEncrypt func(io.Reader) (io.Reader, error)
+	if cfg.PGPFISPublicKeySecretARN == "" {
+		if cfg.PipelineEnv != "DEV" {
+			pool.Close()
+			return nil, fmt.Errorf("PGP_FIS_PUBLIC_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
+		}
+		log.Printf("WARN: using NullPGPEncrypt — DEV environment only")
+		pgpEncrypt = stage4.NullPGPEncrypt
+	} else {
+		enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPFISPublicKeySecretARN)
+		if err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("load PGP encrypter: %w", err)
+		}
+		pgpEncrypt = enc.Encrypt
 	}
 
-	s3stage := &stage3.RowProcessingStage{
-		DomainCommands: domainCmdRepo,
-		DeadLetters:    deadLetterRepo,
-		BatchFiles:     batchFileRepo,
-		BatchRecords:   batchRecordsRepo,
-		DomainState:    domainStateRepo,
-		Programs:       domainStateRepo, // DomainStateRepo satisfies ports.ProgramLookup
-		Audit:          auditRepo,
-		Obs:            obs,
-	}
+	return &PipelineDeps{
+		Stage1: &stage1.FileArrivalStage{
+			Files:      fileStore,
+			BatchFiles: batchFileRepo,
+			Audit:      auditRepo,
+			Obs:        obs,
+		},
+		Stage2: &stage2.ValidationStage{
+			Files:       fileStore,
+			BatchFiles:  batchFileRepo,
+			DeadLetters: deadLetterRepo,
+			Audit:       auditRepo,
+			Obs:         obs,
+			PGPDecrypt:  pgpDecrypt,
+		},
+		Stage3: &stage3.RowProcessingStage{
+			DomainCommands: domainCmdRepo,
+			DeadLetters:    deadLetterRepo,
+			BatchFiles:     batchFileRepo,
+			BatchRecords:   batchRecordsRepo,
+			DomainState:    domainStateRepo,
+			Programs:       domainStateRepo,
+			Audit:          auditRepo,
+			Obs:            obs,
+		},
+		Stage4: &stage4.BatchAssemblyStage{
+			Assembler:         assembler,
+			Files:             fileStore,
+			BatchFiles:        batchFileRepo,
+			Audit:             auditRepo,
+			Obs:               obs,
+			PGPEncrypt:        pgpEncrypt,
+			StagedBucket:      cfg.StagedBucket,
+			FISExchangeBucket: cfg.FISExchangeBucket,
+		},
+	}, nil
+}
 
-	s4 := &stage4.BatchAssemblyStage{
-		Assembler:         assembler,
-		Files:             fileStore,
-		BatchFiles:        batchFileRepo,
-		Audit:             auditRepo,
-		Obs:               obs,
-		PGPEncrypt: func() func(r io.Reader) (io.Reader, error) {
-			if cfg.PGPFISPublicKeySecretARN == "" {
-				if cfg.PipelineEnv != "DEV" {
-					log.Fatalf("PGP_FIS_PUBLIC_KEY_SECRET_ARN is required in %s environment", cfg.PipelineEnv)
-				}
-				log.Printf("WARN: using NullPGPEncrypt — DEV environment only")
-				return stage4.NullPGPEncrypt
-			}
-			enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPFISPublicKeySecretARN)
-			if err != nil {
-				log.Fatalf("load PGP encrypter: %v", err)
-			}
-			return enc.Encrypt
-		}(),
-		StagedBucket:      cfg.StagedBucket,
-		FISExchangeBucket: cfg.FISExchangeBucket,
-	}
-	_ = testProdIndicator // used by assembler via config
-
-	// ── Execute pipeline ──────────────────────────────────────────────────────
-
+// runWithDeps executes the pipeline using pre-wired dependencies.
+// All infrastructure concerns are resolved before this function is called.
+// This is the testable core of the ingest-task.
+func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) error {
 	log.Printf("ingest-task starting: correlation_id=%s tenant=%s file_type=%s env=%s",
 		cfg.CorrelationID, cfg.TenantID, cfg.FileType, cfg.PipelineEnv)
 
 	// Stage 1 — File Arrival
-	batchFile, err := s1.Run(ctx, &stage1.FileArrivalInput{
+	batchFile, err := deps.Stage1.Run(ctx, &stage1.FileArrivalInput{
 		CorrelationID: cfg.CorrelationID,
 		TenantID:      cfg.TenantID,
 		ClientID:      cfg.ClientID,
@@ -235,15 +257,13 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 	}
 
 	// Stage 2 — Validation
-	validationResult, err := s2.Run(ctx, batchFile, cfg.S3Bucket, cfg.S3Key)
+	validationResult, err := deps.Stage2.Run(ctx, batchFile, cfg.S3Bucket, cfg.S3Key)
 	if err != nil {
 		return fmt.Errorf("stage2: %w", err)
 	}
 
 	// Stage 3 — Row Processing
-	// Program lookup is resolved per-row inside Stage 3 via DomainStateRepo.GetProgramByTenantAndSubprogram.
-	// Results are cached within the run — at most one DB query per unique SubprogramID per file.
-	processingResult, err := s3stage.Run(ctx, &stage3.RowProcessingInput{
+	processingResult, err := deps.Stage3.Run(ctx, &stage3.RowProcessingInput{
 		BatchFile:  batchFile,
 		SRG310Rows: validationResult.SRG310Rows,
 		SRG315Rows: validationResult.SRG315Rows,
@@ -257,18 +277,11 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 		return fmt.Errorf("stage3: batch STALLED — unresolved dead letters; use replay-cli to resolve")
 	}
 
-	_ = obs.LogEvent(ctx, &ports.LogEvent{
-		EventType:     "stage3.complete",
-		Level:         "INFO",
-		CorrelationID: &cfg.CorrelationID,
-		TenantID:      &cfg.TenantID,
-		Stage:         strPtr("orchestrator"),
-		Message: fmt.Sprintf("stage3 complete: staged=%d duplicates=%d failed=%d",
-			processingResult.StagedCount, processingResult.DuplicateCount, processingResult.FailedCount),
-	})
+	log.Printf("stage3 complete: staged=%d duplicates=%d failed=%d",
+		processingResult.StagedCount, processingResult.DuplicateCount, processingResult.FailedCount)
 
 	// Stage 4 — Batch Assembly
-	assemblyResult, err := s4.Run(ctx, batchFile)
+	assemblyResult, err := deps.Stage4.Run(ctx, batchFile)
 	if err != nil {
 		return fmt.Errorf("stage4: %w", err)
 	}
@@ -284,25 +297,25 @@ func run(ctx context.Context, cfg *PipelineConfig) error {
 }
 
 func parseConfig() (*PipelineConfig, error) {
-	corrIDStr := flag.String("correlation-id", os.Getenv("CORRELATION_ID"), "correlation UUID")
-	tenantID  := flag.String("tenant-id",      os.Getenv("TENANT_ID"),      "health plan client tenant ID")
-	clientID  := flag.String("client-id",      os.Getenv("CLIENT_ID"),      "Morse client code")
-	s3Bucket  := flag.String("s3-bucket",      os.Getenv("S3_BUCKET"),      "inbound S3 bucket")
-	s3Key     := flag.String("s3-key",         os.Getenv("S3_KEY"),         "S3 object key")
-	fileType  := flag.String("file-type",      os.Getenv("FILE_TYPE"),      "SRG310|SRG315|SRG320")
-	region    := flag.String("region",         envOrDefault("AWS_REGION", "us-east-1"), "AWS region")
-	pipelineEnv := flag.String("env",          envOrDefault("PIPELINE_ENV", "DEV"), "DEV|TST|PRD")
-	dbHost    := flag.String("db-host",        os.Getenv("DB_HOST"),        "Aurora RDS Proxy endpoint")
-	dbName    := flag.String("db-name",        os.Getenv("DB_NAME"),        "database name")
-	dbUser    := flag.String("db-user",        os.Getenv("DB_USER"),        "database user")
-	dbPass    := flag.String("db-password",    os.Getenv("DB_PASSWORD"),    "database password")
-	dbSSL     := flag.String("db-ssl",         envOrDefault("DB_SSL", "require"), "sslmode")
-	kmsKey    := flag.String("kms-key-arn",    os.Getenv("KMS_KEY_ARN"),   "KMS key ARN for SSE")
-	stagedBucket := flag.String("staged-bucket",      os.Getenv("STAGED_BUCKET"),       "staged S3 bucket")
-	fisBucket    := flag.String("fis-exchange-bucket", os.Getenv("FIS_EXCHANGE_BUCKET"), "fis-exchange S3 bucket")
-	fisCompanyID := flag.String("fis-company-id", os.Getenv("FIS_COMPANY_ID"), "FIS Level 1 company identifier (8 chars)")
-	pgpPrivateKeyARN  := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "Secrets Manager ARN for Morse private key (Stage 2 decrypt)")
-	pgpPassphraseARN  := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "Secrets Manager ARN for private key passphrase, or empty")
+	corrIDStr    := flag.String("correlation-id", os.Getenv("CORRELATION_ID"), "correlation UUID")
+	tenantID     := flag.String("tenant-id",      os.Getenv("TENANT_ID"),      "health plan client tenant ID")
+	clientID     := flag.String("client-id",      os.Getenv("CLIENT_ID"),      "Morse client code")
+	s3Bucket     := flag.String("s3-bucket",      os.Getenv("S3_BUCKET"),      "inbound S3 bucket")
+	s3Key        := flag.String("s3-key",         os.Getenv("S3_KEY"),         "S3 object key")
+	fileType     := flag.String("file-type",      os.Getenv("FILE_TYPE"),      "SRG310|SRG315|SRG320")
+	region       := flag.String("region",         envOrDefault("AWS_REGION", "us-east-1"), "AWS region")
+	pipelineEnv  := flag.String("env",            envOrDefault("PIPELINE_ENV", "DEV"), "DEV|TST|PRD")
+	dbHost       := flag.String("db-host",        os.Getenv("DB_HOST"),        "Aurora RDS Proxy endpoint")
+	dbName       := flag.String("db-name",        os.Getenv("DB_NAME"),        "database name")
+	dbUser       := flag.String("db-user",        os.Getenv("DB_USER"),        "database user")
+	dbPass       := flag.String("db-password",    os.Getenv("DB_PASSWORD"),    "database password")
+	dbSSL        := flag.String("db-ssl",         envOrDefault("DB_SSL", "require"), "sslmode")
+	kmsKey       := flag.String("kms-key-arn",    os.Getenv("KMS_KEY_ARN"),   "KMS key ARN for SSE")
+	stagedBucket := flag.String("staged-bucket",       os.Getenv("STAGED_BUCKET"),       "staged S3 bucket")
+	fisBucket    := flag.String("fis-exchange-bucket",  os.Getenv("FIS_EXCHANGE_BUCKET"),  "fis-exchange S3 bucket")
+	fisCompanyID := flag.String("fis-company-id",       os.Getenv("FIS_COMPANY_ID"),       "FIS Level 1 company identifier (8 chars)")
+	pgpPrivateKeyARN   := flag.String("pgp-private-key-secret-arn",    os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),    "Secrets Manager ARN for Morse private key (Stage 2 decrypt)")
+	pgpPassphraseARN   := flag.String("pgp-passphrase-secret-arn",     os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),     "Secrets Manager ARN for private key passphrase, or empty")
 	pgpFISPublicKeyARN := flag.String("pgp-fis-public-key-secret-arn", os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"), "Secrets Manager ARN for FIS public key (Stage 4 encrypt)")
 	replay    := flag.Bool("replay", false, "replay mode — invoked by replay-cli")
 	replaySeq := flag.Int("replay-seq", 0, "row sequence number for replay")
@@ -317,28 +330,28 @@ func parseConfig() (*PipelineConfig, error) {
 	}
 
 	cfg := &PipelineConfig{
-		CorrelationID:         id,
-		TenantID:              *tenantID,
-		ClientID:              *clientID,
-		S3Bucket:              *s3Bucket,
-		S3Key:                 *s3Key,
-		FileType:              *fileType,
-		Region:                *region,
-		PipelineEnv:           *pipelineEnv,
-		DBHost:                *dbHost,
-		DBName:                *dbName,
-		DBUser:                *dbUser,
-		DBPassword:            *dbPass,
-		DBSSLMode:             *dbSSL,
-		KMSKeyARN:             *kmsKey,
-		StagedBucket:          *stagedBucket,
-		FISExchangeBucket:     *fisBucket,
-		FISCompanyID:              *fisCompanyID,
-		PGPPrivateKeySecretARN:    *pgpPrivateKeyARN,
-		PGPPassphraseSecretARN:    *pgpPassphraseARN,
-		PGPFISPublicKeySecretARN:  *pgpFISPublicKeyARN,
-		ReplayMode:                *replay,
-		ReturnFileWaitTimeout: 6 * time.Hour,
+		CorrelationID:            id,
+		TenantID:                 *tenantID,
+		ClientID:                 *clientID,
+		S3Bucket:                 *s3Bucket,
+		S3Key:                    *s3Key,
+		FileType:                 *fileType,
+		Region:                   *region,
+		PipelineEnv:              *pipelineEnv,
+		DBHost:                   *dbHost,
+		DBName:                   *dbName,
+		DBUser:                   *dbUser,
+		DBPassword:               *dbPass,
+		DBSSLMode:                *dbSSL,
+		KMSKeyARN:                *kmsKey,
+		StagedBucket:             *stagedBucket,
+		FISExchangeBucket:        *fisBucket,
+		FISCompanyID:             *fisCompanyID,
+		PGPPrivateKeySecretARN:   *pgpPrivateKeyARN,
+		PGPPassphraseSecretARN:   *pgpPassphraseARN,
+		PGPFISPublicKeySecretARN: *pgpFISPublicKeyARN,
+		ReplayMode:               *replay,
+		ReturnFileWaitTimeout:    6 * time.Hour,
 	}
 	if *replay && *replaySeq > 0 {
 		seq := *replaySeq
@@ -346,8 +359,6 @@ func parseConfig() (*PipelineConfig, error) {
 	}
 	return cfg, nil
 }
-
-// dbSequenceStore removed — replaced by aurora.FISSequenceRepo (see _adapters/aurora/fis_sequence.go).
 
 func envOrDefault(key, def string) string {
 	if v := os.Getenv(key); v != "" {
