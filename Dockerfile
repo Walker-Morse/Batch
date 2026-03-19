@@ -6,10 +6,11 @@ RUN apk add --no-cache ca-certificates git
 
 WORKDIR /build
 COPY go.mod go.sum ./
+ENV GONOSUMDB="*" GOFLAGS="-mod=mod"
 RUN go mod download
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GONOSUMDB="*" GOFLAGS="-mod=mod" \
     go build -ldflags="-s -w" -o /ingest-task ./_cmd/ingest-task
 
 # ── Runtime — minimal scratch image ──────────────────────────────────────────
