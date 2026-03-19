@@ -121,8 +121,8 @@ type FISTransport interface {
 //
 // HARD CONSTRAINT: log events MUST NEVER contain PHI or PII (§7.2, HIPAA §164.312(b),
 // OWASP ASVS 7.1.1). Permitted identifiers: correlation_id, tenant_id, client_id,
-// batch_file_id (int), row_sequence_number (int). This is the technical basis for
-// the "Datadog receives zero PHI" architectural guarantee.
+// batch_file_id (UUID), row_sequence_number (int), domain_command_id (UUID).
+// This is the technical basis for the "Datadog receives zero PHI" architectural guarantee.
 type IObservabilityPort interface {
 	LogEvent(ctx context.Context, event *LogEvent) error
 	RecordMetric(ctx context.Context, name string, value float64, dims map[string]string) error
@@ -219,18 +219,79 @@ type AuditEntry struct {
 	Notes          *string
 }
 
-// LogEvent is a structured observability event — zero PHI permitted.
+// LogEvent is a structured observability event emitted by every pipeline stage.
+//
+// ZERO PHI CONTRACT: The only permitted identifiers are opaque keys —
+// correlation_id, tenant_id, client_id, batch_file_id, row_sequence_number,
+// domain_command_id. No names, dates of birth, addresses, card numbers, or
+// any HIPAA-defined identifier may appear in any field of this struct.
+// Basis: §7.2, HIPAA §164.312(b), OWASP ASVS 7.1.1.
+//
+// Required fields — must be set on every LogEvent without exception:
+//   CorrelationID, TenantID, BatchFileID (use uuid.Nil before Stage 1 writes the row).
+//
+// These three fields are non-pointer values so the compiler enforces their presence.
+// All other fields are optional (*T) and are omitted from the JSON output when nil.
 type LogEvent struct {
-	EventType         string
-	Level             string // INFO|WARN|ERROR
-	CorrelationID     *uuid.UUID
-	TenantID          *string
+	// ── Required on every event ──────────────────────────────────────────────
+	CorrelationID uuid.UUID // non-pointer: always required
+	TenantID      string    // non-pointer: always required
+	BatchFileID   uuid.UUID // non-pointer: always required (uuid.Nil before Stage 1)
+
+	// ── Event identity ───────────────────────────────────────────────────────
+	EventType string // see observability.Event* constants
+	Level     string // INFO | WARN | ERROR
+
+	// ── Optional context ─────────────────────────────────────────────────────
 	ClientID          *string
-	BatchFileID       *uuid.UUID
-	RowSequenceNumber *int
-	Stage             *string
+	Stage             *string    // snake_case stage name e.g. "stage3_row_processing"
 	Message           string
-	Error             *string
+
+	// ── Per-row fields (set only on row-level events) ─────────────────────
+	RowSequenceNumber *int
+	DomainCommandID   *uuid.UUID // domain_commands.id — opaque, zero PHI
+	CommandType       *string    // ENROLL|UPDATE|LOAD|SWEEP|SUSPEND|TERMINATE
+	BenefitPeriod     *string    // ISO YYYY-MM
+	SubprogramID      *int64
+	FISResultCode     *string    // FIS 3-digit result code e.g. "000"
+
+	// ── Failure fields ───────────────────────────────────────────────────────
+	Error           *string // structured error code only — no PHI
+	FailureCategory *string // DATA_GAP|DUPLICATE|PROCESSING_ERROR|SYSTEM_ERROR
+
+	// ── File-level fields (set on file/stage events) ─────────────────────
+	S3Key     *string
+	SizeBytes *int64
+	SHA256    *string // first 8 chars only — never full hash in WARN/ERROR contexts
+
+	// ── Aggregate counts (stage-level summary events) ─────────────────────
+	Total       *int
+	Malformed   *int
+	MalformedRate *string // "0.0%" format
+	Staged      *int
+	Duplicates  *int
+	Failed      *int
+	RT30Count   *int
+	RT37Count   *int
+	RT60Count   *int
+	DeadLetterRate *string // "0.0%" format
+
+	// ── Assembly / transfer fields (Stage 4, 5, 6) ───────────────────────
+	Filename       *string
+	RecordCount    *int
+	ReturnFilename *string
+	WaitMs         *int64
+
+	// ── Reconciliation fields (Stage 7) ──────────────────────────────────
+	Completed    *int
+	RT30Completed *int
+	RT60Completed *int
+
+	// ── Pipeline-level fields ─────────────────────────────────────────────
+	FileType   *string
+	DurationMs *int64
+	Enrolled   *int
+	DeadLettered *int
 }
 
 // AssembleRequest drives the FIS batch assembler for a single correlation ID.
@@ -263,10 +324,6 @@ type PurseRecord         struct{ PurseID uuid.UUID }
 type EnrollmentFact      struct{ CorrelationID uuid.UUID; RowSequenceNumber int }
 type PurseLifecycleFact  struct{ PurseID uuid.UUID; EventType string }
 type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; FISResultCode string }
-
-// SetRecordCount is called by Stage 2 after parsing to record the total row count.
-// Required for Stage 3's stall detection (staged_count vs record_count comparison).
-// This addition is appended here — the interface block above closes before this.
 
 // ─── Program Lookup (Stage 3) ────────────────────────────────────────────────
 
