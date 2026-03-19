@@ -21,7 +21,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"golang.org/x/crypto/openpgp"      //nolint:staticcheck // openpgp/v2 not yet stable
 	"golang.org/x/crypto/openpgp/armor" //nolint:staticcheck
