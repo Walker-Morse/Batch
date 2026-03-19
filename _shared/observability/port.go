@@ -15,20 +15,8 @@
 //
 // ZERO PHI GUARANTEE: This package enforces that no PHI or PII ever reaches
 // structured logs. Permitted identifiers: correlation_id, tenant_id, client_id,
-// batch_file_id (int), row_sequence_number (int).
+// batch_file_id, row_sequence_number, domain_command_id.
 // Basis: HIPAA §164.312(b), OWASP ASVS 7.1.1, §7.2.
-//
-// Required CloudWatch alarms (§7.3):
-//   - File stall:    file not completed within 4 hours of arrival
-//   - Dead letter:   dead.letter.written metric > 0 in any 5-minute window
-//   - Batch halt:    batch.halt.triggered event fires
-//   - Malformed row: > 5% of rows in any file are Rejected_Malformed
-//
-// SLA severity tiers (§6.7.3, SOW Exhibit C):
-//   Severity 1 (Critical): pipeline_error_rate P0 → PagerDuty immediate
-//   Severity 2 (High):     pipeline_stall / dead_letter_rate P1 → on-call
-//   Severity 3 (Medium):   anomaly alert → ticket created
-//   Severity 4 (Low):      logged, no automated alert
 package observability
 
 import (
@@ -40,27 +28,34 @@ import (
 // EventTypes are the canonical structured log event names used throughout the pipeline.
 // These names match the CloudWatch metric filter patterns in §7.3.
 const (
-	EventFileArrived          = "file.arrived"
-	EventFileProcessingComplete = "file.processing.complete"
-	EventReturnFileArrived    = "return.file.arrived"
-	EventDeadLetterWritten    = "dead.letter.written"    // triggers CloudWatch alarm
+	EventFileArrived             = "file.arrived"
+	EventFileProcessingComplete  = "file.processing.complete"
+	EventReturnFileArrived       = "return.file.arrived"
+	EventDeadLetterWritten       = "dead.letter.written"    // triggers CloudWatch alarm
 	EventDeadLetterCaptureFailed = "dead.letter.capture.failed" // higher severity — pages immediately
-	EventBatchHaltTriggered   = "batch.halt.triggered"  // RT99 full-file rejection
-	EventBatchStalled         = "batch.stalled"          // unresolved dead letters at Stage 3 end
-	EventBatchAssembleNightly = "batch.assemble.nightly" // EventBridge Scheduler trigger (ADR-007)
+	EventBatchHaltTriggered      = "batch.halt.triggered"   // RT99 full-file rejection
+	EventBatchStalled            = "batch.stalled"          // unresolved dead letters at Stage 3 end
+	EventBatchAssembleNightly    = "batch.assemble.nightly" // EventBridge Scheduler trigger (ADR-007)
 )
 
-// MetricNames are the canonical Datadog metric names referenced in §6.7.3.
+// MetricNames are the canonical metric names emitted via RecordMetric.
+// CloudWatch metric filters extract metric_value from log events with these names.
+// Datadog Agent sidecar forwards them as custom metrics when wired (pre-UAT gate).
+//
+// All four are required. See §7.3 for alarm thresholds.
 const (
-	MetricPipelineErrorRate = "pipeline_error_rate" // Severity 1 P0 alarm
-	MetricPipelineStall     = "pipeline_stall"      // Severity 2 P1 alarm
-	MetricDeadLetterRate    = "dead_letter_rate"    // Severity 2 P1 alarm
+	MetricDeadLetterRate       = "dead_letter_rate"       // % of rows dead-lettered in Stage 3
+	MetricMalformedRate        = "malformed_rate"         // % of rows malformed in Stage 2
+	MetricEnrollmentSuccessRate = "enrollment_success_rate" // % of RT30s successfully enrolled in Stage 7
+	MetricPipelineDurationMs   = "pipeline_duration_ms"   // wall time for full pipeline run
+	MetricPipelineErrorRate    = "pipeline_error_rate"    // Severity 1 P0 alarm
+	MetricPipelineStall        = "pipeline_stall"         // Severity 2 P1 alarm
 )
 
 // NoopObservability is a no-op implementation for testing.
 type NoopObservability struct{}
 
-func (n *NoopObservability) LogEvent(_ context.Context, _ *ports.LogEvent) error   { return nil }
+func (n *NoopObservability) LogEvent(_ context.Context, _ *ports.LogEvent) error { return nil }
 func (n *NoopObservability) RecordMetric(_ context.Context, _ string, _ float64, _ map[string]string) error {
 	return nil
 }
