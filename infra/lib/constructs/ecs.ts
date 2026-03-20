@@ -12,7 +12,8 @@ export interface EcsProps {
   vpc: ec2.Vpc;
   taskRole: iam.Role;
   executionRole: iam.Role;
-  dbSecret: secretsmanager.ISecret;
+  dbSecret: secretsmanager.ISecret;       // Aurora master secret (for proxy auth grant)
+  ingestTaskSecret: secretsmanager.ISecret; // onefintech/dev/db/ingest-task — runtime credential
   dbProxyEndpoint: string;
   inboundBucketName: string;
   stagedBucketName: string;
@@ -79,6 +80,11 @@ export class EcsConstruct extends Construct {
         STAGED_BUCKET:       props.stagedBucketName,
         FIS_EXCHANGE_BUCKET: props.fisExchangeBucketName,
         FIS_COMPANY_ID:      props.fisCompanyId,
+      },
+      // DB_SECRET_ARN injected at runtime via Secrets Manager — never baked into image.
+      // The ingest_task role has SELECT/INSERT/UPDATE/DELETE; not the master credential.
+      secrets: {
+        DB_SECRET_ARN: ecs.Secret.fromSecretsManager(props.ingestTaskSecret),
       },
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "ingest-task", logGroup }),
       essential: true,

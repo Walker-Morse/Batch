@@ -170,10 +170,14 @@ export class GrafanaConstruct extends Construct {
         GF_SERVER_ROOT_URL:          `http://onefintech-${env}-grafana.internal`,
         GF_AUTH_ANONYMOUS_ENABLED:   "false",
         GF_SECURITY_ADMIN_USER:      "admin",
-        GF_INSTALL_PLUGINS:          "grafana-cloudwatch-datasource",
+        // GF_INSTALL_PLUGINS intentionally omitted: CloudWatch is bundled in Grafana v10+;
+        // installing it as external returns 404 and crashes the container on startup.
         GF_PATHS_DATA:               "/var/lib/grafana",
         GF_LOG_MODE:                 "console",
         GF_LOG_LEVEL:                "info",
+        // WAL mode prevents "database is locked" errors on internal SQLite under concurrent
+        // tester load. Upgrade to GF_DATABASE_TYPE=postgres if contention persists at UAT.
+        GF_DATABASE_WAL:             "true",
         AWS_DEFAULT_REGION:          cdk.Stack.of(this).region,
       },
       secrets: {

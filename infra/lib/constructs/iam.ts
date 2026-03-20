@@ -11,6 +11,7 @@ export interface IamProps {
   stagedBucket: s3.IBucket;
   fisExchangeBucket: s3.IBucket;
   dbSecret: secretsmanager.ISecret;
+  ingestTaskSecret: secretsmanager.ISecret; // onefintech/{env}/db/ingest-task — injected into ECS at runtime
   kmsKey: kms.IKey;
   /**
    * ARNs of Secrets Manager secrets for PGP keys.
@@ -82,7 +83,7 @@ export class IamConstruct extends Construct {
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "SecretsManagerRead",
       actions: ["secretsmanager:GetSecretValue"],
-      resources: [props.dbSecret.secretArn, ...pgpSecretArns],
+      resources: [props.dbSecret.secretArn, props.ingestTaskSecret.secretArn, ...pgpSecretArns],
     }));
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "KmsUsage",
@@ -110,7 +111,7 @@ export class IamConstruct extends Construct {
     this.executionRole.addToPolicy(new iam.PolicyStatement({
       sid: "ExecutionRoleSecrets",
       actions: ["secretsmanager:GetSecretValue"],
-      resources: [props.dbSecret.secretArn],
+      resources: [props.dbSecret.secretArn, props.ingestTaskSecret.secretArn],
     }));
 
     this.schedulerRole = new iam.Role(this, "SchedulerRole", {

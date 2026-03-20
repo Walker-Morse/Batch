@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { NetworkingConstruct } from "../constructs/networking";
 import { StorageConstruct } from "../constructs/storage";
@@ -43,12 +44,20 @@ export class OneFintechStack extends cdk.Stack {
     const aurora = new AuroraConstruct(this, "Aurora", {
       env, vpc: networking.vpc, minAcu: auroraMinAcu, maxAcu: auroraMaxAcu,
     });
+
+    // Import the pre-created ingest_task credential (created by db-roles migration Lambda).
+    // Secret name: onefintech/{env}/db/ingest-task — not managed by CDK, imported by name.
+    const ingestTaskSecret = secretsmanager.Secret.fromSecretNameV2(
+      this, "IngestTaskSecret", `onefintech/${env}/db/ingest-task`
+    );
+
     const iam = new IamConstruct(this, "Iam", {
       env,
       inboundBucket: storage.inboundBucket,
       stagedBucket: storage.stagedBucket,
       fisExchangeBucket: storage.fisExchangeBucket,
       dbSecret: aurora.dbSecret,
+      ingestTaskSecret,
       kmsKey: storage.kmsKey,
       pgpPrivateKeySecretArn,
       pgpPassphraseSecretArn,
@@ -61,6 +70,7 @@ export class OneFintechStack extends cdk.Stack {
       executionRole: iam.executionRole,
       dbSecret: aurora.dbSecret,
       dbProxyEndpoint: aurora.proxyEndpoint,
+      ingestTaskSecret,
       inboundBucketName: storage.inboundBucket.bucketName,
       stagedBucketName: storage.stagedBucket.bucketName,
       fisExchangeBucketName: storage.fisExchangeBucket.bucketName,
