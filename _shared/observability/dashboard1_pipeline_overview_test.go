@@ -19,7 +19,6 @@ package observability_test
 //   - correlation_id + tenant_id + batch_file_id present on every event
 //   - stage.complete events emitted in correct sequence
 
-package observability_test
 
 import (
 	"context"

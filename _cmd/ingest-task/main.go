@@ -443,7 +443,8 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	}
 
 	// ── Stage 7 — Reconciliation ──────────────────────────────────────────
-	if err := deps.Stage7.Run(ctx, batchFile, waitResult.Body); err != nil {
+	reconcResult, err := deps.Stage7.Run(ctx, batchFile, waitResult.Body)
+	if err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage7: %w", err))
 	}
 
@@ -453,9 +454,9 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	dl        := processingResult.FailedCount
 	dups      := processingResult.DuplicateCount
 
-	// enrolled count not yet tracked at pipeline level (Stage 7 returns no count).
-	// Set to staged as best approximation until Stage 7 returns reconciliation counts.
-	enrolled := staged
+	// enrolled = Stage 7 Completed (FIS result code 000). Authoritative count.
+	// replaces the prior approximation (enrolled = staged).
+	enrolled := reconcResult.Completed
 
 	_ = obs.LogEvent(ctx, &ports.LogEvent{
 		EventType:    "pipeline.complete",
@@ -473,7 +474,18 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 			durationMs, staged, enrolled, dl, dups),
 	})
 
-	_ = obs.RecordMetric(ctx, "pipeline_duration_ms", float64(durationMs), map[string]string{
+	_ = obs.RecordMetric(ctx, observability.MetricPipelineDurationMs, float64(durationMs), map[string]string{
+		"tenant_id": cfg.TenantID,
+		"env":       cfg.PipelineEnv,
+	})
+
+	// enrollment_success_rate: % of Stage 7 records with FIS result code 000.
+	// Feeds Dashboard 1 stat panel and CloudWatch alarm §7.3.
+	enrollmentRate := 0.0
+	if reconcResult.Total > 0 {
+		enrollmentRate = float64(reconcResult.Completed) / float64(reconcResult.Total) * 100
+	}
+	_ = obs.RecordMetric(ctx, observability.MetricEnrollmentSuccessRate, enrollmentRate, map[string]string{
 		"tenant_id": cfg.TenantID,
 		"env":       cfg.PipelineEnv,
 	})

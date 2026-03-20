@@ -13,7 +13,10 @@ import (
 )
 
 // pipeAdapter wires the adapter to write into a bytes.Buffer via an OS pipe.
-func pipeAdapter(t *testing.T) (*CloudWatchAdapter, *bytes.Buffer) {
+// Returns the adapter, buffer, and a flush func.
+// Call flush() after all LogEvent/RecordMetric calls to synchronously drain
+// the pipe before asserting on buf.String().
+func pipeAdapter(t *testing.T) (*CloudWatchAdapter, *bytes.Buffer, func()) {
 	t.Helper()
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -29,14 +32,15 @@ func pipeAdapter(t *testing.T) (*CloudWatchAdapter, *bytes.Buffer) {
 		buf.Write(b[:n])
 		r.Close()
 	}()
-	t.Cleanup(func() { w.Close(); <-done })
-	return a, buf
+	flush := func() { w.Close(); <-done }
+	t.Cleanup(flush)
+	return a, buf, flush
 }
 
 // ─── Required fields always present ──────────────────────────────────────────
 
 func TestLogEvent_RequiredFieldsAlwaysPresent(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	corrID  := uuid.New()
 	batchID := uuid.New()
@@ -51,7 +55,7 @@ func TestLogEvent_RequiredFieldsAlwaysPresent(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("LogEvent() error: %v", err)
 	}
-	a.out.Close()
+	flush()
 
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &raw); err != nil {
@@ -78,7 +82,7 @@ func TestLogEvent_RequiredFieldsAlwaysPresent(t *testing.T) {
 func TestLogEvent_UuidNilBatchFileID_StillPresent(t *testing.T) {
 	// Before Stage 1 writes the batch_files row, BatchFileID is uuid.Nil.
 	// It must still appear in the JSON — not be omitted.
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	if err := a.LogEvent(context.Background(), &ports.LogEvent{
 		EventType:     "pipeline.startup",
@@ -90,7 +94,7 @@ func TestLogEvent_UuidNilBatchFileID_StillPresent(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("LogEvent() error: %v", err)
 	}
-	a.out.Close()
+	flush()
 
 	var raw map[string]interface{}
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &raw)
@@ -102,7 +106,7 @@ func TestLogEvent_UuidNilBatchFileID_StillPresent(t *testing.T) {
 // ─── Optional fields omitted when nil ────────────────────────────────────────
 
 func TestLogEvent_OptionalFieldsOmittedWhenNil(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	if err := a.LogEvent(context.Background(), &ports.LogEvent{
 		EventType:     "batch.halt.triggered",
@@ -114,7 +118,7 @@ func TestLogEvent_OptionalFieldsOmittedWhenNil(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("LogEvent() error: %v", err)
 	}
-	a.out.Close()
+	flush()
 
 	var raw map[string]interface{}
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &raw)
@@ -139,7 +143,7 @@ func TestLogEvent_OptionalFieldsOmittedWhenNil(t *testing.T) {
 // ─── Per-row event fields ─────────────────────────────────────────────────────
 
 func TestLogEvent_RowStagedFields(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	corrID  := uuid.New()
 	batchID := uuid.New()
@@ -163,7 +167,7 @@ func TestLogEvent_RowStagedFields(t *testing.T) {
 		SubprogramID:      &sub,
 		Message:           "row staged: seq=2 command=ENROLL period=2026-06",
 	})
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchLogEntry
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry)
@@ -188,7 +192,7 @@ func TestLogEvent_RowStagedFields(t *testing.T) {
 // ─── Stage3.complete aggregate fields ────────────────────────────────────────
 
 func TestLogEvent_Stage3CompleteFields(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	staged := 3; rt30 := 3; rt37 := 0; rt60 := 0; dups := 0; failed := 0
 
@@ -208,7 +212,7 @@ func TestLogEvent_Stage3CompleteFields(t *testing.T) {
 		DeadLetterRate: strPtr("0.0%"),
 		Message:        "stage3 complete: staged=3 duplicates=0 failed=0",
 	})
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchLogEntry
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry)
@@ -227,7 +231,7 @@ func TestLogEvent_Stage3CompleteFields(t *testing.T) {
 // ─── Dead letter failure_category ────────────────────────────────────────────
 
 func TestLogEvent_DeadLetterFailureCategory(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	seq := 3
 	ct  := "ENROLL"
@@ -247,7 +251,7 @@ func TestLogEvent_DeadLetterFailureCategory(t *testing.T) {
 		Error:             &er,
 		Message:           "dead_letter: seq=3 reason=program_lookup_failed(subprogram=99999)",
 	})
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchLogEntry
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry)
@@ -263,7 +267,7 @@ func TestLogEvent_DeadLetterFailureCategory(t *testing.T) {
 // ─── pipeline.complete ────────────────────────────────────────────────────────
 
 func TestLogEvent_PipelineComplete(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	dur := int64(1112)
 	staged := 3; enrolled := 3; dl := 0; dups := 0
@@ -282,7 +286,7 @@ func TestLogEvent_PipelineComplete(t *testing.T) {
 		Duplicates:    &dups,
 		Message:       "pipeline complete: duration=1112ms staged=3 enrolled=3 dead_lettered=0 duplicates=0",
 	})
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchLogEntry
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry)
@@ -301,7 +305,7 @@ func TestLogEvent_PipelineComplete(t *testing.T) {
 // ─── Single-line output ───────────────────────────────────────────────────────
 
 func TestLogEvent_SingleLineOutput(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	a.LogEvent(context.Background(), &ports.LogEvent{
 		EventType:     "file.arrived",
@@ -311,7 +315,7 @@ func TestLogEvent_SingleLineOutput(t *testing.T) {
 		BatchFileID:   uuid.New(),
 		Message:       "file arrived",
 	})
-	a.out.Close()
+	flush()
 
 	output := strings.TrimSpace(buf.String())
 	if strings.Contains(output, "\n") {
@@ -322,7 +326,7 @@ func TestLogEvent_SingleLineOutput(t *testing.T) {
 // ─── Error field ──────────────────────────────────────────────────────────────
 
 func TestLogEvent_ErrorFieldPresent(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	errMsg := "db: connection timeout"
 	a.LogEvent(context.Background(), &ports.LogEvent{
@@ -334,7 +338,7 @@ func TestLogEvent_ErrorFieldPresent(t *testing.T) {
 		Message:       "pipeline halted",
 		Error:         &errMsg,
 	})
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchLogEntry
 	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry)
@@ -346,7 +350,7 @@ func TestLogEvent_ErrorFieldPresent(t *testing.T) {
 // ─── RecordMetric ─────────────────────────────────────────────────────────────
 
 func TestRecordMetric_WritesJSON(t *testing.T) {
-	a, buf := pipeAdapter(t)
+	a, buf, flush := pipeAdapter(t)
 
 	if err := a.RecordMetric(context.Background(), "dead_letter_rate", 3.0, map[string]string{
 		"tenant_id": "rfu-oregon",
@@ -354,7 +358,7 @@ func TestRecordMetric_WritesJSON(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RecordMetric() error: %v", err)
 	}
-	a.out.Close()
+	flush()
 
 	var entry cloudWatchMetricEntry
 	if err := json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry); err != nil {

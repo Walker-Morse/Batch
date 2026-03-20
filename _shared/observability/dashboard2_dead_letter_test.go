@@ -20,7 +20,6 @@ package observability_test
 //   F — dead_letter_rate metric emitted with correct value
 //   G — Failure category vocabulary is closed set (no unknown values)
 
-package observability_test
 
 import (
 	"context"

@@ -46,18 +46,29 @@ type ReconciliationStage struct {
 	Obs            ports.IObservabilityPort
 }
 
+// ReconciliationResult carries the reconciliation counts back to the pipeline orchestrator.
+// These are used to emit the true enrolled count in pipeline.complete (not an approximation).
+type ReconciliationResult struct {
+	Completed int // records with FIS result code 000
+	Failed    int // records with non-000 result code or reconcile error
+	Total     int // total data records processed (excludes header/trailer)
+}
+
 // Run ingests the FIS return file stream and reconciles every result record.
-func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFile, returnBody io.ReadCloser) error {
+func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFile, returnBody io.ReadCloser) (*ReconciliationResult, error) {
 	defer returnBody.Close()
 
 	records, err := fis_adapter.ParseReturnFile(returnBody)
 	if err != nil {
-		return fmt.Errorf("stage7: parse return file: %w", err)
+		return nil, fmt.Errorf("stage7: parse return file: %w", err)
 	}
 
 	dataRecords := dataRecordsOnly(records)
 	if fis_adapter.IsRT99Halt(len(records), firstRecordType(records)) {
-		return s.handleFullFileHalt(ctx, batchFile, records)
+		if herr := s.handleFullFileHalt(ctx, batchFile, records); herr != nil {
+			return nil, herr
+		}
+		return &ReconciliationResult{}, nil
 	}
 
 	completed, failed := 0, 0
@@ -84,7 +95,7 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 	}
 
 	if err := s.BatchFiles.UpdateStatus(ctx, batchFile.ID, string(domain.BatchFileComplete), time.Now().UTC()); err != nil {
-		return fmt.Errorf("stage7: update status COMPLETE: %w", err)
+		return nil, fmt.Errorf("stage7: update status COMPLETE: %w", err)
 	}
 
 	total := len(dataRecords)
@@ -112,7 +123,7 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 		Message:       fmt.Sprintf("complete: completed=%d failed=%d total=%d", completed, failed, total),
 	})
 
-	return nil
+	return &ReconciliationResult{Completed: completed, Failed: failed, Total: total}, nil
 }
 
 // reconcileRecord processes a single return record.

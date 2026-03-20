@@ -22,7 +22,6 @@ package observability_test
 //   F — Rate trend: multiple pipeline runs produce multiple metric data points
 //   G — Metric dimensions always include tenant_id and env
 
-package observability_test
 
 import (
 	"context"

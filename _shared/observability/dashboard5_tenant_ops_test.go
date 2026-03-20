@@ -13,7 +13,6 @@ package observability_test
 //   E — file.arrived events carry size_bytes for cross-tenant byte volume
 //   F — stage3.complete rt30_count/rt37_count/rt60_count per tenant
 
-package observability_test
 
 import (
 	"context"

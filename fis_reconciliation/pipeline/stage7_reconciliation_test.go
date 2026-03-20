@@ -163,7 +163,7 @@ func TestStage7_RT30_HappyPath(t *testing.T) {
 	})
 	returnBody := buildReturnFile(rt30)
 
-	err := stage.Run(context.Background(), batchFile, returnBody)
+	_, err := stage.Run(context.Background(), batchFile, returnBody)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -221,7 +221,7 @@ func TestStage7_RT60_HappyPath(t *testing.T) {
 	rt60 := buildReturnRecord(fis_adapter.RTFundLoad, "MBR-001", "000", map[string]string{
 		"purse_num": "00042",
 	})
-	err := stage.Run(context.Background(), batchFile, buildReturnFile(rt60))
+	_, err := stage.Run(context.Background(), batchFile, buildReturnFile(rt60))
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -255,7 +255,7 @@ func TestStage7_IndividualRT99_MarksFailed(t *testing.T) {
 
 	m.batchRecords.Register(batchFile.CorrelationID, 1, fis_adapter.RTNewAccount, recordID, cmdID, "2026-06")
 
-	err := stage.Run(context.Background(), batchFile, buildReturnFile(rt30Success, rt99Individual))
+	_, err := stage.Run(context.Background(), batchFile, buildReturnFile(rt30Success, rt99Individual))
 
 	// Should not halt — file has more than one record
 	if err != nil {
@@ -274,7 +274,7 @@ func TestStage7_FullFileHalt_RT99Only(t *testing.T) {
 	stage, m := newStage7WithMocks()
 	batchFile := makeBatchFileTransferred(m.batchFiles)
 
-	err := stage.Run(context.Background(), batchFile, buildReturnFile(rt99Record("E99")))
+	_, err := stage.Run(context.Background(), batchFile, buildReturnFile(rt99Record("E99")))
 
 	if err == nil {
 		t.Fatal("expected error for full-file halt")
@@ -317,7 +317,7 @@ func TestStage7_RecordReconcileError_NonFatal(t *testing.T) {
 	rt30Bad := buildReturnRecord(fis_adapter.RTNewAccount, "MBR-001", "000", nil)  // seq=1, no staged row
 	rt30Good := buildReturnRecord(fis_adapter.RTNewAccount, "MBR-002", "000", nil) // seq=2, seeded
 
-	err := stage.Run(context.Background(), batchFile, buildReturnFile(rt30Bad, rt30Good))
+	_, err := stage.Run(context.Background(), batchFile, buildReturnFile(rt30Bad, rt30Good))
 
 	// File should still reach COMPLETE despite the seq=1 error
 	if err != nil {
@@ -338,7 +338,7 @@ func TestStage7_AuditOnComplete(t *testing.T) {
 	batchFile := makeBatchFileTransferred(m.batchFiles)
 
 	// Empty return file — no data records, just completes
-	err := stage.Run(context.Background(), batchFile, buildReturnFile())
+	_, err := stage.Run(context.Background(), batchFile, buildReturnFile())
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -376,7 +376,7 @@ func TestStage7_DomainCommandStatusUpdated(t *testing.T) {
 	rt30 := buildReturnRecord(fis_adapter.RTNewAccount, "MBR-001", "000", map[string]string{
 		"person_id": "P1", "cuid": "C1", "card_id": "K1",
 	})
-	_ = stage.Run(context.Background(), batchFile, buildReturnFile(rt30))
+	_, _ = stage.Run(context.Background(), batchFile, buildReturnFile(rt30))
 
 	if len(m.domainCommands.StatusUpdates) == 0 {
 		t.Fatal("expected domain_command status update")
@@ -399,7 +399,7 @@ func TestStage7_ParseFailure_ReturnsError(t *testing.T) {
 	pr, pw := io.Pipe()
 	pw.CloseWithError(fmt.Errorf("s3: read error"))
 
-	err := stage.Run(context.Background(), batchFile, pr)
+	_, err := stage.Run(context.Background(), batchFile, pr)
 
 	if err == nil {
 		t.Fatal("expected error; got nil")

@@ -14,7 +14,6 @@ package observability_test
 //   - fis_result_code "000" on member.enrolled
 //   - enrollment_success_rate metric emitted after stage7
 
-package observability_test
 
 import (
 	"context"

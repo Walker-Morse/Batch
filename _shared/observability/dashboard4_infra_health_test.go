@@ -19,7 +19,6 @@ package observability_test
 //   D — stage7.identifier_stamp_failed is non-fatal (ERROR level, no pipeline abort)
 //   E — stage4.staged_delete_failed emitted with ERROR level
 
-package observability_test
 
 import (
 	"context"
