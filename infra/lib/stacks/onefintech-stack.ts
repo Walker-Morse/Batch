@@ -8,6 +8,7 @@ import { EcsConstruct } from "../constructs/ecs";
 import { SchedulerConstruct } from "../constructs/scheduler";
 import { TriggerConstruct } from "../constructs/trigger";
 import { SftpConstruct } from "../constructs/sftp";
+import { GrafanaConstruct } from "../constructs/grafana";
 
 export interface OneFintechStackProps extends cdk.StackProps {
   environment: "dev" | "tst" | "prd";
@@ -94,6 +95,13 @@ export class OneFintechStack extends cdk.Stack {
       inboundBucket: storage.inboundBucket,
       kmsKey: storage.kmsKey,
       vpc: networking.vpc,
+    });
+
+    // Grafana: self-hosted on ECS Fargate, read-only CloudWatch access for UAT team
+    new GrafanaConstruct(this, "Grafana", {
+      env,
+      vpc: networking.vpc,
+      cluster: ecs.cluster,
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
