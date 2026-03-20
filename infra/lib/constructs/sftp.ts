@@ -35,7 +35,7 @@ export interface SftpProps {
 export class SftpConstruct extends Construct {
   public readonly server: transfer.CfnServer;
   public readonly serverEndpoint: string;
-  public readonly userSecretArn: string;
+
 
   constructor(scope: Construct, id: string, props: SftpProps) {
     super(scope, id);
@@ -46,7 +46,7 @@ export class SftpConstruct extends Construct {
     const loggingRole = new iam.Role(this, "TransferLoggingRole", {
       roleName: `onefintech-${env}-transfer-logging-role`,
       assumedBy: new iam.ServicePrincipal("transfer.amazonaws.com"),
-      description: "Transfer Family → CloudWatch Logs",
+      description: "Transfer Family to CloudWatch Logs",
     });
     loggingRole.addToPolicy(new iam.PolicyStatement({
       actions: [
@@ -113,7 +113,7 @@ export class SftpConstruct extends Construct {
     const userRole = new iam.Role(this, `TransferUserRole${safeName}`, {
       roleName: `onefintech-${env}-sftp-user-${tenantId}`,
       assumedBy: new iam.ServicePrincipal("transfer.amazonaws.com"),
-      description: `SFTP user role for tenant ${tenantId}`,
+      description: "SFTP user role scoped to inbound-raw prefix",
     });
 
     userRole.addToPolicy(new iam.PolicyStatement({
@@ -135,7 +135,7 @@ export class SftpConstruct extends Construct {
     // Placeholder SSH public key — replace via Secrets Manager before MCO handoff
     // Format: "ssh-rsa AAAA..."
     const placeholderPubKey =
-      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC0placeholder-replace-before-mco-handoff onefintech-dev-rfu-oregon";
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCxm3ee4MVKrks+0sn0CM4ybs3JKUCx2/FPPsatUZ76B67renSC4UwNFNqyN2BgXWMDRBGmmXBII8Gbl96pMs4aPaJFNNReVKOKO+fXhT1jUFyyM5KBahz0td7wVTmK40B4VAANZwuxnyywN5POLTx+DTEUg9a0+lC/rlVv0kh63PrcgrxvgHgtxCXBYhlc8ki6r03Tpo+MSq3UNJbrfcw11w9o2DZ0s5dgX1BxSaIScqsp0F3GM+ionIvRe+IcxiXOw+KL8GfnWghe3KBFjc+w1S/Br+Bdo/LloMG+s7/KGkLS85NSnQNyhHa+vccCcg5LPdKY7hTf/nk9ua/xTUTd onefintech-dev-rfu-oregon";
 
     new transfer.CfnUser(this, `SftpUser${safeName}`, {
       serverId: this.server.attrServerId,
