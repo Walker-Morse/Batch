@@ -170,8 +170,9 @@ export class GrafanaConstruct extends Construct {
         GF_SERVER_ROOT_URL:          `http://onefintech-${env}-grafana.internal`,
         GF_AUTH_ANONYMOUS_ENABLED:   "false",
         GF_SECURITY_ADMIN_USER:      "admin",
-        // GF_INSTALL_PLUGINS intentionally omitted: CloudWatch is bundled in Grafana v10+;
-        // installing it as external returns 404 and crashes the container on startup.
+        // Infinity datasource: enables HTTP/JSON endpoint queries for Dashboard 3 S3 file browser.
+        // CloudWatch intentionally excluded — it is bundled in Grafana v10+ (external install = 404 crash).
+        GF_INSTALL_PLUGINS:          "yesoreyeram-infinity-datasource",
         GF_PATHS_DATA:               "/var/lib/grafana",
         GF_LOG_MODE:                 "console",
         GF_LOG_LEVEL:                "info",
