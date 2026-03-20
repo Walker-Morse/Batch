@@ -579,8 +579,47 @@ func parseConfig() (*PipelineConfig, error) {
 	returnTimeout         := flag.Duration("return-file-timeout", 6*time.Hour, "Stage 6 return file wait timeout")
 	flag.Parse()
 
+	// Derive TENANT_ID and CLIENT_ID from S3 key path when not explicitly set.
+	// Expected key convention: inbound-raw/{tenant_id}/{client_id}/YYYY/MM/DD/filename
+	// Falls back to env/flag values if set; empty string is acceptable in DEV.
+	if *tenantID == "" && *s3Key != "" {
+		parts := strings.SplitN(*s3Key, "/", 4)
+		if len(parts) >= 3 {
+			*tenantID = parts[1]
+		}
+	}
+	if *clientID == "" && *s3Key != "" {
+		parts := strings.SplitN(*s3Key, "/", 4)
+		if len(parts) >= 3 {
+			*clientID = parts[2]
+		}
+	}
+
+	// Derive FILE_TYPE from S3 key suffix when not explicitly set.
+	// Supports: .srg310 / .srg315 / .srg320 and their .pgp variants.
+	// Falls back to SRG310 if unrecognised (most common case in Phase 1).
+	if *fileType == "" && *s3Key != "" {
+		lower := strings.ToLower(*s3Key)
+		switch {
+		case strings.Contains(lower, "srg315"):
+			*fileType = "SRG315"
+		case strings.Contains(lower, "srg320"):
+			*fileType = "SRG320"
+		default:
+			*fileType = "SRG310"
+		}
+	}
+
+	// Generate CORRELATION_ID deterministically from (s3Bucket + s3Key) when not set.
+	// UUID v5 (SHA-1 namespace) — same key always produces the same correlation ID,
+	// making EventBridge-triggered replays fully idempotent (Stage 3 deduplication
+	// catches re-submitted rows; the correlation ID itself is stable).
 	if *corrIDStr == "" {
-		return nil, fmt.Errorf("--correlation-id is required")
+		if *s3Key == "" {
+			return nil, fmt.Errorf("--correlation-id is required when --s3-key is not set")
+		}
+		seed := *s3Bucket + "/" + *s3Key
+		*corrIDStr = uuid.NewSHA1(uuid.NameSpaceURL, []byte(seed)).String()
 	}
 	id, err := uuid.Parse(*corrIDStr)
 	if err != nil {
