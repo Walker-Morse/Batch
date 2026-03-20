@@ -10,6 +10,7 @@ import { SchedulerConstruct } from "../constructs/scheduler";
 import { TriggerConstruct } from "../constructs/trigger";
 import { SftpConstruct } from "../constructs/sftp";
 import { GrafanaConstruct } from "../constructs/grafana";
+import { S3ListerConstruct } from "../constructs/s3-lister";
 
 export interface OneFintechStackProps extends cdk.StackProps {
   environment: "dev" | "tst" | "prd";
@@ -112,6 +113,12 @@ export class OneFintechStack extends cdk.Stack {
       env,
       vpc: networking.vpc,
       cluster: ecs.cluster,
+    });
+
+    // S3 lister: Lambda + HTTP API for Grafana Dashboard 3 file browser panel
+    new S3ListerConstruct(this, "S3Lister", {
+      env,
+      inboundBucket: storage.inboundBucket,
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
