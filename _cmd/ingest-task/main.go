@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -165,29 +166,44 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	_ = testProdIndicator
 
 	// PGP decrypt (Stage 2)
+	// Encryption is detected from the S3 key suffix at runtime:
+	//   .pgp suffix  → real PGP decrypt using key from Secrets Manager
+	//   all others   → PassthroughDecrypt (plaintext .csv/.srg310/.srg315/.srg320)
+	// This allows both encrypted (TST/PRD MCO files) and plaintext (DEV test files)
+	// to flow through the same pipeline without environment-level overrides.
 	var pgpDecrypt func(io.Reader) (io.Reader, error)
-	if cfg.PGPPrivateKeySecretARN == "" {
-		if cfg.PipelineEnv != "DEV" {
+	if strings.HasSuffix(strings.ToLower(cfg.S3Key), ".pgp") {
+		if cfg.PGPPrivateKeySecretARN == "" {
 			pool.Close()
-			return nil, fmt.Errorf("PGP_PRIVATE_KEY_SECRET_ARN required in %s", cfg.PipelineEnv)
+			return nil, fmt.Errorf("S3 key %q has .pgp suffix but PGP_PRIVATE_KEY_SECRET_ARN is not set", cfg.S3Key)
 		}
-		_ = obs.LogEvent(ctx, &ports.LogEvent{
-			EventType:     "pipeline.warn",
-			Level:         "WARN",
-			CorrelationID: cfg.CorrelationID,
-			TenantID:      cfg.TenantID,
-			BatchFileID:   uuid.Nil,
-			Stage:         strPtr("pipeline"),
-			Message:       "NullPGPDecrypt active — DEV only; never use in TST or PRD",
-		})
-		pgpDecrypt = stage2.NullPGPDecrypt
-	} else {
 		dec, err := pgpadapter.LoadDecrypter(ctx, smClient, cfg.PGPPrivateKeySecretARN, cfg.PGPPassphraseSecretARN)
 		if err != nil {
 			pool.Close()
 			return nil, fmt.Errorf("load PGP decrypter: %w", err)
 		}
 		pgpDecrypt = dec.Decrypt
+		_ = obs.LogEvent(ctx, &ports.LogEvent{
+			EventType:     "pipeline.startup",
+			Level:         "INFO",
+			CorrelationID: cfg.CorrelationID,
+			TenantID:      cfg.TenantID,
+			BatchFileID:   uuid.Nil,
+			Stage:         strPtr("pipeline"),
+			Message:       "PGP decrypt active: file is encrypted",
+		})
+	} else {
+		// Plaintext file — passthrough, no decryption needed
+		pgpDecrypt = stage2.PassthroughDecrypt
+		_ = obs.LogEvent(ctx, &ports.LogEvent{
+			EventType:     "pipeline.startup",
+			Level:         "INFO",
+			CorrelationID: cfg.CorrelationID,
+			TenantID:      cfg.TenantID,
+			BatchFileID:   uuid.Nil,
+			Stage:         strPtr("pipeline"),
+			Message:       "passthrough decrypt active: file is plaintext (no .pgp suffix)",
+		})
 	}
 
 	// PGP encrypt (Stage 4)

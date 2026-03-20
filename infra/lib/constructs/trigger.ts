@@ -82,9 +82,18 @@ export class TriggerConstruct extends Construct {
           bucket: {
             name: [props.inboundBucket.bucketName],
           },
-          // Scope to .pgp files only — ignore lifecycle, access log objects, etc.
+          // Accept both PGP-encrypted (.pgp) and plaintext SRG files.
+          // .pgp  — MCO production files (TST/PRD)
+          // .csv / .srg310 / .srg315 / .srg320 — DEV test files and future plaintext MCOs
+          // Stage 2 detects encryption from the key suffix at runtime.
           object: {
-            key: [{ suffix: ".pgp" }],
+            key: [
+              { suffix: ".pgp" },
+              { suffix: ".csv" },
+              { suffix: ".srg310" },
+              { suffix: ".srg315" },
+              { suffix: ".srg320" },
+            ],
           },
         },
       },

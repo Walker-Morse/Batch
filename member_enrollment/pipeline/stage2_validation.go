@@ -1,5 +1,5 @@
 // Stage 2 — Validation (§5.1):
-//   PGP decrypt → SRG format validation →
+//   PGP decrypt (or passthrough for plaintext) → SRG format validation →
 //   malformed rows → dead_letter_store → sha256_plaintext written.
 //
 // Status transition: RECEIVED → VALIDATING
@@ -8,9 +8,11 @@
 //   1. Per-row parse failure: row goes to dead_letter_store, processing continues
 //   2. File-level failure (decrypt error, unknown file type): batch_files → HALTED
 //
-// The plaintext SHA-256 is computed after decrypt and stored alongside the
-// encrypted SHA-256 written by Stage 1 — together they form the non-repudiation
-// evidence chain (§6.1, §4.1).
+// Encryption detection: handled upstream in wireDeps (main.go) by inspecting
+// the S3 key suffix. PGPDecrypt is wired with either the real decrypter (for .pgp
+// files) or PassthroughDecrypt (for plaintext .csv/.srg310/.srg315/.srg320 files).
+// Stage 2 itself has no knowledge of whether the file is encrypted — it only
+// calls PGPDecrypt and processes the resulting reader.
 package pipeline
 
 import (
@@ -34,10 +36,10 @@ type ValidationStage struct {
 	DeadLetters ports.DeadLetterRepository
 	Audit       ports.AuditLogWriter
 	Obs         ports.IObservabilityPort
-	// PGPDecrypt decrypts a PGP-encrypted reader using the client's private key.
-	// Key loaded from Secrets Manager at task startup.
-	// Use NullPGPDecrypt for local DEV testing only — never in TST or PRD.
-	PGPDecrypt func(encrypted io.Reader) (io.Reader, error)
+	// PGPDecrypt is the decrypt function for this file.
+	// Wire with the real PGP decrypter for .pgp files, or PassthroughDecrypt
+	// for plaintext files. Selected by main.go based on S3 key suffix.
+	PGPDecrypt func(r io.Reader) (io.Reader, error)
 }
 
 // ValidationResult carries parsed rows and per-row errors from Stage 2.
@@ -50,25 +52,23 @@ type ValidationResult struct {
 	PlaintextSHA string
 }
 
-// Run decrypts and validates the SRG file. Returns parsed rows for Stage 3.
-// Parse errors are dead-lettered here and reflected in MalformedCount.
+// Run decrypts (or passes through) and validates the SRG file.
 func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s3Bucket, s3Key string) (*ValidationResult, error) {
 	_ = s.BatchFiles.UpdateStatus(ctx, batchFile.ID, "VALIDATING", time.Now().UTC())
 
-	// Retrieve encrypted file from S3
 	encrypted, err := s.Files.GetObject(ctx, s3Bucket, s3Key)
 	if err != nil {
 		return nil, s.halt(ctx, batchFile, fmt.Errorf("stage2: get object: %w", err))
 	}
 	defer encrypted.Close()
 
-	// PGP decrypt using client private key from Secrets Manager
+	// PGPDecrypt is either a real decrypter or PassthroughDecrypt depending on
+	// the file's S3 key suffix — decided at wire time in main.go.
 	plaintext, err := s.PGPDecrypt(encrypted)
 	if err != nil {
 		return nil, s.halt(ctx, batchFile, fmt.Errorf("stage2: pgp decrypt: %w", err))
 	}
 
-	// Tee plaintext through SHA-256 hasher while parsing
 	hasher := sha256.New()
 	tee := io.TeeReader(plaintext, hasher)
 
@@ -86,7 +86,6 @@ func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s
 		return nil, s.halt(ctx, batchFile, fmt.Errorf("stage2: unknown file_type %q", batchFile.FileType))
 	}
 
-	// Drain remaining bytes so hasher gets everything
 	_, _ = io.Copy(io.Discard, tee)
 
 	result.ParseErrors = parseErrs
@@ -94,12 +93,10 @@ func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s
 	result.TotalRows = len(result.SRG310Rows) + len(result.SRG315Rows) +
 		len(result.SRG320Rows) + len(parseErrs)
 
-	// Record total row count — required for Stage 3 stall detection
 	if err := s.BatchFiles.SetRecordCount(ctx, batchFile.ID, result.TotalRows); err != nil {
 		return nil, fmt.Errorf("stage2: set record_count: %w", err)
 	}
 
-	// Dead-letter malformed rows and increment malformed_count
 	for _, pe := range parseErrs {
 		s.deadLetterParseError(ctx, batchFile, pe)
 		_ = s.BatchFiles.IncrementMalformedCount(ctx, batchFile.ID)
@@ -141,8 +138,6 @@ func (s *ValidationStage) Run(ctx context.Context, batchFile *ports.BatchFile, s
 	return result, nil
 }
 
-// halt transitions batch_files to HALTED and returns an error.
-// Used for file-level failures that prevent any further processing.
 func (s *ValidationStage) halt(ctx context.Context, batchFile *ports.BatchFile, err error) error {
 	_ = s.BatchFiles.UpdateStatus(ctx, batchFile.ID, "HALTED", time.Now().UTC())
 	_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
@@ -158,13 +153,10 @@ func (s *ValidationStage) halt(ctx context.Context, batchFile *ports.BatchFile, 
 	return err
 }
 
-// deadLetterParseError writes one parse error to dead_letter_store.
-// failure_reason contains structured error code only — no PHI (§6.5.2, §7.2).
-// RawRecord is stored as JSONB message_body — PHI; never log.
 func (s *ValidationStage) deadLetterParseError(ctx context.Context, batchFile *ports.BatchFile, pe srg.ParseError) {
 	bfID := batchFile.ID
 	seq := pe.Seq
-	msgBody, _ := json.Marshal(map[string]interface{}{"raw": pe.RawRecord}) // PHI — stored only
+	msgBody, _ := json.Marshal(map[string]interface{}{"raw": pe.RawRecord})
 	_ = s.DeadLetters.Write(ctx, &ports.DeadLetterEntry{
 		ID:                uuid.New(),
 		CorrelationID:     batchFile.CorrelationID,
@@ -172,14 +164,21 @@ func (s *ValidationStage) deadLetterParseError(ctx context.Context, batchFile *p
 		RowSequenceNumber: &seq,
 		TenantID:          batchFile.TenantID,
 		FailureStage:      "validation",
-		FailureReason:     fmt.Sprintf("parse_error: %v", pe.Err), // no PHI
+		FailureReason:     fmt.Sprintf("parse_error: %v", pe.Err),
 		MessageBody:       msgBody,
 		CreatedAt:         time.Now().UTC(),
 	})
 }
 
-// NullPGPDecrypt is a passthrough for local DEV testing where PGP is not configured.
-// MUST NOT be used in TST or PRD — replace with real PGP decrypt wired from Secrets Manager.
-func NullPGPDecrypt(r io.Reader) (io.Reader, error) {
+// PassthroughDecrypt is a no-op decrypt for plaintext SRG files
+// (.csv, .srg310, .srg315, .srg320). Selected automatically by main.go
+// when the S3 key does not end in .pgp.
+func PassthroughDecrypt(r io.Reader) (io.Reader, error) {
 	return r, nil
+}
+
+// NullPGPDecrypt is an alias for PassthroughDecrypt — kept for smoke test
+// compatibility. Prefer PassthroughDecrypt in new code.
+func NullPGPDecrypt(r io.Reader) (io.Reader, error) {
+	return PassthroughDecrypt(r)
 }
