@@ -23,8 +23,12 @@ func NewDomainStateRepo(pool *pgxpool.Pool) *DomainStateRepo {
 
 // UpsertConsumer inserts or updates a consumer record.
 // Uses ON CONFLICT (client_member_id, tenant_id) for idempotent replay support.
+// IMPORTANT: On conflict the existing row's id is preserved (not overwritten).
+// This function updates c.ID to reflect the persisted id so that callers
+// (e.g. Stage 3 InsertCard) always use the real DB-resident UUID.
 func (r *DomainStateRepo) UpsertConsumer(ctx context.Context, c *domain.Consumer) error {
-	_, err := r.pool.Exec(ctx, `
+	var persistedID uuid.UUID
+	err := r.pool.QueryRow(ctx, `
 		INSERT INTO public.consumers (
 			id, tenant_id, client_member_id, status,
 			fis_person_id, fis_cuid,
@@ -51,17 +55,19 @@ func (r *DomainStateRepo) UpsertConsumer(ctx context.Context, c *domain.Consumer
 			state = EXCLUDED.state,
 			zip = EXCLUDED.zip,
 			email = EXCLUDED.email,
-			updated_at = EXCLUDED.updated_at`,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id`,
 		c.ID, c.TenantID, c.ClientMemberID, string(c.Status),
 		c.FISPersonID, c.FISCUID,
 		c.FirstName, c.LastName, c.DOB,
 		c.Address1, c.Address2, c.City, c.State, c.ZIP, c.Email,
 		c.ProgramID, c.SubprogramID, c.ContractPBP, c.CustomCardID,
 		c.SourceBatchFileID, c.CreatedAt, c.UpdatedAt,
-	)
+	).Scan(&persistedID)
 	if err != nil {
 		return fmt.Errorf("consumers.Upsert: %w", err)
 	}
+	c.ID = persistedID
 	return nil
 }
 
@@ -355,3 +361,4 @@ func (r *DomainStateRepo) GetProgramByTenantAndSubprogram(
 	}
 	return id, nil
 }
+
