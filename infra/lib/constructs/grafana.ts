@@ -52,7 +52,7 @@ export class GrafanaConstruct extends Construct {
     // ── Admin password in Secrets Manager ────────────────────────────────
     const adminPassword = new secretsmanager.Secret(this, "AdminPassword", {
       secretName: `onefintech/${env}/grafana/admin-password`,
-      description: "Grafana admin password — share only with Kyle Walker",
+      description: "Grafana admin password - share only with Kyle Walker",
       generateSecretString: {
         excludePunctuation: false,
         includeSpace: false,
@@ -195,7 +195,7 @@ export class GrafanaConstruct extends Construct {
     // ── Security groups ───────────────────────────────────────────────────
     const albSg = new ec2.SecurityGroup(this, "AlbSg", {
       vpc,
-      description: "Grafana ALB — allow HTTP inbound",
+      description: "Grafana ALB - allow HTTP inbound",
       allowAllOutbound: true,
     });
     albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), "HTTP from internet");
@@ -256,7 +256,7 @@ export class GrafanaConstruct extends Construct {
     // ── Outputs ───────────────────────────────────────────────────────────
     new cdk.CfnOutput(scope, "GrafanaUrl", {
       value: this.serviceUrl,
-      description: "Grafana URL — share with UAT team. Login: admin / (see Secrets Manager)",
+      description: "Grafana URL - share with UAT team. Login: admin / see Secrets Manager",
     });
     new cdk.CfnOutput(scope, "GrafanaAdminPasswordArn", {
       value: this.adminPasswordSecretArn,
