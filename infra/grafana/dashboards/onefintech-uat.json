@@ -717,32 +717,6 @@
                 ]
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "member_name"
-            },
-            "properties": [
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "options": {
-                      "\u274c MISSING NAME": {
-                        "color": "red",
-                        "index": 0
-                      }
-                    },
-                    "type": "value"
-                  }
-                ]
-              }
-            ]
           }
         ]
       },
@@ -766,11 +740,350 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n\n  -- Name is a required field. NULL = data integrity error in the RT30 record.\n  CASE\n    WHEN rt30.id IS NULL                              THEN NULL\n    WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL THEN '\u274c MISSING NAME'\n    ELSE rt30.last_name || ', ' || rt30.first_name\n  END                                                                    AS member_name,\n\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n\n  CASE\n    WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n    WHEN rt30.id IS NOT NULL THEN '\u23f3'\n    ELSE '\u23f3'\n  END                                                                    AS \"4_5_sent_to_fis\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6a_card_issued\",\n\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6b_benefit_loaded\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705'\n    ELSE '\u23f3'\n  END                                                                    AS \"7_reconciled\",\n\n  rt60.purse_name,\n  rt60.amount_cents\n\nFROM domain_commands dc\nJOIN batch_files bf\n  ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id   = dc.correlation_id\n AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id   = dc.correlation_id\n AND rt60.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id   = dc.correlation_id\n    AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\n  AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC, dc.correlation_id\nLIMIT 500",
+          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n  CASE\n    WHEN rt30.id IS NULL                                    THEN NULL\n    WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL  THEN '\u274c MISSING NAME'\n    ELSE rt30.last_name || ', ' || rt30.first_name\n  END                                                                    AS member_name,\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n  CASE WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n       WHEN rt30.id IS NOT NULL THEN '\u23f3'\n       ELSE '\u23f3' END                                                     AS \"4_5_sent_to_fis\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6a_card_issued\",\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6b_benefit_loaded\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705' ELSE '\u23f3' END                                              AS \"7_reconciled\",\n  rt60.purse_name,\n  rt60.amount_cents\nFROM domain_commands dc\nJOIN batch_files bf ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id = dc.correlation_id AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id = dc.correlation_id AND rt60.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id = dc.correlation_id AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC, dc.correlation_id\nLIMIT 500",
           "refId": "A"
         }
       ],
       "title": "Member Saga Progress",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Members with dead letters, failed commands, bad FIS result codes, or missing required demographics.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "stopped_at"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pattern": "^\u274c.*",
+                      "result": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    },
+                    "type": "regex"
+                  },
+                  {
+                    "options": {
+                      "pattern": "^\u26a0\ufe0f.*",
+                      "result": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    },
+                    "type": "regex"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1_received"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2_validated"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3_staged"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4_5_sent_to_fis"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6a_card_issued"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6b_benefit_loaded"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 11,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No failures \u2705"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n  CASE\n    WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL THEN '\u274c MISSING NAME'\n    WHEN rt30.id IS NOT NULL THEN rt30.last_name || ', ' || rt30.first_name\n    ELSE NULL\n  END                                                                    AS member_name,\n  COALESCE(\n    CASE WHEN dl.id IS NOT NULL\n      THEN '\u274c dead letter: ' || dl.failure_stage END,\n    CASE WHEN dc.failure_reason IS NOT NULL AND dc.failure_reason != ''\n      THEN '\u274c command: ' || dc.failure_reason END,\n    CASE WHEN rt30.fis_result_code NOT IN ('','00') AND rt30.fis_result_code IS NOT NULL\n      THEN '\u274c FIS RT30: ' || rt30.fis_result_code || ' ' || COALESCE(rt30.fis_result_message,'') END,\n    CASE WHEN rt60.fis_result_code NOT IN ('','00') AND rt60.fis_result_code IS NOT NULL\n      THEN '\u274c FIS RT60: ' || rt60.fis_result_code || ' ' || COALESCE(rt60.fis_result_message,'') END,\n    CASE WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL\n      THEN '\u274c missing required demographics' END,\n    '\u26a0\ufe0f incomplete \u2014 no failure recorded'\n  )                                                                      AS stopped_at,\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n  CASE WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n       WHEN rt30.id IS NOT NULL THEN '\u23f3'\n       ELSE '\u23f3' END                                                     AS \"4_5_sent_to_fis\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6a_card_issued\",\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6b_benefit_loaded\",\n  dl.retry_count\nFROM domain_commands dc\nJOIN batch_files bf ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id = dc.correlation_id AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id = dc.correlation_id AND rt60.client_member_id = dc.client_member_id\nLEFT JOIN dead_letter_store dl\n  ON dl.correlation_id = dc.correlation_id AND dl.client_member_id = dc.client_member_id\nWHERE (\n  dl.id IS NOT NULL\n  OR (dc.failure_reason IS NOT NULL AND dc.failure_reason != '')\n  OR (rt30.fis_result_code IS NOT NULL AND rt30.fis_result_code NOT IN ('','00'))\n  OR (rt60.fis_result_code IS NOT NULL AND rt60.fis_result_code NOT IN ('','00'))\n  OR (rt30.id IS NOT NULL AND (rt30.first_name IS NULL OR rt30.last_name IS NULL))\n)\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC, dc.correlation_id\nLIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "title": "\u26a0\ufe0f  Alternate Path \u2014 Where It Stopped",
       "type": "table"
     }
   ],
