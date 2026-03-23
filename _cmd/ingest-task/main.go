@@ -370,6 +370,7 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	})
 
 	// ── Stage 1 — File Arrival ────────────────────────────────────────────
+	s1Start := time.Now()
 	batchFile, err := deps.Stage1.Run(ctx, &stage1.FileArrivalInput{
 		CorrelationID: cfg.CorrelationID,
 		TenantID:      cfg.TenantID,
@@ -381,14 +382,22 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	if err != nil {
 		return pipelineError(ctx, obs, cfg, uuid.Nil, startTime, fmt.Errorf("stage1: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s1Start).Milliseconds()), map[string]string{
+		"stage": "stage1_file_arrival", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── Stage 2 — Validation ──────────────────────────────────────────────
+	s2Start := time.Now()
 	validationResult, err := deps.Stage2.Run(ctx, batchFile, cfg.S3Bucket, cfg.S3Key)
 	if err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage2: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s2Start).Milliseconds()), map[string]string{
+		"stage": "stage2_validation", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── Stage 3 — Row Processing ──────────────────────────────────────────
+	s3Start := time.Now()
 	processingResult, err := deps.Stage3.Run(ctx, &stage3.RowProcessingInput{
 		BatchFile:  batchFile,
 		SRG310Rows: validationResult.SRG310Rows,
@@ -402,6 +411,9 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime,
 			fmt.Errorf("stage3: batch STALLED — unresolved dead letters; use replay-cli to resolve"))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s3Start).Milliseconds()), map[string]string{
+		"stage": "stage3_row_processing", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// Emit dead_letter_rate metric after Stage 3
 	total3 := processingResult.StagedCount + processingResult.DuplicateCount + processingResult.FailedCount
@@ -426,27 +438,43 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	})
 
 	// ── Stage 4 — Batch Assembly ──────────────────────────────────────────
+	s4Start := time.Now()
 	assemblyResult, err := deps.Stage4.Run(ctx, batchFile)
 	if err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage4: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s4Start).Milliseconds()), map[string]string{
+		"stage": "stage4_batch_assembly", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── Stage 5 — FIS Transfer ────────────────────────────────────────────
+	s5Start := time.Now()
 	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage5: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s5Start).Milliseconds()), map[string]string{
+		"stage": "stage5_fis_transfer", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── Stage 6 — Return File Wait ────────────────────────────────────────
+	s6Start := time.Now()
 	waitResult, err := deps.Stage6.Run(ctx, batchFile)
 	if err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage6: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s6Start).Milliseconds()), map[string]string{
+		"stage": "stage6_return_file_wait", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── Stage 7 — Reconciliation ──────────────────────────────────────────
+	s7Start := time.Now()
 	reconcResult, err := deps.Stage7.Run(ctx, batchFile, waitResult.Body)
 	if err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage7: %w", err))
 	}
+	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s7Start).Milliseconds()), map[string]string{
+		"stage": "stage7_reconciliation", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
 
 	// ── pipeline.complete ─────────────────────────────────────────────────
 	durationMs := time.Since(startTime).Milliseconds()
