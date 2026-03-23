@@ -293,7 +293,9 @@ export class GrafanaConstruct extends Construct {
         s3deploy.Source.asset(path.join(__dirname, "../../../infra/grafana/dashboards"), {
           exclude: ["README.md"],
         }),
-        s3deploy.Source.asset(path.join(__dirname, "../../../infra/grafana/provisioning")),
+        s3deploy.Source.asset(path.join(__dirname, "../../../infra/grafana/provisioning"), {
+          exclude: ["preferences.yaml"],
+        }),
       ],
       destinationBucket: dashboardBucket,
     });
