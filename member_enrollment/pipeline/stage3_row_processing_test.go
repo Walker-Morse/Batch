@@ -110,6 +110,7 @@ func minimalSRG310(clientMemberID, subprogramID string, seq int) *srg.SRG310Row 
 		ZIP:            "60611",
 		BenefitPeriod:  "2026-06",
 		BenefitType:    "OTC",
+		PackageID:      "PKG-001", // required by FIS for card production
 		Raw:            map[string]string{"client_member_id": clientMemberID},
 	}
 }
@@ -222,13 +223,14 @@ func TestRun_DuplicateRow_Skipped(t *testing.T) {
 
 	row := minimalSRG310("MBR-001", "26071", 1)
 
-	// Pre-seed a duplicate command in the mock
+	// Pre-seed a duplicate command in the mock — status must be non-Failed
+	// (Failed commands are excluded from the duplicate check and may be retried)
 	m.cmds.Commands = append(m.cmds.Commands, &ports.DomainCommand{
 		TenantID:       bf.TenantID,
 		ClientMemberID: "MBR-001",
 		CommandType:    string(domain.CommandEnroll),
 		BenefitPeriod:  "2026-06",
-		CorrelationID:  bf.CorrelationID,
+		Status:         string(domain.CommandAccepted),
 	})
 
 	result, err := stage.Run(context.Background(), &RowProcessingInput{BatchFile: bf, SRG310Rows: []*srg.SRG310Row{row}})
@@ -834,5 +836,129 @@ func TestSRG320Row_PHINotInBalanceFailureReason(t *testing.T) {
 	reason := m.deadLetters.Entries[0].FailureReason
 	if strings.Contains(reason, "SSN-123-456") {
 		t.Errorf("failure_reason %q contains PHI — must never log member ID", reason)
+	}
+}
+
+// ─── validateSRG310Row ────────────────────────────────────────────────────────
+
+// TestValidateSRG310Row_MissingRequiredFields verifies that each required field
+// triggers a dead-letter when absent. These are checked before any DB write so
+// no orphan domain commands are created.
+func TestValidateSRG310Row_MissingRequiredFields(t *testing.T) {
+	base := minimalSRG310("MBR-001", "26071", 1)
+
+	cases := []struct {
+		name   string
+		mutate func(*srg.SRG310Row)
+		want   string
+	}{
+		{"missing first_name",   func(r *srg.SRG310Row) { r.FirstName = "" },      "missing_required_field: first_name"},
+		{"missing last_name",    func(r *srg.SRG310Row) { r.LastName = "" },       "missing_required_field: last_name"},
+		{"zero dob",             func(r *srg.SRG310Row) { r.DOB = time.Time{} },   "missing_required_field: date_of_birth"},
+		{"missing address1",     func(r *srg.SRG310Row) { r.Address1 = "" },       "missing_required_field: address_1"},
+		{"missing city",         func(r *srg.SRG310Row) { r.City = "" },           "missing_required_field: city"},
+		{"missing state",        func(r *srg.SRG310Row) { r.State = "" },          "missing_required_field: state"},
+		{"invalid state",        func(r *srg.SRG310Row) { r.State = "XX" },        "invalid_field: unrecognised state code"},
+		{"missing zip",          func(r *srg.SRG310Row) { r.ZIP = "" },            "missing_required_field: zip"},
+		{"invalid zip",          func(r *srg.SRG310Row) { r.ZIP = "1234" },        "invalid_field: zip must be 5 or 9 digits"},
+		{"missing benefit_period", func(r *srg.SRG310Row) { r.BenefitPeriod = "" }, "missing_required_field: benefit_period"},
+		{"missing package_id",   func(r *srg.SRG310Row) { r.PackageID = "" },      "missing_required_field: package_id"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			row := *base
+			tc.mutate(&row)
+			reason := validateSRG310Row(&row)
+			if !strings.Contains(reason, tc.want) {
+				t.Errorf("validateSRG310Row() = %q; want to contain %q", reason, tc.want)
+			}
+		})
+	}
+}
+
+// TestValidateSRG310Row_ValidRow verifies that a fully populated row passes validation.
+func TestValidateSRG310Row_ValidRow(t *testing.T) {
+	row := minimalSRG310("MBR-001", "26071", 1)
+	if reason := validateSRG310Row(row); reason != "" {
+		t.Errorf("validateSRG310Row() = %q; want empty (valid row)", reason)
+	}
+}
+
+// TestValidateSRG310Row_FuturesDOB verifies that a future date of birth is rejected.
+func TestValidateSRG310Row_FutureDOB(t *testing.T) {
+	row := minimalSRG310("MBR-001", "26071", 1)
+	row.DOB = time.Now().UTC().AddDate(1, 0, 0)
+	reason := validateSRG310Row(row)
+	if !strings.Contains(reason, "date_of_birth is in the future") {
+		t.Errorf("validateSRG310Row() = %q; want future DOB error", reason)
+	}
+}
+
+// TestRun_DuplicateRow_CrossFile verifies that a member already submitted in a
+// DIFFERENT file (different correlation ID, same benefit period) is treated as a
+// duplicate. This is the cross-file idempotency fix — the old implementation only
+// checked within the same file (correlation_id scoping was wrong).
+func TestRun_DuplicateRow_CrossFile(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	programID := uuid.New()
+	m.programs.Register("rfu-oregon", "26071", programID)
+	bf := seedBatchFile(m, "rfu-oregon")
+
+	// Pre-seed a command from a DIFFERENT correlation ID (different file)
+	differentCorrelationID := uuid.New()
+	m.cmds.Commands = append(m.cmds.Commands, &ports.DomainCommand{
+		TenantID:       bf.TenantID,
+		ClientMemberID: "MBR-001",
+		CommandType:    string(domain.CommandEnroll),
+		BenefitPeriod:  "2026-06",
+		CorrelationID:  differentCorrelationID, // different file
+		Status:         string(domain.CommandAccepted),
+	})
+
+	result, err := stage.Run(context.Background(), &RowProcessingInput{
+		BatchFile:  bf,
+		SRG310Rows: []*srg.SRG310Row{minimalSRG310("MBR-001", "26071", 1)},
+	})
+	if err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+	if result.DuplicateCount != 1 {
+		t.Errorf("DuplicateCount = %d; want 1 (cross-file duplicate must be caught)", result.DuplicateCount)
+	}
+	if result.StagedCount != 0 {
+		t.Errorf("StagedCount = %d; want 0", result.StagedCount)
+	}
+}
+
+// TestRun_FailedCommand_IsRetryable verifies that a member whose previous command
+// has status Failed CAN be resubmitted — failed submissions may be corrected and retried.
+func TestRun_FailedCommand_IsRetryable(t *testing.T) {
+	stage, m := newStage3WithMocks()
+	programID := uuid.New()
+	m.programs.Register("rfu-oregon", "26071", programID)
+	bf := seedBatchFile(m, "rfu-oregon")
+
+	// Pre-seed a FAILED command — this should NOT block re-submission
+	m.cmds.Commands = append(m.cmds.Commands, &ports.DomainCommand{
+		TenantID:       bf.TenantID,
+		ClientMemberID: "MBR-001",
+		CommandType:    string(domain.CommandEnroll),
+		BenefitPeriod:  "2026-06",
+		Status:         "Failed", // excluded from duplicate check
+	})
+
+	result, err := stage.Run(context.Background(), &RowProcessingInput{
+		BatchFile:  bf,
+		SRG310Rows: []*srg.SRG310Row{minimalSRG310("MBR-001", "26071", 1)},
+	})
+	if err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+	if result.StagedCount != 1 {
+		t.Errorf("StagedCount = %d; want 1 (failed command must be retryable)", result.StagedCount)
+	}
+	if result.DuplicateCount != 0 {
+		t.Errorf("DuplicateCount = %d; want 0 (failed command is not a duplicate)", result.DuplicateCount)
 	}
 }
