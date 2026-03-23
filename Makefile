@@ -18,7 +18,7 @@ ALL_PKGS := \
 	./_shared/... \
 	./_cmd/...
 
-.PHONY: build test test-verbose vet smoke smoke-integration
+.PHONY: build test test-verbose test-record vet smoke smoke-integration smoke-record
 
 build:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go build $(ALL_PKGS)
@@ -29,6 +29,15 @@ test:
 test-verbose:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -v $(ALL_PKGS)
 
+# Run tests, emit JSON, record every result to test_runs table in Aurora.
+# Used by CI on main branch pushes. Falls back gracefully if DB is unreachable.
+test-record:
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) \
+	go test -json -count=1 -race -timeout 120s $(ALL_PKGS) 2>&1 | \
+	python3 scripts/record-test-results.py || true
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) \
+	go test -count=1 -race -timeout 120s $(ALL_PKGS)
+
 vet:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go vet $(ALL_PKGS)
 
@@ -38,10 +47,16 @@ vet:
 smoke:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -tags smoke -v -run TestSmoke ./_cmd/ingest-task/
 
+# Smoke test with result recording.
+smoke-record:
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) \
+	go test -json -tags smoke -run TestSmoke ./_cmd/ingest-task/ 2>&1 | \
+	python3 scripts/record-test-results.py --suite smoke || true
+	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) \
+	go test -tags smoke -v -run TestSmoke ./_cmd/ingest-task/
+
 # Option B smoke test — integration against live Postgres + S3.
 # Requires: docker compose up (see _docs/SMOKE_TEST_OPTION_B.md)
-# Status: blocked — awaiting DEV environment confirmation (John Stevens).
 smoke-integration:
 	@echo "Option B smoke test requires docker compose. See _docs/SMOKE_TEST_OPTION_B.md"
-	@echo "Status: blocked — awaiting DEV environment (John Stevens)"
 	@exit 1
