@@ -1,0 +1,427 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '24 hours'",
+          "refId": "A"
+        }
+      ],
+      "title": "Files Received (24h)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '24 hours'",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Rows Submitted (24h)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "enroll_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 80
+                    },
+                    {
+                      "color": "green",
+                      "value": 95
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 3,
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  bf.tenant_id,\n  bf.client_id,\n  bf.file_type,\n  bf.record_count as submitted_rows,\n  bf.malformed_count,\n  COUNT(CASE WHEN brc.status = 'enrolled' THEN 1 END) as enrolled,\n  COUNT(CASE WHEN brc.status = 'dead_lettered' THEN 1 END) as dead_lettered,\n  ROUND(100.0 * COUNT(CASE WHEN brc.status = 'enrolled' THEN 1 END) / NULLIF(bf.record_count,0), 1) as enroll_pct,\n  bf.status as file_status,\n  bf.arrived_at as received_at\nFROM batch_files bf\nLEFT JOIN batch_records_common brc ON brc.batch_file_id = bf.id\nGROUP BY bf.id\nORDER BY bf.arrived_at DESC\nLIMIT 30",
+          "refId": "A"
+        }
+      ],
+      "title": "File Inventory",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 4,
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.arrived_at >= NOW() - INTERVAL '24 hours'\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
+          "refId": "A"
+        }
+      ],
+      "title": "Rows by Record Type and Status",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "efglouhbbm680c"
+      },
+      "description": "Live S3 object listing from inbound-raw/. Shows file size, upload time, and PGP encryption status. Prefix filter: use inbound-raw/YYYY/MM/DD/ to scope to a specific date.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Size (KB)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PGP Encrypted"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "No": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "Yes": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last Modified"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Filename"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "S3 Key"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Last Modified"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "0",
+              "text": "S3 Key",
+              "type": "string"
+            },
+            {
+              "selector": "1",
+              "text": "Filename",
+              "type": "string"
+            },
+            {
+              "selector": "2",
+              "text": "Size (KB)",
+              "type": "number"
+            },
+            {
+              "selector": "3",
+              "text": "Last Modified",
+              "type": "timestamp"
+            },
+            {
+              "selector": "4",
+              "text": "PGP Encrypted",
+              "type": "string"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "efglouhbbm680c"
+          },
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "root_selector": "rows",
+          "source": "url",
+          "type": "json",
+          "url": "https://scrhttu8rc.execute-api.us-east-1.amazonaws.com/",
+          "url_options": {
+            "content_type": "application/json",
+            "data": "{\"prefix\": \"${s3_prefix}\"}",
+            "method": "POST"
+          }
+        }
+      ],
+      "title": "S3 Object Browser",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "tags": [
+    "onefintech",
+    "files"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "inbound-raw/",
+          "value": "inbound-raw/"
+        },
+        "hide": 0,
+        "label": "S3 Prefix",
+        "name": "s3_prefix",
+        "options": [],
+        "query": "inbound-raw/",
+        "refresh": 0,
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "File Manifest",
+  "uid": "onefintech-files"
+}

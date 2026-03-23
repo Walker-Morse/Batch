@@ -1,0 +1,783 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) as total FROM batch_records_common",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Members Submitted",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) as enrolled FROM batch_records_common WHERE status = 'enrolled'",
+          "refId": "A"
+        }
+      ],
+      "title": "Successfully Enrolled",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM dead_letter_store",
+          "refId": "A"
+        }
+      ],
+      "title": "Dead Lettered",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM purses WHERE status = 'active'",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Purses",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Enter a Correlation ID in the variable box above to trace a specific run",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "dead_lettered": {
+                        "color": "red",
+                        "index": 1
+                      },
+                      "enrolled": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "staged": {
+                        "color": "blue",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "noValue": "No records"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.sequence_in_file,\n  brc.record_type,\n  brc.client_member_id,\n  brc.status,\n  brc.fis_result_code,\n  brc.fis_result_message,\n  brc.staged_at,\n  brc.completed_at\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\nORDER BY bf.correlation_id, brc.sequence_in_file ASC\nLIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "Pipeline Trace by Correlation ID",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Enter a Medicaid ID in the variable box above",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "available_balance_cents"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 6,
+      "options": {
+        "noValue": "No members found"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  c.client_member_id,\n  c.first_name,\n  c.last_name,\n  c.date_of_birth,\n  c.status as consumer_status,\n  p.purse_type,\n  p.status as purse_status,\n  p.available_balance_cents,\n  p.effective_date as benefit_start,\n  p.expiry_date as benefit_end,\n  ca.pan_masked,\n  ca.card_status,\n  c.created_at as enrolled_at\nFROM consumers c\nLEFT JOIN purses p ON p.consumer_id = c.id\nLEFT JOIN cards ca ON ca.consumer_id = c.id\nWHERE c.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY c.created_at DESC\nLIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "Member Lookup by Medicaid ID",
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "fieldName": "available_balance_cents"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "width": 160
+          }
+        }
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 7,
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  d.client_member_id,\n  d.failure_stage,\n  d.failure_reason,\n  d.retry_count,\n  d.created_at,\n  LEFT(d.message_body::text, 200) as payload_preview\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Dead Letter Detail",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "id": 8,
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  av.id,\n  av.program_id,\n  av.benefit_type,\n  av.version_number,\n  av.rule_count,\n  av.s3_key,\n  av.uploaded_at,\n  av.uploaded_by,\n  av.fis_ack_received_at,\n  av.notes\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "APL Version Status",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "id": 9,
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT\n  id,\n  tenant_id,\n  client_name,\n  fis_subprogram_id,\n  fis_pack_id,\n  benefit_type,\n  state,\n  is_active,\n  program_start_date\nFROM programs\nORDER BY tenant_id, benefit_type",
+          "refId": "A"
+        }
+      ],
+      "title": "Seeded Programs",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "One row per member. Each column is a pipeline stage: \u2705 complete, \u23f3 pending, \u274c failed.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "minWidth": 50
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1_received"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2_validated"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3_staged"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4_5_sent_to_fis"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6a_card_issued"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6b_benefit_loaded"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "7_reconciled"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 10,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No records"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n  rt30.last_name || ', ' || rt30.first_name                              AS member_name,\n\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n  CASE WHEN rt30.submitted_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END        AS \"4_5_sent_to_fis\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6a_card_issued\",\n\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6b_benefit_loaded\",\n\n  -- 7_reconciled: only \u2705 when both FIS stages confirmed back\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705'\n    ELSE '\u23f3'\n  END                                                                    AS \"7_reconciled\",\n\n  rt60.purse_name,\n  rt60.amount_cents\n\nFROM domain_commands dc\nJOIN batch_files bf\n  ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id   = dc.correlation_id\n AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id   = dc.correlation_id\n AND rt60.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id   = dc.correlation_id\n    AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\n  AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC\nLIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "title": "Member Saga Progress",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "tags": [
+    "onefintech",
+    "uat"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "value": ""
+        },
+        "label": "Correlation ID",
+        "name": "correlation_id",
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "value": ""
+        },
+        "label": "Medicaid ID",
+        "name": "medicaid_id",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "UAT Test Validation",
+  "uid": "onefintech-uat"
+}

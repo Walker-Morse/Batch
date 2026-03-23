@@ -1,0 +1,718 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "One row per CI execution. Select a run above to drill into steps.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pass": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "passed": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "failed": {
+                        "color": "red",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "skip": {
+                        "color": "grey",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "running": {
+                        "color": "blue",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "green",
+                      "value": 100
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  tr.run_id,\n  LEFT(tr.commit_sha, 8)   AS commit,\n  tr.branch,\n  tr.suite,\n  tr.status,\n  tr.total,\n  tr.passed,\n  tr.failed,\n  tr.skipped,\n  ROUND(100.0 * tr.passed / NULLIF(tr.total, 0), 1) AS pass_pct,\n  tr.duration_s,\n  tr.run_at\nFROM test_runs tr\nORDER BY tr.run_at DESC\nLIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Runs",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Every known test in the codebase. Active=true means seen in last run. Gap: a test in this table with no matching step for a run was not executed.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "active"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "true": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "false": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failures"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  split_part(ts.package, '/', -1)  AS pkg,\n  ts.test_name,\n  ts.suite,\n  ts.active,\n  ts.first_seen_at,\n  ts.last_seen_at,\n  COUNT(stp.id)                    AS total_runs,\n  COUNT(stp.id) FILTER (WHERE stp.status = 'fail') AS failures\nFROM test_sets ts\nLEFT JOIN test_steps stp ON stp.test_set_id = ts.id\nGROUP BY ts.id\nORDER BY ts.package, ts.test_name\nLIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Set \u2014 Canonical Inventory",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Tests in the canonical set that have no step record for the selected run. Empty = full coverage.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "id": 3,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  split_part(ts.package, '/', -1) AS pkg,\n  ts.test_name,\n  ts.suite,\n  ts.last_seen_at\nFROM test_sets ts\nWHERE ts.active = TRUE\n  AND NOT EXISTS (\n    SELECT 1\n    FROM test_steps stp\n    JOIN test_runs  tr ON tr.id = stp.test_run_id\n    WHERE stp.test_set_id = ts.id\n      AND ('$run_id' = 'all' OR tr.run_id = '$run_id')\n  )\nORDER BY ts.package, ts.test_name",
+          "refId": "A"
+        }
+      ],
+      "title": "Coverage Gaps \u2014 Tests Not Executed in Selected Run",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Failing steps in the selected run(s). Output column shows captured detail.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pass": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "passed": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "failed": {
+                        "color": "red",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "skip": {
+                        "color": "grey",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "running": {
+                        "color": "blue",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 4,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  tr.run_id,\n  LEFT(tr.commit_sha, 8)           AS commit,\n  tr.branch,\n  split_part(stp.package, '/', -1) AS pkg,\n  stp.test_name,\n  stp.status,\n  stp.elapsed_s,\n  LEFT(stp.output, 600)            AS output\nFROM test_steps stp\nJOIN test_runs tr ON tr.id = stp.test_run_id\nWHERE stp.status = 'fail' AND ('$run_id' = 'all' OR tr.run_id = '$run_id')\nORDER BY tr.run_at DESC, stp.package, stp.test_name\nLIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "\u274c  Failures",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Every step for the selected run(s). One row per test per run.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pass": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "passed": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "failed": {
+                        "color": "red",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "skip": {
+                        "color": "grey",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "running": {
+                        "color": "blue",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 5,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  tr.run_id,\n  LEFT(tr.commit_sha, 8)           AS commit,\n  split_part(stp.package, '/', -1) AS pkg,\n  stp.test_name,\n  stp.status,\n  stp.elapsed_s,\n  tr.run_at\nFROM test_steps stp\nJOIN test_runs tr ON tr.id = stp.test_run_id\nWHERE 1=1 AND ('$run_id' = 'all' OR tr.run_id = '$run_id')\nORDER BY tr.run_at DESC, stp.package, stp.test_name\nLIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Steps \u2014 All Results",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT\n  tr.run_at                                                           AS time,\n  split_part(stp.package, '/', -1)                                   AS metric,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE stp.status='pass')\n        / NULLIF(COUNT(*), 0), 1)                                    AS value\nFROM test_steps stp\nJOIN test_runs tr ON tr.id = stp.test_run_id\nGROUP BY tr.run_at, stp.package\nORDER BY tr.run_at ASC",
+          "refId": "A"
+        }
+      ],
+      "title": "Pass Rate Over Time (by Package)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pass": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "passed": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "failed": {
+                        "color": "red",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "skip": {
+                        "color": "grey",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "running": {
+                        "color": "blue",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "id": 7,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  split_part(stp.package, '/', -1) AS pkg,\n  stp.test_name,\n  stp.status,\n  stp.elapsed_s\nFROM test_steps stp\nJOIN test_runs tr ON tr.id = stp.test_run_id\nWHERE tr.run_at = (SELECT MAX(run_at) FROM test_runs)\nORDER BY stp.elapsed_s DESC NULLS LAST\nLIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Slowest Tests (last run)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "id": 8,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "No data"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  split_part(ts.package, '/', -1)              AS pkg,\n  ts.test_name,\n  COUNT(*) FILTER (WHERE stp.status='pass')    AS pass_count,\n  COUNT(*) FILTER (WHERE stp.status='fail')    AS fail_count,\n  MAX(tr.run_at)                               AS last_seen\nFROM test_sets ts\nJOIN test_steps stp ON stp.test_set_id = ts.id\nJOIN test_runs  tr  ON tr.id = stp.test_run_id\nGROUP BY ts.id, ts.package, ts.test_name\nHAVING COUNT(*) FILTER (WHERE stp.status='pass') > 0\n   AND COUNT(*) FILTER (WHERE stp.status='fail') > 0\nORDER BY fail_count DESC\nLIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Flaky Tests (across all runs)",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "tags": [
+    "onefintech",
+    "testing"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": "all",
+        "current": {
+          "text": "All",
+          "value": "all"
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cfglj9j8ghwqob"
+        },
+        "includeAll": true,
+        "label": "Run",
+        "name": "run_id",
+        "query": "SELECT run_id || '  ' || LEFT(commit_sha,8) || '  ' || branch || '  (' || status || ')' FROM test_runs ORDER BY run_at DESC LIMIT 50",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "title": "Test Runs",
+  "uid": "onefintech-tests"
+}

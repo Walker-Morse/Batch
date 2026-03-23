@@ -6,6 +6,9 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as efs from "aws-cdk-lib/aws-efs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as path from "path";
 import { Construct } from "constructs";
 
 export interface GrafanaProps {
@@ -150,7 +153,11 @@ export class GrafanaConstruct extends Construct {
       memoryLimitMiB: 512,
       taskRole: grafanaTaskRole,
       executionRole: grafanaExecutionRole,
-      volumes: [{
+      volumes: [
+      {
+        name: "grafana-provisioning",
+      },
+      {
         name: "grafana-storage",
         efsVolumeConfiguration: {
           fileSystemId: fileSystem.fileSystemId,
@@ -160,7 +167,8 @@ export class GrafanaConstruct extends Construct {
             iam: "ENABLED",
           },
         },
-      }],
+      },
+      ],
     });
 
     const container = taskDef.addContainer("grafana", {
@@ -174,6 +182,7 @@ export class GrafanaConstruct extends Construct {
         // CloudWatch intentionally excluded — it is bundled in Grafana v10+ (external install = 404 crash).
         GF_INSTALL_PLUGINS:          "yesoreyeram-infinity-datasource",
         GF_PATHS_DATA:               "/var/lib/grafana",
+        GF_PATHS_PROVISIONING:       "/etc/grafana/provisioning",
         GF_LOG_MODE:                 "console",
         GF_LOG_LEVEL:                "info",
         // WAL mode prevents "database is locked" errors on internal SQLite under concurrent
@@ -191,11 +200,18 @@ export class GrafanaConstruct extends Construct {
       essential: true,
     });
 
-    container.addMountPoints({
-      sourceVolume:   "grafana-storage",
-      containerPath:  "/var/lib/grafana",
-      readOnly:       false,
-    });
+    container.addMountPoints(
+      {
+        sourceVolume:   "grafana-storage",
+        containerPath:  "/var/lib/grafana",
+        readOnly:       false,
+      },
+      {
+        sourceVolume:   "grafana-provisioning",
+        containerPath:  "/etc/grafana/provisioning/dashboards",
+        readOnly:       true,
+      }
+    );
 
     // ── Security groups ───────────────────────────────────────────────────
     const albSg = new ec2.SecurityGroup(this, "AlbSg", {
@@ -257,6 +273,67 @@ export class GrafanaConstruct extends Construct {
     });
 
     this.serviceUrl = `http://${alb.loadBalancerDnsName}`;
+
+
+    // ── Dashboard provisioning bucket ─────────────────────────────────────
+    // Dashboard JSON files are stored in S3 and synced into the Grafana
+    // provisioning directory by an init container at task startup.
+    // Source of truth: infra/grafana/dashboards/*.json in this repo.
+    const dashboardBucket = new s3.Bucket(this, "DashboardBucket", {
+      bucketName: `onefintech-${env}-grafana-dashboards`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+    });
+
+    // Upload dashboard JSON files and provisioning config
+    new s3deploy.BucketDeployment(this, "DashboardFiles", {
+      sources: [
+        s3deploy.Source.asset(path.join(__dirname, "../../../infra/grafana/dashboards"), {
+          exclude: ["README.md"],
+        }),
+        s3deploy.Source.asset(path.join(__dirname, "../../../infra/grafana/provisioning")),
+      ],
+      destinationBucket: dashboardBucket,
+    });
+
+    // Grant Grafana task role read access to dashboard bucket
+    dashboardBucket.grantRead(grafanaTaskRole);
+
+    // ── Init container: sync dashboards from S3 before Grafana starts ─────
+    const initContainer = taskDef.addContainer("grafana-provisioner", {
+      image: ecs.ContainerImage.fromRegistry("amazon/aws-cli:latest"),
+      essential: false,
+      environment: {
+        BUCKET: dashboardBucket.bucketName,
+        REGION: cdk.Stack.of(this).region,
+      },
+      command: [
+        "sh", "-c",
+        [
+          "aws s3 sync s3://$BUCKET/ /provisioning/ --region $REGION",
+          "mkdir -p /provisioning/dashboards",
+          "echo 'Dashboard provisioning complete'",
+        ].join(" && "),
+      ],
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: "grafana-provisioner",
+        logGroup,
+      }),
+    });
+
+    initContainer.addMountPoints({
+      sourceVolume:  "grafana-provisioning",
+      containerPath: "/provisioning",
+      readOnly:      false,
+    });
+
+    // Grafana container depends on init container completing
+    container.addContainerDependencies({
+      container:  initContainer,
+      condition:  ecs.ContainerDependencyCondition.SUCCESS,
+    });
 
     // ── Outputs ───────────────────────────────────────────────────────────
     new cdk.CfnOutput(scope, "GrafanaUrl", {
