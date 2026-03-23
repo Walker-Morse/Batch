@@ -126,8 +126,8 @@ func (f *fakeFileStore) SHA256OfObject(_ context.Context, bucket, key string) (s
 // All required columns are present; optional columns are omitted.
 // PHI values are synthetic — this file never touches a real system.
 func minimalSRG310() []byte {
-	header := "client_member_id,first_name,last_name,date_of_birth,address_1,city,state,zip,benefit_period,subprogram_id,benefit_type,package_id"
-	row    := "SMOKE-001,Jane,Smoketest,1985-06-15,123 Test Ave,Portland,OR,97201,2026-06,26071,OTC,PKG-001"
+	header := "client_member_id|first_name|last_name|date_of_birth|address_1|city|state|zip|benefit_period|subprogram_id|benefit_type|package_id"
+	row    := "SMOKE-001|Jane|Smoketest|1985-06-15|123 Test Ave|Portland|OR|97201|2026-06|26071|OTC|PKG-001"
 	return []byte(header + "\n" + row + "\n")
 }
 
@@ -139,7 +139,7 @@ const (
 	smokeTenantID     = "rfu-oregon"
 	smokeClientID     = "rfu"
 	smokeBucket       = "inbound-bucket"
-	smokeSRGKey       = "inbound-raw/2026/06/01/SMOKE-001.srg310.csv"
+	smokeSRGKey       = "inbound-raw/2026/06/01/SMOKE-001.srg310.psv"
 	smokeStagedBucket = "staged-bucket"
 	smokeFISBucket    = "fis-exchange-bucket"
 )

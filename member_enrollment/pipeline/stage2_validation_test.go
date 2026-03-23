@@ -38,30 +38,30 @@ import (
 
 // srg310CSV returns a minimal valid SRG310 CSV with n data rows.
 func srg310CSV(n int) string {
-	header := "client_member_id,subprogram_id,first_name,last_name,date_of_birth,address_1,address_2,city,state,zip,email,benefit_period,benefit_type,contract_pbp,card_design_id,custom_card_id,package_id\n"
+	header := "client_member_id|subprogram_id|first_name|last_name|date_of_birth|address_1|address_2|city|state|zip|email|benefit_period|benefit_type|contract_pbp|card_design_id|custom_card_id|package_id\n"
 	var sb strings.Builder
 	sb.WriteString(header)
 	for i := 0; i < n; i++ {
-		sb.WriteString("MBR-001,26071,Rosa,Garcia,03/15/1982,123 Main St,,Portland,OR,97201,rosa@example.com,2026-06,OTC,HMO001,CD-01,,PKG-01\n")
+		sb.WriteString("MBR-001|26071|Rosa|Garcia|03/15/1982|123 Main St||Portland|OR|97201|rosa@example.com|2026-06|OTC|HMO001|CD-01||PKG-01\n")
 	}
 	return sb.String()
 }
 
 // srg315CSV returns a minimal valid SRG315 CSV.
 func srg315CSV() string {
-	return "client_member_id,event_type,benefit_period\nMBR-001,SUSPEND,2026-06\n"
+	return "client_member_id|event_type|benefit_period\nMBR-001|SUSPEND|2026-06\n"
 }
 
 // srg320CSV returns a minimal valid SRG320 CSV.
 func srg320CSV() string {
-	return "client_member_id,command_type,benefit_period,amount,effective_date,expiry_date\nMBR-001,LOAD,2026-06,50.00,06/01/2026,12/31/2026\n"
+	return "client_member_id|command_type|benefit_period|amount|effective_date|expiry_date\nMBR-001|LOAD|2026-06|50.00|06/01/2026|12/31/2026\n"
 }
 
 // malformedSRG310CSV has one row missing a required field.
 func malformedSRG310CSV() string {
 	// Missing required last_name
-	return "client_member_id,subprogram_id,first_name,last_name,dob,address1,address2,city,state,zip,email,benefit_period,benefit_type,contract_pbp,card_design_id,custom_card_id,package_id\n" +
-		",26071,Rosa,,03/15/1982,123 Main St,,Portland,OR,97201,,2026-06,OTC,HMO001,CD-01,,PKG-01\n"
+	return "client_member_id|subprogram_id|first_name|last_name|dob|address1|address2|city|state|zip|email|benefit_period|benefit_type|contract_pbp|card_design_id|custom_card_id|package_id\n" +
+		"|26071|Rosa||03/15/1982|123 Main St||Portland|OR|97201||2026-06|OTC|HMO001|CD-01||PKG-01\n"
 }
 
 type stage2Mocks struct {
