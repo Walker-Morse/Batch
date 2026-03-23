@@ -378,9 +378,9 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 
 	// SRG310 with one good row and one malformed row (missing required date_of_birth)
 	badSRG := []byte(
-		"client_member_id,first_name,last_name,date_of_birth,address_1,city,state,zip,benefit_period,subprogram_id,benefit_type,package_id\n" +
-		"SMOKE-001,Jane,Good,1985-06-15,123 Test Ave,Portland,OR,97201,2026-06,26071,OTC,PKG-001\n" +
-		"SMOKE-BAD,John,Bad,,456 Error Rd,Portland,OR,97202,2026-06,26071,OTC,PKG-001\n", // empty DOB
+		"client_member_id|first_name|last_name|date_of_birth|address_1|city|state|zip|benefit_period|subprogram_id|benefit_type|package_id\n" +
+		"SMOKE-001|Jane|Good|1985-06-15|123 Test Ave|Portland|OR|97201|2026-06|26071|OTC|PKG-001\n" +
+		"SMOKE-BAD|John|Bad||456 Error Rd|Portland|OR|97202|2026-06|26071|OTC|PKG-001\n", // empty DOB
 	)
 	fileStore.objects[smokeBucket+"/"+smokeSRGKey] = badSRG
 	programID2 := uuid.New()
@@ -474,7 +474,7 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 
 	// Header only — zero data rows
 	fileStore.objects[smokeBucket+"/"+smokeSRGKey] = []byte(
-		"client_member_id,first_name,last_name,date_of_birth,address_1,city,state,zip,benefit_period,subprogram_id,benefit_type\n",
+		"client_member_id|first_name|last_name|date_of_birth|address_1|city|state|zip|benefit_period|subprogram_id|benefit_type\n",
 	)
 	assembler := testutil.NewMockFISBatchAssembler("MORSEUSA01060126001.batch.txt", 0, "")
 
