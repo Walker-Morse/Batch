@@ -26,11 +26,14 @@ jobs:
       # On PRs: plain test (no DB write — DB not reachable from PR context).
       - name: Test
         env:
-          DB_HOST:     ${{ secrets.DEV_DB_PROXY_HOST }}
-          DB_PASSWORD: ${{ secrets.DEV_DB_INGEST_TASK_PASSWORD }}
-          CI_RUN_ID:   ${{ github.run_id }}
-          CI_SHA:      ${{ github.sha }}
-          CI_BRANCH:   ${{ github.ref_name }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION:            us-east-1
+          RDS_CLUSTER_ARN:       arn:aws:rds:us-east-1:307871782435:cluster:onefintechdev-auroraclusterd4efe71c-aqigxft0mb87
+          RDS_SECRET_ARN:        arn:aws:secretsmanager:us-east-1:307871782435:secret:AuroraClusterSecretD25348DD-8IIFZe5Ng6w8-r4PTV2
+          CI_RUN_ID:             ${{ github.run_id }}
+          CI_SHA:                ${{ github.sha }}
+          CI_BRANCH:             ${{ github.ref_name }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             make test-record
@@ -43,11 +46,14 @@ jobs:
       # Catches wiring regressions, interface mismatches, nil pointer panics.
       - name: Smoke (Option A — in-process, no infrastructure)
         env:
-          DB_HOST:     ${{ secrets.DEV_DB_PROXY_HOST }}
-          DB_PASSWORD: ${{ secrets.DEV_DB_INGEST_TASK_PASSWORD }}
-          CI_RUN_ID:   ${{ github.run_id }}
-          CI_SHA:      ${{ github.sha }}
-          CI_BRANCH:   ${{ github.ref_name }}
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION:            us-east-1
+          RDS_CLUSTER_ARN:       arn:aws:rds:us-east-1:307871782435:cluster:onefintechdev-auroraclusterd4efe71c-aqigxft0mb87
+          RDS_SECRET_ARN:        arn:aws:secretsmanager:us-east-1:307871782435:secret:AuroraClusterSecretD25348DD-8IIFZe5Ng6w8-r4PTV2
+          CI_RUN_ID:             ${{ github.run_id }}
+          CI_SHA:                ${{ github.sha }}
+          CI_BRANCH:             ${{ github.ref_name }}
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             make smoke-record
