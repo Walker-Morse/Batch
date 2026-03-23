@@ -303,7 +303,7 @@ export class GrafanaConstruct extends Construct {
 
     // ── Init container: sync dashboards from S3 before Grafana starts ─────
     const initContainer = taskDef.addContainer("grafana-provisioner", {
-      image: ecs.ContainerImage.fromRegistry("amazon/aws-cli:latest"),
+      image: ecs.ContainerImage.fromRegistry("amazon/aws-cli:2.15.0"), // pinned — :latest broke entrypoint in newer versions
       essential: false,
       environment: {
         BUCKET: dashboardBucket.bucketName,
