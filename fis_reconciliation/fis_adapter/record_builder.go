@@ -138,6 +138,7 @@ type RT30Fields struct {
 	City           string
 	State          string // 2-char
 	ZIP            string
+	PhoneNumber    int64  // digits only; 0 when not provided; confirm FIS field offset (Open Item #9)
 	Email          string
 	CardDesignID   string
 	CustomCardID   string
@@ -174,6 +175,11 @@ func BuildRT30(f RT30Fields) ([]byte, error) {
 	r.set(190, 50, f.Email)
 	r.set(240, 10, f.CardDesignID)
 	r.set(250, 20, f.CustomCardID)
+	// TODO(Open Item #9): confirm exact FIS RT30 phone field offset with Kendra before TST.
+	// Temporarily written at offset 270 (10 digits, zero-padded). Adjust when spec confirmed.
+	if f.PhoneNumber != 0 {
+		r.setRight(270, 10, fmt.Sprintf("%d", f.PhoneNumber))
+	}
 
 	return r.bytes(), nil
 }

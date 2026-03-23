@@ -39,6 +39,7 @@ CREATE TABLE public.batch_records_rt30 (
     city                VARCHAR(50)     NOT NULL, -- required by FIS RT30
     state               CHAR(2)         NOT NULL, -- required by FIS RT30
     zip                 VARCHAR(10)     NOT NULL, -- required by FIS RT30
+    phone_number        BIGINT          NOT NULL DEFAULT 0, -- PHI; digits only; 0 when not provided
     email               VARCHAR(100),   -- PHI
     card_design_id      TEXT,
     custom_card_id      VARCHAR(50),
@@ -62,9 +63,10 @@ Primary XTRACT join key once enabled. Falls back to fis_proxy_number.';
 COMMENT ON COLUMN public.batch_records_rt30.raw_payload IS
 'PHI present. Required for dead letter replay. Never log at any level (§6.5.2, §7.2).';
 
+COMMENT ON COLUMN public.batch_records_rt30.phone_number IS
+'PHI. Digits only, no formatting. 0 when not provided by MCO. Confirm FIS RT30 field offset with Kendra (Open Item #9).';
+
 -- ─── RT37: Card Status Update ────────────────────────────────────────────────
--- fis_card_id NOT NULL — required to stage RT37.
--- Dead-lettered RT37 with missing fis_card_id = prior RT30 not yet Stage 7 complete.
 CREATE TABLE public.batch_records_rt37 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_file_id       UUID NOT NULL REFERENCES public.batch_files(id),
@@ -80,8 +82,8 @@ CREATE TABLE public.batch_records_rt37 (
     fis_result_code     TEXT,
     fis_result_message  TEXT,
     client_member_id    TEXT NOT NULL,
-    fis_card_id         VARCHAR(19) NOT NULL, -- required; NULL blocks staging
-    card_status_code    SMALLINT NOT NULL,    -- 2=Active 4=Lost 6=Suspended 7=Closed
+    fis_card_id         VARCHAR(19) NOT NULL,
+    card_status_code    SMALLINT NOT NULL,
     reason_code         TEXT,
     raw_payload         JSONB NOT NULL,
     UNIQUE (batch_file_id, sequence_in_file)
@@ -93,9 +95,6 @@ CREATE INDEX ON public.batch_records_rt37 (domain_command_id);
 CREATE INDEX ON public.batch_records_rt37 (correlation_id);
 
 -- ─── RT60: Purse Load / Fund Transfer ────────────────────────────────────────
--- AT30 and AT01 period-end pair share the same domain_command_id.
--- AT30 MUST complete (Stage 7 COMPLETED) before paired AT01 is submitted.
--- amount_cents: positive=load (AT01), negative=sweep (AT30).
 CREATE TABLE public.batch_records_rt60 (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_file_id       UUID NOT NULL REFERENCES public.batch_files(id),
@@ -110,14 +109,13 @@ CREATE TABLE public.batch_records_rt60 (
     completed_at        TIMESTAMPTZ,
     fis_result_code     TEXT,
     fis_result_message  TEXT,
-    at_code             TEXT,            -- AT01=load, AT30=sweep
+    at_code             TEXT,
     client_member_id    TEXT NOT NULL,
     fis_card_id         VARCHAR(19) NOT NULL,
-    fis_purse_number    SMALLINT,        -- FIS slot; from return file
-    purse_name          VARCHAR(7),      -- e.g. OTC2550, FOD2550
-    amount_cents        BIGINT NOT NULL, -- positive=load, negative=sweep
+    fis_purse_number    SMALLINT,
+    purse_name          VARCHAR(7),
+    amount_cents        BIGINT NOT NULL,
     effective_date      DATE NOT NULL,
-    -- expiry_date: contractual 11:59 PM ET last day of month (SOW §2.1, §3.3)
     expiry_date         DATE,
     client_reference    TEXT,
     raw_payload         JSONB NOT NULL,

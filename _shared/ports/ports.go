@@ -368,6 +368,7 @@ type StagedRT30 struct {
 	City           *string
 	State          *string
 	ZIP            *string
+	PhoneNumber    int64   // PHI; digits only; 0 when not provided
 	Email          *string
 	CardDesignID   *string
 	CustomCardID   *string

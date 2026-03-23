@@ -14,7 +14,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// ParseSRG310 parses a decrypted SRG310 CSV reader into typed rows.
+// ParseSRG310 parses a decrypted SRG310 pipe-delimited reader into typed rows.
 // Returns rows and a slice of parse errors (one per malformed row).
 // Parse errors do not abort — malformed rows are collected and sent to
 // dead_letter_store by Stage 2 after this returns.
@@ -25,6 +25,7 @@ import (
 // for the FIS 400-byte fixed-width record format (§2 Assumptions, Open Item #9).
 func ParseSRG310(r io.Reader) ([]*SRG310Row, []ParseError) {
 	reader := csv.NewReader(r)
+	reader.Comma = '|'
 	reader.TrimLeadingSpace = true
 	reader.FieldsPerRecord = -1 // flexible — we validate required fields manually
 
@@ -60,9 +61,10 @@ func ParseSRG310(r io.Reader) ([]*SRG310Row, []ParseError) {
 	return rows, errs
 }
 
-// ParseSRG315 parses a decrypted SRG315 CSV reader into typed rows.
+// ParseSRG315 parses a decrypted SRG315 pipe-delimited reader into typed rows.
 func ParseSRG315(r io.Reader) ([]*SRG315Row, []ParseError) {
 	reader := csv.NewReader(r)
+	reader.Comma = '|'
 	reader.TrimLeadingSpace = true
 	reader.FieldsPerRecord = -1
 
@@ -98,9 +100,10 @@ func ParseSRG315(r io.Reader) ([]*SRG315Row, []ParseError) {
 	return rows, errs
 }
 
-// ParseSRG320 parses a decrypted SRG320 CSV reader into typed rows.
+// ParseSRG320 parses a decrypted SRG320 pipe-delimited reader into typed rows.
 func ParseSRG320(r io.Reader) ([]*SRG320Row, []ParseError) {
 	reader := csv.NewReader(r)
+	reader.Comma = '|'
 	reader.TrimLeadingSpace = true
 	reader.FieldsPerRecord = -1
 
@@ -195,6 +198,32 @@ func parseCents(s, field string) (int64, error) {
 	return int64(math.Round(f * 100)), nil
 }
 
+// parsePhone parses a phone_number field to int64.
+// Empty or whitespace-only values return 0 (field is optional per spec).
+// Non-numeric characters (dashes, parens, spaces) are stripped before parsing.
+// Returns an error only if the field is non-empty and unparseable after stripping.
+func parsePhone(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	// Strip common formatting characters
+	var digits strings.Builder
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			digits.WriteRune(c)
+		}
+	}
+	clean := digits.String()
+	if clean == "" {
+		return 0, fmt.Errorf("field \"phone_number\": non-empty value %q contains no digits", s)
+	}
+	v, err := strconv.ParseInt(clean, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("field \"phone_number\": cannot parse %q: %w", s, err)
+	}
+	return v, nil
+}
+
 // ASCIITransliterate applies NFD normalisation and strips combining characters,
 // producing ASCII-safe output for FIS fixed-width records (§2 Assumptions, Open Item #9).
 // e.g. "García" → "Garcia", "Müller" → "Muller"
@@ -257,6 +286,12 @@ func parseSRG310Row(seq int, colIdx map[string]int, record []string) (*SRG310Row
 		return nil, err
 	}
 
+	// Phone number: optional, numeric, empty = 0
+	phoneNumber, err := parsePhone(col(colIdx, record, "phone_number"))
+	if err != nil {
+		return nil, err
+	}
+
 	// Benefit period: YYYY-MM — required for idempotency key
 	benefitPeriod, err := required(colIdx, record, "benefit_period")
 	if err != nil {
@@ -285,6 +320,7 @@ func parseSRG310Row(seq int, colIdx map[string]int, record []string) (*SRG310Row
 		City:          ASCIITransliterate(city),
 		State:         strings.ToUpper(state),
 		ZIP:           zip,
+		PhoneNumber:   phoneNumber,
 		Email:         col(colIdx, record, "email"),
 		PackageID:     col(colIdx, record, "package_id"),
 		CardDesignID:  col(colIdx, record, "card_design_id"),

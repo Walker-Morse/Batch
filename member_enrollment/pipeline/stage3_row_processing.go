@@ -320,6 +320,7 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		City:           strPtrIfNotEmpty(row.City),
 		State:          strPtrIfNotEmpty(row.State),
 		ZIP:            strPtrIfNotEmpty(row.ZIP),
+		PhoneNumber:    row.PhoneNumber,
 		Email:          strPtrIfNotEmpty(row.Email),
 		CardDesignID:   strPtrIfNotEmpty(row.CardDesignID),
 		CustomCardID:   strPtrIfNotEmpty(row.CustomCardID),

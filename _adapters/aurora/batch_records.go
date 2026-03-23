@@ -23,7 +23,7 @@ type BatchRecordRT30 struct {
 	Status           string // STAGED|SUBMITTED|COMPLETED|FAILED
 	StagedAt         time.Time
 	ClientMemberID   string
-	ProgramID        uuid.UUID // programs.id — resolved by Stage 3; required by Stage 4 for fis_sequence.Next
+	ProgramID        uuid.UUID
 	SubprogramID     *int64
 	PackageID        *string
 	FirstName        *string
@@ -34,6 +34,7 @@ type BatchRecordRT30 struct {
 	City             *string
 	State            *string
 	ZIP              *string
+	PhoneNumber      int64   // PHI; digits only; 0 when not provided
 	Email            *string
 	CardDesignID     *string
 	CustomCardID     *string
@@ -55,8 +56,8 @@ type BatchRecordRT37 struct {
 	Status          string
 	StagedAt        time.Time
 	ClientMemberID  string
-	FISCardID       string // NOT NULL — required to stage RT37
-	CardStatusCode  int16  // 2=Active 4=Lost 6=Suspended 7=Closed
+	FISCardID       string
+	CardStatusCode  int16
 	ReasonCode      *string
 	RawPayload      json.RawMessage
 }
@@ -71,12 +72,12 @@ type BatchRecordRT60 struct {
 	SequenceInFile  int
 	Status          string
 	StagedAt        time.Time
-	ATCode          *string // AT01=load, AT30=sweep
+	ATCode          *string
 	ClientMemberID  string
 	FISCardID       string
 	FISPurseNumber  *int16
 	PurseName       *string
-	AmountCents     int64 // positive=load, negative=sweep
+	AmountCents     int64
 	EffectiveDate   time.Time
 	ExpiryDate      *time.Time
 	ClientReference *string
@@ -99,7 +100,7 @@ func (r *BatchRecordsRepo) InsertRT30(ctx context.Context, rec *BatchRecordRT30)
 			tenant_id, sequence_in_file, status, staged_at,
 			client_member_id, program_id, subprogram_id, package_id,
 			first_name, last_name, date_of_birth,
-			address_1, address_2, city, state, zip, email,
+			address_1, address_2, city, state, zip, phone_number, email,
 			card_design_id, custom_card_id,
 			raw_payload
 		) VALUES (
@@ -107,15 +108,15 @@ func (r *BatchRecordsRepo) InsertRT30(ctx context.Context, rec *BatchRecordRT30)
 			$5, $6, $7, $8,
 			$9, $10, $11, $12,
 			$13, $14, $15,
-			$16, $17, $18, $19, $20, $21,
-			$22, $23,
-			$24
+			$16, $17, $18, $19, $20, $21, $22,
+			$23, $24,
+			$25
 		)`,
 		rec.ID, rec.BatchFileID, rec.DomainCommandID, rec.CorrelationID,
 		rec.TenantID, rec.SequenceInFile, rec.Status, rec.StagedAt,
 		rec.ClientMemberID, rec.ProgramID, rec.SubprogramID, rec.PackageID,
 		rec.FirstName, rec.LastName, rec.DateOfBirth,
-		rec.Address1, rec.Address2, rec.City, rec.State, rec.ZIP, rec.Email,
+		rec.Address1, rec.Address2, rec.City, rec.State, rec.ZIP, rec.PhoneNumber, rec.Email,
 		rec.CardDesignID, rec.CustomCardID,
 		rec.RawPayload,
 	)
@@ -207,11 +208,6 @@ func (r *BatchRecordsRepo) UpdateStatus(ctx context.Context, id uuid.UUID, recor
 	return nil
 }
 
-// ListStagedByCorrelationID returns all STAGED batch records for the given
-// correlation ID, ordered by sequence_in_file ASC within each record type.
-// Called by AssemblerImpl (Stage 4) to populate the FIS batch file body.
-// Returns an empty StagedRecords (not an error) if no staged rows exist —
-// the assembler will produce a structurally valid but empty file in that case.
 func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correlationID uuid.UUID) (*ports.StagedRecords, error) {
 	result := &ports.StagedRecords{}
 
@@ -220,7 +216,7 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 		SELECT id, sequence_in_file,
 		       client_member_id, program_id, subprogram_id, package_id,
 		       first_name, last_name, date_of_birth,
-		       address_1, address_2, city, state, zip, email,
+		       address_1, address_2, city, state, zip, phone_number, email,
 		       card_design_id, custom_card_id
 		FROM public.batch_records_rt30
 		WHERE correlation_id = $1
@@ -239,7 +235,7 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 			&rec.ID, &rec.SequenceInFile,
 			&rec.ClientMemberID, &rec.ProgramID, &rec.SubprogramID, &rec.PackageID,
 			&rec.FirstName, &rec.LastName, &rec.DateOfBirth,
-			&rec.Address1, &rec.Address2, &rec.City, &rec.State, &rec.ZIP, &rec.Email,
+			&rec.Address1, &rec.Address2, &rec.City, &rec.State, &rec.ZIP, &rec.PhoneNumber, &rec.Email,
 			&rec.CardDesignID, &rec.CustomCardID,
 		)
 		if err != nil {
@@ -316,16 +312,6 @@ func (r *BatchRecordsRepo) ListStagedByCorrelationID(ctx context.Context, correl
 	return result, nil
 }
 
-// GetStagedByCorrelationAndSequence looks up a single staged record by its
-// (correlation_id, sequence_in_file) composite key. Used by Stage 7 to match
-// return file records to their staged counterparts.
-// recordType must be "RT30", "RT37", or "RT60".
-// Returns (uuid.Nil, uuid.Nil, "", error) if no matching row is found.
-//
-// benefitPeriod is sourced from the domain_commands row via JOIN — it is the
-// ISO YYYY-MM period under which the command was originally submitted. Stage 7
-// uses it for the RT60 path to stamp the correct purse without relying on
-// wall-clock time, which fails on cross-month batches and replay scenarios.
 func (r *BatchRecordsRepo) GetStagedByCorrelationAndSequence(
 	ctx context.Context,
 	correlationID uuid.UUID,
@@ -344,9 +330,6 @@ func (r *BatchRecordsRepo) GetStagedByCorrelationAndSequence(
 		return uuid.Nil, uuid.Nil, "", fmt.Errorf("batch_records.GetStaged: unknown record type %q", recordType)
 	}
 
-	// JOIN domain_commands to retrieve benefit_period alongside the record IDs.
-	// The domain_commands row is guaranteed to exist: Stage 3 writes it before
-	// the batch_records row (idempotency contract, §4.1.1).
 	query := fmt.Sprintf(`
 		SELECT br.id, br.domain_command_id, dc.benefit_period
 		FROM public.%s br

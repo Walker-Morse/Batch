@@ -1,6 +1,6 @@
 // Package srg defines the SRG file record types for SRG310, SRG315, and SRG320.
 //
-// SRG (Standard Record Group) files are CSV files sent by health plan clients (MCOs).
+// SRG (Standard Record Group) files are pipe-delimited files sent by health plan clients (MCOs).
 // Field definitions are sourced from the confirmed column definitions (Open Item #9,
 // target Mar 30, 2026 — current implementation uses best-effort from HLD §4.1.2/4.1.3/4.1.4).
 //
@@ -15,7 +15,7 @@ package srg
 import "time"
 
 // SRG310Row is one row from a member enrollment / demographic update file.
-// Generated from SRG310 inbound CSV. Maps to ENROLL or UPDATE domain commands.
+// Generated from SRG310 inbound pipe-delimited file. Maps to ENROLL or UPDATE domain commands.
 type SRG310Row struct {
 	// Sequence position within the file (1-based) — used as row idempotency key component
 	SequenceInFile int
@@ -33,6 +33,7 @@ type SRG310Row struct {
 	City        string
 	State       string // 2-char
 	ZIP         string
+	PhoneNumber int64  // PHI; digits only; 0 when not provided
 	Email       string
 
 	// Card configuration
@@ -41,11 +42,11 @@ type SRG310Row struct {
 	CustomCardID string
 
 	// Program info
-	ContractPBP  string // Plan Benefit Package
-	BenefitType  string // OTC|FOD|CMB
+	ContractPBP   string // Plan Benefit Package
+	BenefitType   string // OTC|FOD|CMB
 	BenefitPeriod string // ISO YYYY-MM
 
-	// Raw CSV line — stored as JSONB in batch_records_rt30.raw_payload for replay
+	// Raw pipe-delimited line — stored as JSONB in batch_records_rt30.raw_payload for replay
 	// PHI present — never log this field
 	Raw map[string]string
 }
