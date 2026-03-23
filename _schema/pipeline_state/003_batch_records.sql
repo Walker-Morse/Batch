@@ -31,14 +31,14 @@ CREATE TABLE public.batch_records_rt30 (
     client_member_id    TEXT NOT NULL,
     subprogram_id       NUMERIC(10),
     package_id          TEXT,
-    first_name          VARCHAR(50),    -- PHI
-    last_name           VARCHAR(50),    -- PHI
-    date_of_birth       DATE,           -- PHI
-    address_1           VARCHAR(100),   -- PHI
+    first_name          VARCHAR(50)     NOT NULL, -- PHI; required by FIS RT30
+    last_name           VARCHAR(50)     NOT NULL, -- PHI; required by FIS RT30
+    date_of_birth       DATE            NOT NULL, -- PHI; required by FIS RT30
+    address_1           VARCHAR(100)    NOT NULL, -- PHI; required by FIS RT30
     address_2           VARCHAR(100),
-    city                VARCHAR(50),
-    state               CHAR(2),
-    zip                 VARCHAR(10),
+    city                VARCHAR(50)     NOT NULL, -- required by FIS RT30
+    state               CHAR(2)         NOT NULL, -- required by FIS RT30
+    zip                 VARCHAR(10)     NOT NULL, -- required by FIS RT30
     email               VARCHAR(100),   -- PHI
     card_design_id      TEXT,
     custom_card_id      VARCHAR(50),

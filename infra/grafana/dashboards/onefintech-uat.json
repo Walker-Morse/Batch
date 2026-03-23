@@ -717,6 +717,32 @@
                 ]
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "member_name"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u274c MISSING NAME": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -740,7 +766,7 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n\n  -- Name from rt30 if available, fall back to consumers, then member_id\n  COALESCE(\n    rt30.last_name || ', ' || rt30.first_name,\n    c.last_name   || ', ' || c.first_name,\n    dc.client_member_id\n  )                                                                      AS member_name,\n\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n\n  -- 4_5: only \u2705 if RT30 record actually exists (batch was assembled and sent)\n  CASE WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n       WHEN rt30.id IS NOT NULL THEN '\u23f3'\n       ELSE '\u23f3'\n  END                                                                    AS \"4_5_sent_to_fis\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6a_card_issued\",\n\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6b_benefit_loaded\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705'\n    ELSE '\u23f3'\n  END                                                                    AS \"7_reconciled\",\n\n  rt60.purse_name,\n  rt60.amount_cents\n\nFROM domain_commands dc\nJOIN batch_files bf\n  ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id   = dc.correlation_id\n AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id   = dc.correlation_id\n AND rt60.client_member_id = dc.client_member_id\nLEFT JOIN consumers c\n  ON c.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id   = dc.correlation_id\n    AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\n  AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC, dc.correlation_id\nLIMIT 500",
+          "rawSql": "SELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n\n  -- Name is a required field. NULL = data integrity error in the RT30 record.\n  CASE\n    WHEN rt30.id IS NULL                              THEN NULL\n    WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL THEN '\u274c MISSING NAME'\n    ELSE rt30.last_name || ', ' || rt30.first_name\n  END                                                                    AS member_name,\n\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED','TRANSFERRED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n\n  CASE\n    WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n    WHEN rt30.id IS NOT NULL THEN '\u23f3'\n    ELSE '\u23f3'\n  END                                                                    AS \"4_5_sent_to_fis\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6a_card_issued\",\n\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3'\n  END                                                                    AS \"6b_benefit_loaded\",\n\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705'\n    ELSE '\u23f3'\n  END                                                                    AS \"7_reconciled\",\n\n  rt60.purse_name,\n  rt60.amount_cents\n\nFROM domain_commands dc\nJOIN batch_files bf\n  ON bf.correlation_id = dc.correlation_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.correlation_id   = dc.correlation_id\n AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.correlation_id   = dc.correlation_id\n AND rt60.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id   = dc.correlation_id\n    AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\n  AND dc.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY dc.sequence_in_file ASC, dc.correlation_id\nLIMIT 500",
           "refId": "A"
         }
       ],
