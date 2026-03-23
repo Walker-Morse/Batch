@@ -193,13 +193,13 @@ const (
 // Validated here so failures are caught before the domain command is created —
 // a domain command without a valid RT30 is an orphan that blocks the member.
 func validateSRG310Row(row *srg.SRG310Row) string {
-	validStates := map[string]bool{
-		"AL":"","AK":"","AZ":"","AR":"","CA":"","CO":"","CT":"","DE":"","FL":"","GA":"",
-		"HI":"","ID":"","IL":"","IN":"","IA":"","KS":"","KY":"","LA":"","ME":"","MD":"",
-		"MA":"","MI":"","MN":"","MS":"","MO":"","MT":"","NE":"","NV":"","NH":"","NJ":"",
-		"NM":"","NY":"","NC":"","ND":"","OH":"","OK":"","OR":"","PA":"","RI":"","SC":"",
-		"SD":"","TN":"","TX":"","UT":"","VT":"","VA":"","WA":"","WV":"","WI":"","WY":"",
-		"DC":"","PR":"","VI":"","GU":"","MP":"","AS":"",
+	validStates := map[string]struct{}{
+		"AL":{}, "AK":{}, "AZ":{}, "AR":{}, "CA":{}, "CO":{}, "CT":{}, "DE":{}, "FL":{}, "GA":{},
+		"HI":{}, "ID":{}, "IL":{}, "IN":{}, "IA":{}, "KS":{}, "KY":{}, "LA":{}, "ME":{}, "MD":{},
+		"MA":{}, "MI":{}, "MN":{}, "MS":{}, "MO":{}, "MT":{}, "NE":{}, "NV":{}, "NH":{}, "NJ":{},
+		"NM":{}, "NY":{}, "NC":{}, "ND":{}, "OH":{}, "OK":{}, "OR":{}, "PA":{}, "RI":{}, "SC":{},
+		"SD":{}, "TN":{}, "TX":{}, "UT":{}, "VT":{}, "VA":{}, "WA":{}, "WV":{}, "WI":{}, "WY":{},
+		"DC":{}, "PR":{}, "VI":{}, "GU":{}, "MP":{}, "AS":{},
 	}
 
 	switch {
