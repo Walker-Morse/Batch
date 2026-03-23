@@ -392,6 +392,186 @@
       ],
       "title": "S3 Object Browser",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Files that did not reach COMPLETE status. stopped_at shows the last stage reached. reason gives the best available explanation from dead letters or domain command failures.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "file_status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "PROCESSING": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "RECEIVED": {
+                        "color": "blue",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "VALIDATING": {
+                        "color": "blue",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "ASSEMBLED": {
+                        "color": "blue",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "TRANSFERRED": {
+                        "color": "blue",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "STALLED": {
+                        "color": "red",
+                        "index": 6
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "HALTED": {
+                        "color": "red",
+                        "index": 7
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "stopped_at"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "stage 3: domain commands created, awaiting FIS": {
+                        "color": "orange",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "stage 2: validation \u2014 no commands created": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "stage 1: received, not yet validated": {
+                        "color": "blue",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "dead lettered": {
+                        "color": "red",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 6,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "noValue": "All files complete \u2705"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  bf.tenant_id,\n  bf.client_id,\n  bf.file_type,\n  bf.status                                                        AS file_status,\n  bf.record_count,\n  bf.malformed_count,\n\n  -- Where did it stop?\n  CASE\n    WHEN EXISTS (\n      SELECT 1 FROM dead_letter_store dl\n      WHERE dl.correlation_id = bf.correlation_id\n    )                                           THEN 'dead lettered'\n    WHEN EXISTS (\n      SELECT 1 FROM domain_commands dc\n      WHERE dc.correlation_id = bf.correlation_id\n        AND dc.failure_reason IS NOT NULL\n        AND dc.failure_reason != ''\n    )                                           THEN 'stage 3: command failed'\n    WHEN EXISTS (\n      SELECT 1 FROM domain_commands dc\n      WHERE dc.correlation_id = bf.correlation_id\n    )                                           THEN 'stage 3: domain commands created, awaiting FIS'\n    WHEN bf.record_count IS NOT NULL            THEN 'stage 2: validation \u2014 no commands created'\n    ELSE                                             'stage 1: received, not yet validated'\n  END                                                              AS stopped_at,\n\n  -- Best available reason\n  COALESCE(\n    -- Dead letter reason (most specific)\n    (SELECT STRING_AGG(DISTINCT dl.failure_stage || ': ' || dl.failure_reason, ' | ')\n     FROM dead_letter_store dl\n     WHERE dl.correlation_id = bf.correlation_id\n     LIMIT 1),\n    -- Command failure reason\n    (SELECT STRING_AGG(DISTINCT dc.failure_reason, ' | ')\n     FROM domain_commands dc\n     WHERE dc.correlation_id = bf.correlation_id\n       AND dc.failure_reason IS NOT NULL\n       AND dc.failure_reason != ''\n     LIMIT 1),\n    -- No failure recorded \u2014 still in flight\n    'no failure recorded \u2014 pipeline did not complete'\n  )                                                                AS reason,\n\n  -- Counts\n  (SELECT COUNT(*) FROM dead_letter_store dl\n   WHERE dl.correlation_id = bf.correlation_id)                   AS dead_letter_count,\n  (SELECT COUNT(*) FROM domain_commands dc\n   WHERE dc.correlation_id = bf.correlation_id)                   AS command_count,\n\n  bf.arrived_at,\n  bf.updated_at\n\nFROM batch_files bf\nWHERE bf.status != 'COMPLETE'\nORDER BY bf.arrived_at DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "\u26a0\ufe0f  Unprocessed / Incomplete Files",
+      "type": "table"
     }
   ],
   "refresh": "1m",
