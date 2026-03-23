@@ -1,0 +1,4 @@
+# Grafana org preferences — applied at startup via Grafana API by the
+# post-start provisioning script. Sets the org-level home dashboard
+# so all users land on the portal on login.
+homeDashboardUID: onefintech-home
