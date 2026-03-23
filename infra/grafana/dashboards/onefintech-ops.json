@@ -2,32 +2,27 @@
   "panels": [
     {
       "datasource": {
-        "uid": "bfglj9ie589oge"
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
+            "fixedColor": "blue",
+            "mode": "fixed"
           }
-        }
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
+        "w": 6,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
         "reduceOptions": {
           "calcs": [
@@ -37,15 +32,13 @@
       },
       "targets": [
         {
-          "expression": "fields @message | filter event = \"pipeline.complete\" | stats count() as runs",
-          "logGroups": [
-            {
-              "arn": "arn:aws:logs:us-east-1:307871782435:log-group:/onefintech/dev/ingest-task:*"
-            }
-          ],
-          "queryMode": "Logs",
-          "refId": "A",
-          "region": "us-east-1"
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
+          "refId": "A"
         }
       ],
       "title": "Total Runs (7d)",
@@ -53,32 +46,27 @@
     },
     {
       "datasource": {
-        "uid": "bfglj9ie589oge"
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
+            "fixedColor": "green",
+            "mode": "fixed"
           }
-        }
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 4,
+        "w": 6,
+        "x": 6,
         "y": 0
       },
       "id": 2,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
         "reduceOptions": {
           "calcs": [
@@ -88,15 +76,13 @@
       },
       "targets": [
         {
-          "expression": "fields @message | filter event = \"member.enrolled\" | stats count() as enrolled",
-          "logGroups": [
-            {
-              "arn": "arn:aws:logs:us-east-1:307871782435:log-group:/onefintech/dev/ingest-task:*"
-            }
-          ],
-          "queryMode": "Logs",
-          "refId": "A",
-          "region": "us-east-1"
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT COALESCE(SUM(record_count), 0) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
+          "refId": "A"
         }
       ],
       "title": "Rows Enrolled (7d)",
@@ -104,7 +90,8 @@
     },
     {
       "datasource": {
-        "uid": "bfglj9ie589oge"
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
@@ -112,91 +99,30 @@
             "mode": "thresholds"
           },
           "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
                 "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
+                "value": 0
               },
               {
                 "color": "red",
-                "value": 10
+                "value": 1
               }
             ]
           }
-        }
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 8,
+        "w": 6,
+        "x": 12,
         "y": 0
       },
       "id": 3,
       "options": {
         "colorMode": "background",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "targets": [
-        {
-          "expression": "fields @message | filter event = \"row.dead_lettered\" | stats count() as dead_letters",
-          "logGroups": [
-            {
-              "arn": "arn:aws:logs:us-east-1:307871782435:log-group:/onefintech/dev/ingest-task:*"
-            }
-          ],
-          "queryMode": "Logs",
-          "refId": "A",
-          "region": "us-east-1"
-        }
-      ],
-      "title": "Dead Letters (7d)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "uid": "bfglj9ie589oge"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 30000
-              },
-              {
-                "color": "red",
-                "value": 120000
-              }
-            ]
-          },
-          "unit": "ms"
-        }
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 0
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
         "graphMode": "none",
         "reduceOptions": {
           "calcs": [
@@ -206,18 +132,60 @@
       },
       "targets": [
         {
-          "expression": "fields @message | filter event = \"pipeline.complete\" | stats avg(elapsed_ms) as avg_ms",
-          "logGroups": [
-            {
-              "arn": "arn:aws:logs:us-east-1:307871782435:log-group:/onefintech/dev/ingest-task:*"
-            }
-          ],
-          "queryMode": "Logs",
-          "refId": "A",
-          "region": "us-east-1"
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) FROM dead_letter_store WHERE created_at >= NOW() - INTERVAL '7 days'",
+          "refId": "A"
         }
       ],
-      "title": "Avg Pipeline Duration (ms)",
+      "title": "Dead Letters (7d)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT ROUND(\n             AVG(EXTRACT(EPOCH FROM (updated_at - arrived_at)) / 60.0)::numeric,\n           1)\n           FROM batch_files\n           WHERE status = 'COMPLETE'\n             AND arrived_at >= NOW() - INTERVAL '7 days'",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Pipeline Duration (min)",
       "type": "stat"
     },
     {
