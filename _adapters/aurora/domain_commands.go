@@ -55,20 +55,23 @@ func (r *DomainCommandRepo) Insert(ctx context.Context, cmd *ports.DomainCommand
 func (r *DomainCommandRepo) FindDuplicate(
 	ctx context.Context,
 	tenantID, clientMemberID, commandType, benefitPeriod string,
-	correlationID uuid.UUID,
 ) (*ports.DomainCommand, error) {
+	// Check across ALL files — correlation_id is intentionally excluded.
+	// A member submitted in any prior file for this benefit period is a duplicate.
+	// Only FAILED commands are excluded — they may be retried.
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, correlation_id, tenant_id, client_member_id,
 		       command_type, benefit_period, status,
 		       batch_file_id, sequence_in_file,
 		       created_at, completed_at, failure_reason
 		FROM public.domain_commands
-		WHERE tenant_id = $1
+		WHERE tenant_id       = $1
 		  AND client_member_id = $2
-		  AND command_type = $3
-		  AND benefit_period = $4
-		  AND correlation_id = $5`,
-		tenantID, clientMemberID, commandType, benefitPeriod, correlationID,
+		  AND command_type    = $3
+		  AND benefit_period  = $4
+		  AND status         != 'Failed'
+		LIMIT 1`,
+		tenantID, clientMemberID, commandType, benefitPeriod,
 	)
 
 	cmd := &ports.DomainCommand{}

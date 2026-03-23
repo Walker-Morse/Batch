@@ -69,9 +69,13 @@ type BatchFileRepository interface {
 // Written in Stage 3 BEFORE any domain state mutation — this sequence is mandatory.
 type DomainCommandRepository interface {
 	Insert(ctx context.Context, cmd *DomainCommand) error
-	// FindDuplicate returns a non-nil existing command if the composite key
-	// (correlation_id, client_member_id, command_type, benefit_period) already exists.
-	FindDuplicate(ctx context.Context, tenantID, clientMemberID, commandType, benefitPeriod string, correlationID uuid.UUID) (*DomainCommand, error)
+	// FindDuplicate returns a non-nil existing command if the member has already
+	// been submitted for the given benefit period — across ALL files, not just the
+	// current correlation ID. Scoping to correlation_id was wrong: a member
+	// submitted in a previous file for the same benefit period is a duplicate
+	// regardless of which file it came from.
+	// Only FAILED commands are excluded — a failed submission may be retried.
+	FindDuplicate(ctx context.Context, tenantID, clientMemberID, commandType, benefitPeriod string) (*DomainCommand, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, failureReason *string) error
 }
 

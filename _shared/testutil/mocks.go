@@ -299,7 +299,7 @@ func (m *MockDomainCommandRepository) Insert(_ context.Context, cmd *ports.Domai
 	return nil
 }
 
-func (m *MockDomainCommandRepository) FindDuplicate(_ context.Context, tenantID, clientMemberID, commandType, benefitPeriod string, correlationID uuid.UUID) (*ports.DomainCommand, error) {
+func (m *MockDomainCommandRepository) FindDuplicate(_ context.Context, tenantID, clientMemberID, commandType, benefitPeriod string) (*ports.DomainCommand, error) {
 	if m.FindErr != nil {
 		return nil, m.FindErr
 	}
@@ -310,7 +310,7 @@ func (m *MockDomainCommandRepository) FindDuplicate(_ context.Context, tenantID,
 			c.ClientMemberID == clientMemberID &&
 			c.CommandType == commandType &&
 			c.BenefitPeriod == benefitPeriod &&
-			c.CorrelationID == correlationID {
+			c.Status != "Failed" {
 			return c, nil
 		}
 	}

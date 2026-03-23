@@ -188,7 +188,73 @@ const (
 	outcomeDeadLettered
 )
 
+// validateSRG310Row checks all fields required by FIS before any DB write.
+// Returns a non-empty reason string if the row should be dead-lettered.
+// Validated here so failures are caught before the domain command is created —
+// a domain command without a valid RT30 is an orphan that blocks the member.
+func validateSRG310Row(row *srg.SRG310Row) string {
+	validStates := map[string]bool{
+		"AL":"","AK":"","AZ":"","AR":"","CA":"","CO":"","CT":"","DE":"","FL":"","GA":"",
+		"HI":"","ID":"","IL":"","IN":"","IA":"","KS":"","KY":"","LA":"","ME":"","MD":"",
+		"MA":"","MI":"","MN":"","MS":"","MO":"","MT":"","NE":"","NV":"","NH":"","NJ":"",
+		"NM":"","NY":"","NC":"","ND":"","OH":"","OK":"","OR":"","PA":"","RI":"","SC":"",
+		"SD":"","TN":"","TX":"","UT":"","VT":"","VA":"","WA":"","WV":"","WI":"","WY":"",
+		"DC":"","PR":"","VI":"","GU":"","MP":"","AS":"",
+	}
+
+	switch {
+	case row.ClientMemberID == "":
+		return "missing_required_field: client_member_id"
+	case row.FirstName == "":
+		return "missing_required_field: first_name"
+	case row.LastName == "":
+		return "missing_required_field: last_name"
+	case row.DOB.IsZero():
+		return "missing_required_field: date_of_birth"
+	case row.DOB.After(time.Now().UTC()):
+		return "invalid_field: date_of_birth is in the future"
+	case time.Since(row.DOB).Hours() > 120*365*24:
+		return "invalid_field: date_of_birth implies age > 120 years"
+	case row.Address1 == "":
+		return "missing_required_field: address_1"
+	case row.City == "":
+		return "missing_required_field: city"
+	case row.State == "":
+		return "missing_required_field: state"
+	case len(row.State) != 2:
+		return fmt.Sprintf("invalid_field: state must be 2 chars, got %q", row.State)
+	case !func() bool { _, ok := validStates[row.State]; return ok }():
+		return fmt.Sprintf("invalid_field: unrecognised state code %q", row.State)
+	case row.ZIP == "":
+		return "missing_required_field: zip"
+	case !func() bool {
+		if len(row.ZIP) == 5 { for _, c := range row.ZIP { if c < '0' || c > '9' { return false } }; return true }
+		if len(row.ZIP) == 10 && row.ZIP[5] == '-' {
+			for i, c := range row.ZIP { if i == 5 { continue }; if c < '0' || c > '9' { return false } }; return true
+		}
+		return false
+	}():
+		return fmt.Sprintf("invalid_field: zip must be 5 or 9 digits, got %q", row.ZIP)
+	case row.SubprogramID == "":
+		return "missing_required_field: subprogram_id"
+	case row.BenefitPeriod == "":
+		return "missing_required_field: benefit_period"
+	case row.PackageID == "":
+		return "missing_required_field: package_id (required for FIS card production)"
+	}
+	return ""
+}
+
 func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProcessingInput, row *srg.SRG310Row) rowOutcome {
+	// Pre-insert validation — dead-letter before any DB write if required fields missing.
+	if reason := validateSRG310Row(row); reason != "" {
+		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
+			string(domain.FailureRowProcessing),
+			"validation_failed: "+reason,
+			"DATA_GAP",
+			row.Raw)
+	}
+
 	programID, err := s.lookupProgram(ctx, in.BatchFile.TenantID, row.SubprogramID)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
@@ -201,7 +267,6 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
 		string(domain.CommandEnroll), row.BenefitPeriod,
-		in.BatchFile.CorrelationID,
 	)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
@@ -325,7 +390,7 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
-		commandType, row.BenefitPeriod, in.BatchFile.CorrelationID,
+		commandType, row.BenefitPeriod,
 	)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
@@ -393,7 +458,7 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 
 	existing, err := s.DomainCommands.FindDuplicate(ctx,
 		in.BatchFile.TenantID, row.ClientMemberID,
-		commandType, row.BenefitPeriod, in.BatchFile.CorrelationID,
+		commandType, row.BenefitPeriod,
 	)
 	if err != nil {
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
