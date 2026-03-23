@@ -38,11 +38,11 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '24 hours'",
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
           "refId": "A"
         }
       ],
-      "title": "Files Received (24h)",
+      "title": "Files Received (7d)",
       "type": "stat"
     },
     {
@@ -83,11 +83,11 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '24 hours'",
+          "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
           "refId": "A"
         }
       ],
-      "title": "Total Rows Submitted (24h)",
+      "title": "Total Rows Submitted (7d)",
       "type": "stat"
     },
     {
@@ -190,7 +190,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.arrived_at >= NOW() - INTERVAL '24 hours'\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.arrived_at >= NOW() - INTERVAL '7 days'\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
           "refId": "A"
         }
       ],
@@ -598,7 +598,7 @@
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-7d",
     "to": "now"
   },
   "timezone": "browser",

@@ -821,6 +821,10 @@
       }
     ]
   },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "title": "Test Runs",
   "uid": "onefintech-tests"
 }

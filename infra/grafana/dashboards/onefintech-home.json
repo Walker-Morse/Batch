@@ -53,11 +53,11 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '24 hours'",
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
           "refId": "A"
         }
       ],
-      "title": "Files Received (24h)",
+      "title": "Files Received (7d)",
       "type": "stat"
     },
     {
@@ -447,6 +447,10 @@
     "onefintech",
     "home"
   ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
   "title": "One Fintech Platform \u2014 Overview",
   "uid": "onefintech-home"
 }

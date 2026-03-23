@@ -48,7 +48,7 @@
           "region": "us-east-1"
         }
       ],
-      "title": "Total Runs (24h)",
+      "title": "Total Runs (7d)",
       "type": "stat"
     },
     {
@@ -99,7 +99,7 @@
           "region": "us-east-1"
         }
       ],
-      "title": "Rows Enrolled (24h)",
+      "title": "Rows Enrolled (7d)",
       "type": "stat"
     },
     {
@@ -157,7 +157,7 @@
           "region": "us-east-1"
         }
       ],
-      "title": "Dead Letters (24h)",
+      "title": "Dead Letters (7d)",
       "type": "stat"
     },
     {
@@ -249,7 +249,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT\n  failure_stage,\n  failure_reason,\n  COUNT(*) as count,\n  MAX(created_at) as last_seen\nFROM dead_letter_store\nWHERE created_at >= NOW() - INTERVAL '24 hours'\nGROUP BY failure_stage, failure_reason\nORDER BY count DESC\nLIMIT 20",
+          "rawSql": "SELECT\n  failure_stage,\n  failure_reason,\n  COUNT(*) as count,\n  MAX(created_at) as last_seen\nFROM dead_letter_store\nWHERE created_at >= NOW() - INTERVAL '7 days'\nGROUP BY failure_stage, failure_reason\nORDER BY count DESC\nLIMIT 20",
           "refId": "A"
         }
       ],
@@ -297,7 +297,7 @@
     "operations"
   ],
   "time": {
-    "from": "now-3h",
+    "from": "now-7d",
     "to": "now"
   },
   "timezone": "browser",
