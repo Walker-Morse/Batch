@@ -57,6 +57,7 @@ export class AuroraConstruct extends Construct {
       removalPolicy,
       backup: { retention: cdk.Duration.days(isDev ? 7 : 35) },
       cloudwatchLogsExports: ["postgresql"],
+      enableDataApi: true,   // allows RDS Data API — used by CI test recorder (no VPC needed)
     });
 
     this.dbSecret = this.cluster.secret!;
