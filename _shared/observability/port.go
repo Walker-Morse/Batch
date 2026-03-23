@@ -42,14 +42,18 @@ const (
 // CloudWatch metric filters extract metric_value from log events with these names.
 // Datadog Agent sidecar forwards them as custom metrics when wired (pre-UAT gate).
 //
-// All four are required. See §7.3 for alarm thresholds.
+// All metrics are required. See §7.3 for alarm thresholds.
 const (
-	MetricDeadLetterRate       = "dead_letter_rate"       // % of rows dead-lettered in Stage 3
-	MetricMalformedRate        = "malformed_rate"         // % of rows malformed in Stage 2
+	MetricDeadLetterRate        = "dead_letter_rate"        // % of rows dead-lettered in Stage 3
+	MetricMalformedRate         = "malformed_rate"          // % of rows malformed in Stage 2
 	MetricEnrollmentSuccessRate = "enrollment_success_rate" // % of RT30s successfully enrolled in Stage 7
-	MetricPipelineDurationMs   = "pipeline_duration_ms"   // wall time for full pipeline run
-	MetricPipelineErrorRate    = "pipeline_error_rate"    // Severity 1 P0 alarm
-	MetricPipelineStall        = "pipeline_stall"         // Severity 2 P1 alarm
+	MetricPipelineDurationMs    = "pipeline_duration_ms"    // wall time for full pipeline run
+	MetricPipelineErrorRate     = "pipeline_error_rate"     // Severity 1 P0 alarm
+	MetricPipelineStall         = "pipeline_stall"          // Severity 2 P1 alarm
+	// MetricStageDurationMs is emitted once per stage per run with dimension "stage"
+	// set to the stage name (e.g. "stage1_file_arrival"). Used by Grafana to render
+	// per-stage processing time breakdown. See §7.3 and onefintech-ops dashboard.
+	MetricStageDurationMs = "stage_duration_ms"
 )
 
 // NoopObservability is a no-op implementation for testing.
