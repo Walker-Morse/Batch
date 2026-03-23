@@ -19,8 +19,7 @@ ALL_PKGS := \
 	./_shared/... \
 	./_cmd/...
 
-.PHONY: build test test-verbose test-record vet smoke smoke-integration smoke-record
-
+.PHONY: build test test-verbose test-record vet smoke smoke-integration smoke-record db-up db-down db-logs db-psql db-init-schema db-seed db-reset-fixtures
 build:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go build $(ALL_PKGS)
 
@@ -59,5 +58,26 @@ smoke-record:
 # Option B smoke test — integration against live Postgres + S3.
 # Requires: docker compose up (see _docs/SMOKE_TEST_OPTION_B.md)
 smoke-integration:
-	@echo "Option B smoke test requires docker compose. See _docs/SMOKE_TEST_OPTION_B.md"
-	@exit 1
+	docker compose up -d postgres
+	@echo "Postgres is starting. Run 'make db-logs' to follow startup and schema init."
+
+db-up:
+	docker compose up -d postgres
+
+db-down:
+	docker compose down
+
+db-logs:
+	docker compose logs -f postgres
+
+db-psql:
+	docker compose exec postgres psql -U ingest_task -d onefintech
+
+db-init-schema:
+	docker compose exec -T postgres psql -U ingest_task -d onefintech -f /docker-entrypoint-initdb.d/00-init.sql
+
+db-seed:
+	docker compose exec -T postgres psql -U ingest_task -d onefintech < docker/postgres/fixtures/dev_seed.sql
+
+db-reset-fixtures:
+	docker compose exec -T postgres psql -U ingest_task -d onefintech < docker/postgres/fixtures/dev_reset.sql

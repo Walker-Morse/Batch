@@ -69,21 +69,21 @@ export class StorageConstruct extends Construct {
       }],
     });
 
-    // fis-exchange — outbound PGP-encrypted files + inbound return files
+    // scp-exchange — outbound PGP-encrypted files + inbound return files
     this.fisExchangeBucket = new s3.Bucket(this, "FisExchangeBucket", {
-      bucketName: `onefintech-${props.env}-fis-exchange-placeholder`,
+      bucketName: `onefintech-${props.env}-scp-exchange-placeholder`,
       encryptionKey: this.kmsKey,
       encryption: s3.BucketEncryption.KMS,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
       versioned: true,
       serverAccessLogsBucket: this.logsBucket,
-      serverAccessLogsPrefix: "fis-exchange/",
+      serverAccessLogsPrefix: "scp-exchange/",
       removalPolicy,
       autoDeleteObjects,
       lifecycleRules: [{
         // TODO: transition to Glacier after 90 days before PRD (Open Item #36)
-        id: "fis-exchange-7yr-retention",
+        id: "scp-exchange-7yr-retention",
         expiration: cdk.Duration.days(2555),
       }],
     });
@@ -110,7 +110,6 @@ export class StorageConstruct extends Construct {
       }],
     });
 
-    cdk.Tags.of(this).add("Project", "OneFintechFIS");
-    cdk.Tags.of(this).add("Environment", props.env);
+    cdk.Tags.of(this).add("Project", "OneFintechSCP");    cdk.Tags.of(this).add("Environment", props.env);
   }
 }

@@ -1,7 +1,7 @@
 // Package ports defines the interface contracts (adapter seams) for the One Fintech platform.
 //
 // Per ADR-001, these are named seams that preserve a clear migration path to full
-// hexagonal architecture. ALL FIS record format knowledge lives in the fis_submission
+// hexagonal architecture. ALL SCP record format knowledge lives in the fis_submission
 // package — domain logic and pipeline stages never import that package directly.
 // They consume these interfaces.
 //
@@ -47,7 +47,7 @@ type ObjectMeta struct {
 
 // SecretStore is the port for AWS Secrets Manager.
 // No credential may appear in ECS task environment variables.
-// Datadog API key, PGP keys, FIS credentials, DB passwords all go through here.
+// Datadog API key, PGP keys, SCP credentials, DB passwords all go through here.
 type SecretStore interface {
 	GetSecret(ctx context.Context, secretARN string) (string, error)
 }
@@ -96,18 +96,18 @@ type AuditLogWriter interface {
 	Write(ctx context.Context, entry *AuditEntry) error
 }
 
-// ─── FIS Batch Processor (ADR-001) ───────────────────────────────────────────
+// ─── SCP Batch Processor (ADR-001) ───────────────────────────────────────────
 
-// FISBatchAssembler is the adapter seam for FIS Prepaid Sunrise record construction.
-// ALL FIS record format knowledge (field offsets, padding rules, AT codes,
+// FISBatchAssembler is the adapter seam for SCP record construction.
+// ALL SCP record format knowledge (field offsets, padding rules, AT codes,
 // RT10/RT20/RT80/RT90 wrapper structure) lives in the implementation.
 // Domain logic and pipeline stages consume this interface only.
 type FISBatchAssembler interface {
 	AssembleFile(ctx context.Context, req *AssembleRequest) (*AssembledFile, error)
 }
 
-// FISTransport delivers assembled PGP-encrypted files to FIS via Secure File Transfer
-// and polls the FIS inbound S3 prefix for return files (Stage 6).
+// FISTransport delivers assembled PGP-encrypted files to SCP via Secure File Transfer
+// and polls the SCP inbound S3 prefix for return files (Stage 6).
 type FISTransport interface {
 	Deliver(ctx context.Context, encryptedFile io.Reader, filename string) error
 	// PollForReturn blocks until the return file arrives or timeout expires.
@@ -197,8 +197,7 @@ type DeadLetterEntry struct {
 	RowSequenceNumber *int
 	TenantID          string
 	ClientMemberID    *string
-	FailureStage      string // validation|row_processing|batch_assembly|processor_deposit|return_file_wait|reconciliation
-	FailureReason     string // structured error code ONLY — no PHI ever
+	FailureStage      string // validation|row_processing|batch_assembly|processor_deposit|return_file_wait|reconciliation	FailureReason     string // structured error code ONLY — no PHI ever
 	MessageBody       []byte // JSONB — PHI present; never log this field
 	RetryCount        int
 	LastRetryAt       *time.Time
@@ -257,7 +256,7 @@ type LogEvent struct {
 	CommandType       *string    // ENROLL|UPDATE|LOAD|SWEEP|SUSPEND|TERMINATE
 	BenefitPeriod     *string    // ISO YYYY-MM
 	SubprogramID      *int64
-	FISResultCode     *string    // FIS 3-digit result code e.g. "000"
+	FISResultCode     *string    // SCP 3-digit result code e.g. "000"
 
 	// ── Failure fields ───────────────────────────────────────────────────────
 	Error           *string // structured error code only — no PHI
@@ -298,7 +297,7 @@ type LogEvent struct {
 	DeadLettered *int
 }
 
-// AssembleRequest drives the FIS batch assembler for a single correlation ID.
+// AssembleRequest drives the SCP batch assembler for a single correlation ID.
 type AssembleRequest struct {
 	CorrelationID uuid.UUID
 	TenantID      string
@@ -307,16 +306,16 @@ type AssembleRequest struct {
 	ProgramID uuid.UUID
 	// LogFileIndicator MUST be '0' (return all records) — hardcoded in adapter,
 	// not overridable at runtime (§6.6.3). Required for Stage 7 to capture
-	// FIS-assigned card IDs and purse numbers for every enrolled member.
+	// SCP-assigned card IDs and purse numbers for every enrolled member.
 	LogFileIndicator byte
 	// TestProdIndicator: 'T' for DEV (format test only), 'P' for TST/PRD.
 	// Driven by PIPELINE_ENV environment variable — never hardcoded (§6.6.4).
 	TestProdIndicator byte
 }
 
-// AssembledFile is the result of FIS batch assembly.
+// AssembledFile is the result of SCP batch assembly.
 type AssembledFile struct {
-	Filename    string       // FIS naming convention: ppppppppmmddccyyss.*.txt (§6.6.1)
+	Filename    string       // SCP naming convention: ppppppppmmddccyyss.*.txt (§6.6.1)
 	RecordCount int
 	Body        io.ReadCloser
 }
@@ -331,7 +330,7 @@ type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; F
 
 // ─── Program Lookup (Stage 3) ────────────────────────────────────────────────
 
-// ProgramLookup resolves the programs table UUID from the FIS subprogram
+// ProgramLookup resolves the programs table UUID from the SCP subprogram
 // identifier carried on every SRG310 row. Implemented by DomainStateRepo.
 // Stage 3 depends on this narrow interface — not the full DomainStateRepo —
 // so it can be mocked in unit tests without a live DB connection.
@@ -351,7 +350,7 @@ type StagedRecords struct {
 }
 
 // StagedRT30 is the assembler-visible projection of a staged RT30 row.
-// Raw PHI fields are present — assembler uses them only for FIS record construction.
+// Raw PHI fields are present — assembler uses them only for SCP record construction.
 // Never log these values (§7.2, HIPAA §164.312(b)).
 type StagedRT30 struct {
 	ID             uuid.UUID

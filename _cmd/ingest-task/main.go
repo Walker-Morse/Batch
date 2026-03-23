@@ -8,8 +8,7 @@
 //   Stage 4 — Batch Assembly     FIS 400-byte fixed-width records → PGP-encrypt → S3
 //   Stage 5 — FIS Egress Deposit  PutObject → S3 egress bucket (FIS polls for pickup)
 //   Stage 6 — Return File Wait   Poll fis-exchange S3 for FIS return file (6h timeout)
-//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers
-//
+//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers//
 // Adapters are wired here and injected into stages via port interfaces.
 // No stage imports an adapter directly — all dependencies flow through ports (ADR-001).
 package main
@@ -69,19 +68,17 @@ type PipelineConfig struct {
 	KMSKeyARN         string
 	StagedBucket      string
 	FISExchangeBucket string
-	EgressBucket      string
-	ReturnFilePrefix  string
+	EgressBucket      string	ReturnFilePrefix  string
 
-	// FIS assembler
-	FISCompanyID string
+	// SCP assembler
+	SCPCompanyID string
 
 	// PGP key ARNs (Secrets Manager). Empty = NullPGP passthrough (DEV only).
 	PGPPrivateKeySecretARN   string
 	PGPPassphraseSecretARN   string
-	PGPFISPublicKeySecretARN string
+	PGPSCPPublicKeySecretARN string
 
 	// FIS SFTP fields removed — Stage 5 now uses S3 egress bucket (OI #19 superseded).
-
 	// Replay mode
 	ReplayMode        bool
 	ReplayRowSequence *int
@@ -155,7 +152,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	obs := observability.NewCloudWatchAdapter(envOrDefault("PIPELINE_ENV", "DEV"))
 
 	seqStore  := aurora.NewFISSequenceRepo(pool)
-	assembler := fis_adapter.NewAssembler(cfg.FISCompanyID, seqStore, batchRecordsRepo)
+	assembler := fis_adapter.NewAssembler(cfg.SCPCompanyID, seqStore, batchRecordsRepo)
 
 	testProdIndicator := byte('P')
 	if cfg.PipelineEnv == "DEV" {
@@ -206,10 +203,10 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 
 	// PGP encrypt (Stage 4)
 	var pgpEncrypt func(io.Reader) (io.Reader, error)
-	if cfg.PGPFISPublicKeySecretARN == "" {
+	if cfg.PGPSCPPublicKeySecretARN == "" {
 		if cfg.PipelineEnv != "DEV" {
 			pool.Close()
-			return nil, fmt.Errorf("PGP_FIS_PUBLIC_KEY_SECRET_ARN required in %s", cfg.PipelineEnv)
+			return nil, fmt.Errorf("PGP_SCP_PUBLIC_KEY_SECRET_ARN required in %s", cfg.PipelineEnv)
 		}
 		_ = obs.LogEvent(ctx, &ports.LogEvent{
 			EventType:     "pipeline.warn",
@@ -222,7 +219,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 		})
 		pgpEncrypt = stage4.NullPGPEncrypt
 	} else {
-		enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPFISPublicKeySecretARN)
+		enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPSCPPublicKeySecretARN)
 		if err != nil {
 			pool.Close()
 			return nil, fmt.Errorf("load PGP encrypter: %w", err)
@@ -240,8 +237,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	var fisTransport ports.FISTransport = &adtransport.FISTransportAdapter{
 		S3Client:          s3Client,
 		FISExchangeBucket: cfg.FISExchangeBucket,
-		ReturnFilePrefix:  returnPrefix,
-	}
+		ReturnFilePrefix:  returnPrefix,	}
 
 	var martWriter ports.MartWriter = &noopMartWriter{}
 
@@ -279,7 +275,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Obs:               obs,
 			PGPEncrypt:        pgpEncrypt,
 			StagedBucket:      cfg.StagedBucket,
-			FISExchangeBucket: cfg.FISExchangeBucket,
+			FISExchangeBucket: cfg.SCPExchangeBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files:             fileStore,
@@ -287,8 +283,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Audit:             auditRepo,
 			Obs:               obs,
 			FISExchangeBucket: cfg.FISExchangeBucket,
-			EgressBucket:      cfg.EgressBucket,
-		},
+			EgressBucket:      cfg.EgressBucket,		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport:  fisTransport,
 			BatchFiles: batchFileRepo,
@@ -412,8 +407,7 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 	})
 
 	// ── Stage 5 — FIS Transfer ────────────────────────────────────────────
-	s5Start := time.Now()
-	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
+	s5Start := time.Now()	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage5: %w", err))
 	}
 	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s5Start).Milliseconds()), map[string]string{
@@ -550,8 +544,7 @@ func parseConfig() (*PipelineConfig, error) {
 	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "ARN: Morse PGP private key")
 	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "ARN: PGP passphrase")
 	pgpFISPublicKeyARN    := flag.String("pgp-fis-public-key-secret-arn",os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"),"ARN: FIS PGP public key")
-	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).
-	replay                := flag.Bool("replay", false, "replay mode")
+	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).	replay                := flag.Bool("replay", false, "replay mode")
 	replaySeq             := flag.Int("replay-seq", 0, "row sequence for replay")
 	returnTimeout         := flag.Duration("return-file-timeout", 6*time.Hour, "Stage 6 return file wait timeout")
 	flag.Parse()
@@ -620,13 +613,11 @@ func parseConfig() (*PipelineConfig, error) {
 		KMSKeyARN:                  *kmsKey,
 		StagedBucket:               *stagedBucket,
 		FISExchangeBucket:          *fisBucket,
-		EgressBucket:               *egressBucket,
-		ReturnFilePrefix:           *returnPrefix,
-		FISCompanyID:               *fisCompanyID,
+		EgressBucket:               *egressBucket,		ReturnFilePrefix:           *returnPrefix,
+		SCPCompanyID:               *scpCompanyID,
 		PGPPrivateKeySecretARN:     *pgpPrivateKeyARN,
 		PGPPassphraseSecretARN:     *pgpPassphraseARN,
 		PGPFISPublicKeySecretARN:   *pgpFISPublicKeyARN,
-
 		ReplayMode:                 *replay,
 		ReturnFileWaitTimeout:      *returnTimeout,
 	}

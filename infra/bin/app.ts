@@ -16,7 +16,7 @@ new OneFintechStack(app, "OneFintechDev", {
   // DEV: min 0.5 ACU allows scale-to-zero; max 4 ACU sufficient for DEV loads (ADR-008)
   auroraMinAcu: 0.5,
   auroraMaxAcu: 4,
-  // TODO: replace PLACEHOL with real FIS company ID from Selvi Marappan (Open Item #31)
+  // TODO: replace PLACEHOL with real SCP company ID from Selvi Marappan (Open Item #31)
   fisCompanyId: "PLACEHOL",
   // DEV: nightly 02:00 UTC — confirm submission window with Kendra Williams (Open Item #29)
   scheduleCron: "cron(0 2 * * ? *)",
@@ -27,12 +27,11 @@ new OneFintechStack(app, "OneFintechDev", {
   // Provision secrets and populate ARNs before TST deploy (Open Item #41).
   pgpPrivateKeySecretArn: process.env.PGP_PRIVATE_KEY_SECRET_ARN ?? "",
   pgpPassphraseSecretArn: process.env.PGP_PASSPHRASE_SECRET_ARN ?? "",
-  pgpFisPublicKeySecretArn: process.env.PGP_FIS_PUBLIC_KEY_SECRET_ARN ?? "",
+  pgpFisPublicKeySecretArn: process.env.PGP_SCP_PUBLIC_KEY_SECRET_ARN ?? "",
   // Git SHA of the api-server image to deploy. Set by CI via API_SERVER_IMAGE_TAG.
   // Pinning to a SHA forces a new task definition revision on every image push,
   // ensuring ECS always deploys the latest build. Falls back to "latest" for local synth.
   apiServerImageTag: process.env.API_SERVER_IMAGE_TAG ?? "latest",
-  description: "One Fintech / FIS Prepaid Sunrise — DEV environment",
-});
+  description: "One Fintech / SCP — DEV environment",});
 
 app.synth();

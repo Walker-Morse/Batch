@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: onefintech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: onefintech
+      POSTGRES_USER: ingest_task
+      POSTGRES_PASSWORD: dev_password_not_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./_schema:/docker-entrypoint-initdb.d/schema:ro
+      - ./docker/postgres/init/00-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ingest_task -d onefintech"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ingest-task:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: onefintech-ingest-task
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AWS_REGION: us-east-1
+      PIPELINE_ENV: DEV
+      DB_HOST: postgres
+      DB_NAME: onefintech
+      DB_USER: ingest_task
+      DB_PASSWORD: dev_password_not_secret
+      DB_SSL: disable
+      RETURN_FILE_PREFIX: return/
+    entrypoint: ["/ingest-task"]
+    command:
+      [
+        "--correlation-id", "00000000-0000-0000-0000-000000000001",
+        "--tenant-id", "local-dev",
+        "--client-id", "local-client",
+        "--s3-bucket", "local-bucket",
+        "--s3-key", "inbound-raw/local.srg310.csv",
+        "--file-type", "SRG310",
+        "--env", "DEV",
+        "--staged-bucket", "local-staged",
+        "--scp-exchange-bucket", "local-scp-exchange",
+        "--scp-company-id", "LOCALSCP"
+      ]
+    profiles: ["app"]
+
+volumes:
+  postgres_data:

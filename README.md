@@ -1,4 +1,4 @@
-# One Fintech — FIS Prepaid Sunrise Batch ETL Integration
+# One Fintech — SCP Batch ETL Integration
 
 **Operator:** Morse LLC · **Brand:** Speak Benefits  
 **First client:** Rogue Foods United (RFU), Oregon Medicaid food benefit program 
@@ -11,12 +11,12 @@
 ## What This System Does
 
 One Fintech is the batch ETL platform powering Speak Benefits. It receives eligibility
-files from Managed Care Organizations (MCOs), translates them into FIS Prepaid Sunrise
-card issuance and benefit load commands, sends those commands to FIS, reconciles the
+files from Managed Care Organizations (MCOs), translates them into SCP
+card issuance and benefit load commands, sends those commands to SCP, reconciles the
 results, and reports back to the MCO.
 
 When a cardholder stands at a checkout and swipes their Speak Benefits card for a bag
-of apples, FIS checks against the Approved Products List that One Fintech maintains.
+of apples, SCP checks against the Approved Products List that One Fintech maintains.
 The apple goes through. A bag of chips does not. That enforcement is not magic — it
 is the direct result of this system doing its job correctly every month.
 
@@ -46,7 +46,7 @@ _infra/                 AWS CDK constructs (networking, ECS, Aurora, storage, IA
 _cmd/
   ingest-task/          ECS Fargate entry point — all 7 pipeline stages
   replay-cli/           Dead letter replay tool (Open Item #24)
-  apl-uploader/         APL file generation and upload to FIS
+  apl-uploader/         APL file generation and upload to SCP
 ```
 
 ---
@@ -57,13 +57,28 @@ _cmd/
 Stage 1  File Arrival         S3 event received → SHA-256 hashes → batch_files row written
 Stage 2  Validation           PGP decrypt → SRG format check → malformed rows → dead_letter_store
 Stage 3  Row Processing       Sequential row-by-row · idempotency gate · domain + mart writes
-Stage 4  Batch Assembly       FIS 400-byte fixed-width records · PGP-encrypt · S3 write
-Stage 5  FIS Transfer         AWS Transfer Family → FIS Prepaid Sunrise SFTP
+Stage 4  Batch Assembly       SCP 400-byte fixed-width records · PGP-encrypt · S3 write
+Stage 5  SCP Transfer         AWS Transfer Family → SCP SFTP
 Stage 6  Return File Wait     Container polls S3 (6h timeout) · dead.letter.alert on timeout
 Stage 7  Reconciliation       Match results · update status · fact_reconciliation · MCO report
 ```
 
 One Fargate task per inbound file. Concurrent file arrivals run concurrent tasks (§5.2a).
+
+---
+
+## Local Database (Docker Compose)
+
+For local development with a real Postgres instance:
+
+```bash
+make db-up
+make db-seed
+make db-psql
+```
+
+Schema is initialized automatically from `_schema/` on first startup.
+See `_docs/LOCAL_DOCKER.md` for details.
 
 ---
 
@@ -92,7 +107,7 @@ decisions with load-bearing consequences.
 
 | Constraint | Source | Where enforced |
 |------------|--------|----------------|
-| FIS record format knowledge lives ONLY in `fis_reconciliation/fis_adapter/` | ADR-001 | Code review |
+| SCP record format knowledge lives ONLY in `fis_reconciliation/fis_adapter/` | ADR-001 | Code review |
 | `audit_log` is INSERT-only — no UPDATE or DELETE | §6.2, HIPAA §164.312(b) | PostgreSQL role |
 | Idempotency gate (`domain_commands`) written BEFORE any domain state mutation | §4.1.1 | Stage 3 |
 | Plaintext staged S3 files deleted immediately after Stage 4 | §5.4.3 | ingest-task |
@@ -114,11 +129,11 @@ decisions with load-bearing consequences.
 | Apr 6 | DEV AWS environment provisioned | No implementation sprint start possible |
 | Apr 7 | APL compute ownership decided (Open Item #11) | APL misses Apr 27 target |
 | Apr 13 | Stages 1–3 complete | Stage 4+ compress |
-| Apr 14 | Kendra: WATS form + Risk Config Form + XTRACT unblocked | FIS program not activated; UAT blocked |
+| Apr 14 | Kendra: WATS form + Risk Config Form + XTRACT unblocked | SCP program not activated; UAT blocked |
 | Apr 27 | Stage 4–5 complete; APL upload complete | Stage 6 bleeds into UAT window |
 | May 16 | Stage 6–7 complete; full pipeline validated in DEV | UAT starts with incomplete pipeline |
 | May 20 | Code freeze; UAT begins | Go-live June 1 at risk |
-| June 1 | UAT completion; FIS sign-off; go-live | — |
+| June 1 | UAT completion; SCP sign-off; go-live | — |
 
 ---
 
@@ -142,7 +157,7 @@ See `docs/compliance/` for full compliance documentation.
 |---|------|-------|--------|
 | 1 | SubprogramId + PackageId from Selvi's ACC upload | Selvi Marappan | Mar 10–11 |
 | 5 | WATS form | Kendra Williams | Apr 14 — AT RISK |
-| 6 | FIS Data XTRACT contract | Kendra Williams | Apr 14 — BLOCKED on MVB Xnet |
+| 6 | SCP Data XTRACT contract | Kendra Williams | Apr 14 — BLOCKED on MVB Xnet |
 | 9 | SRG310/315/320 column definitions confirmed | Kyle Walker / John Stevens | Mar 30 |
 | 11 | APL compute ownership decision | Kyle Walker | Apr 7 |
 | 24 | Replay CLI tool | Kyle Walker | Before May 20 UAT |

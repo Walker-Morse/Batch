@@ -79,10 +79,9 @@ export class EcsConstruct extends Construct {
         DB_USER:             "ingest_task",
         DB_SSL:              "require",
         STAGED_BUCKET:       props.stagedBucketName,
-        FIS_EXCHANGE_BUCKET: props.fisExchangeBucketName,
+        SCP_EXCHANGE_BUCKET: props.fisExchangeBucketName,
         EGRESS_BUCKET:       props.egressBucketName,
-        FIS_COMPANY_ID:      props.fisCompanyId,
-      },
+        SCP_COMPANY_ID:      props.fisCompanyId,      },
       // DB_PASSWORD injected at task startup by ECS from the ingestTaskSecret JSON key 'password'.
       // fromSecretsManager(secret, 'password') sets valueFrom to the full secret ARN + ':password::',
       // which ECS resolves by calling GetSecretValue on the execution role and extracting the key.
@@ -105,8 +104,7 @@ export class EcsConstruct extends Construct {
       "PostgreSQL to RDS Proxy");
     // Port 22 egress removed: Stage 5 now writes to S3 egress bucket (no SFTP delivery).
     // FIS Transfer Family SFTP is inbound-only (Stage 6 return file polling via S3).
-
-    cdk.Tags.of(this).add("Project", "OneFintechFIS");
+    cdk.Tags.of(this).add("Project", "OneFintechSCP");
     cdk.Tags.of(this).add("Environment", props.env);
   }
 }
