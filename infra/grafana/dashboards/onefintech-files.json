@@ -462,7 +462,7 @@
                   },
                   {
                     "options": {
-                      "TRANSFERRED": {
+                      "SUBMITTED": {
                         "color": "blue",
                         "index": 5
                       }
