@@ -1,7 +1,7 @@
 // Stage 6 — Return File Wait (§5.1, §6.5.6):
 //   Container remains alive and polls S3 for the FIS return file.
 //
-// Status transition: TRANSFERRED → (Stage 7 handles COMPLETE/HALTED)
+// Status transition: SUBMITTED → (Stage 7 handles COMPLETE/HALTED)
 package pipeline
 
 import (
@@ -56,7 +56,7 @@ func (s *ReturnFileWaitStage) Run(ctx context.Context, batchFile *ports.BatchFil
 			TenantID:      batchFile.TenantID,
 			EntityType:    "batch_files",
 			EntityID:      batchFile.ID.String(),
-			OldState:      strPtr("TRANSFERRED"),
+			OldState:      strPtr("SUBMITTED"),
 			NewState:      "STALLED",
 			ChangedBy:     "ingest-task:stage6",
 			CorrelationID: &batchFile.CorrelationID,

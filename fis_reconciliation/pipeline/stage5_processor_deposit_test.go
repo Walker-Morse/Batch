@@ -1,11 +1,11 @@
 package pipeline
 
-// Tests for Stage 5 — FIS Egress Deposit (stage5_fis_transfer.go).
+// Tests for Stage 5 — FIS Egress Deposit (stage5_processor_deposit.go).
 //
 // Coverage:
-//   - Happy path: file fetched from fis-exchange, deposited to egress, status → TRANSFERRED, audit written
+//   - Happy path: file fetched from fis-exchange, deposited to egress, status → SUBMITTED, audit written
 //   - S3 GetObject failure → error returned, no egress deposit attempted
-//   - Egress PutObject failure → error, status not TRANSFERRED, error logged
+//   - Egress PutObject failure → error, status not SUBMITTED, error logged
 //   - UpdateStatus failure → error returned after successful egress deposit
 //   - Egress key convention: {tenant_id}/{filename}
 //   - Audit entry carries correct correlation_id and egress key in Notes
@@ -25,13 +25,13 @@ import (
 	"github.com/walker-morse/batch/_shared/testutil"
 )
 
-func newStage5(t *testing.T) (*FISTransferStage, *testutil.MockBatchFileRepository, *testutil.MockFileStore, *testutil.MockAuditLogWriter) {
+func newStage5(t *testing.T) (*ProcessorDepositStage, *testutil.MockBatchFileRepository, *testutil.MockFileStore, *testutil.MockAuditLogWriter) {
 	t.Helper()
 	bf := testutil.NewMockBatchFileRepository()
 	files := testutil.NewMockFileStore()
 	audit := &testutil.MockAuditLogWriter{}
 	obs := &testutil.MockObservability{}
-	stage := &FISTransferStage{
+	stage := &ProcessorDepositStage{
 		Files:             files,
 		BatchFiles:        bf,
 		Audit:             audit,
@@ -56,7 +56,7 @@ func makeAssembly(key, filename string) *BatchAssemblyResult {
 	return &BatchAssemblyResult{S3Key: key, Filename: filename, RecordCount: 3}
 }
 
-// TestStage5_HappyPath verifies S3 fetch → egress deposit → TRANSFERRED → audit written.
+// TestStage5_HappyPath verifies S3 fetch → egress deposit → SUBMITTED → audit written.
 func TestStage5_HappyPath(t *testing.T) {
 	stage, bf, files, audit := newStage5(t)
 	batchFile := makeBatchFile("ASSEMBLED")
@@ -90,14 +90,14 @@ func TestStage5_HappyPath(t *testing.T) {
 	if egressKey != wantKey {
 		t.Errorf("PutObject key = %q; want %q", egressKey, wantKey)
 	}
-	if batchFile.Status != string(domain.BatchFileTransferred) {
-		t.Errorf("status = %q; want TRANSFERRED", batchFile.Status)
+	if batchFile.Status != string(domain.BatchFileSubmitted) {
+		t.Errorf("status = %q; want SUBMITTED", batchFile.Status)
 	}
 	if len(audit.Entries) == 0 {
 		t.Fatal("expected audit entry; got none")
 	}
-	if audit.Entries[0].NewState != "TRANSFERRED" {
-		t.Errorf("audit NewState = %q; want TRANSFERRED", audit.Entries[0].NewState)
+	if audit.Entries[0].NewState != "SUBMITTED" {
+		t.Errorf("audit NewState = %q; want SUBMITTED", audit.Entries[0].NewState)
 	}
 }
 
@@ -124,12 +124,12 @@ func TestStage5_S3GetFails(t *testing.T) {
 	if putCalled {
 		t.Error("PutObject should not be called after GetObject failure")
 	}
-	if batchFile.Status == string(domain.BatchFileTransferred) {
-		t.Error("status should not advance to TRANSFERRED on S3 read failure")
+	if batchFile.Status == string(domain.BatchFileSubmitted) {
+		t.Error("status should not advance to SUBMITTED on S3 read failure")
 	}
 }
 
-// TestStage5_EgressPutFails returns error and does not transition to TRANSFERRED.
+// TestStage5_EgressPutFails returns error and does not transition to SUBMITTED.
 func TestStage5_EgressPutFails(t *testing.T) {
 	stage, bf, files, _ := newStage5(t)
 	batchFile := makeBatchFile("ASSEMBLED")
@@ -150,8 +150,8 @@ func TestStage5_EgressPutFails(t *testing.T) {
 	if !strings.Contains(err.Error(), "deposit to egress bucket") {
 		t.Errorf("error = %q; want 'deposit to egress bucket'", err.Error())
 	}
-	if batchFile.Status == string(domain.BatchFileTransferred) {
-		t.Error("status must not be TRANSFERRED after egress deposit failure")
+	if batchFile.Status == string(domain.BatchFileSubmitted) {
+		t.Error("status must not be SUBMITTED after egress deposit failure")
 	}
 }
 

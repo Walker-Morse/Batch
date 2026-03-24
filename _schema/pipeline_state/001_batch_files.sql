@@ -16,7 +16,7 @@ CREATE TABLE public.batch_files (
                      CHECK (status IN (
                          'RECEIVED','VALIDATING','PROCESSING',
                          'STALLED','HALTED','ASSEMBLED',
-                         'TRANSFERRED','COMPLETE')),
+                         'SUBMITTED','COMPLETE')),
     record_count     INTEGER,                      -- set at Stage 2
     malformed_count  INTEGER NOT NULL DEFAULT 0,   -- rows that failed validation
     sha256_encrypted TEXT,                         -- hash of PGP-encrypted file (Stage 1)

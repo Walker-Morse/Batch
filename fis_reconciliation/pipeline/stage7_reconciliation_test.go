@@ -127,12 +127,12 @@ func newStage7WithMocks() (*ReconciliationStage, *stage7Mocks) {
 	return stage, m
 }
 
-func makeBatchFileTransferred(bf *testutil.MockBatchFileRepository) *ports.BatchFile {
+func makeBatchFileSubmitted(bf *testutil.MockBatchFileRepository) *ports.BatchFile {
 	f := &ports.BatchFile{
 		ID:            uuid.New(),
 		CorrelationID: uuid.New(),
 		TenantID:      "rfu-oregon",
-		Status:        "TRANSFERRED",
+		Status:        "SUBMITTED",
 	}
 	bf.Files[f.ID] = f
 	return f
@@ -144,7 +144,7 @@ func makeBatchFileTransferred(bf *testutil.MockBatchFileRepository) *ports.Batch
 // FIS identifiers stamped on consumer and card, reconciliation fact written.
 func TestStage7_RT30_HappyPath(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
@@ -206,7 +206,7 @@ func TestStage7_RT30_HappyPath(t *testing.T) {
 // BenefitPeriod is sourced from the staged row — not derived from wall-clock time.
 func TestStage7_RT60_HappyPath(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
@@ -242,7 +242,7 @@ func TestStage7_RT60_HappyPath(t *testing.T) {
 // TestStage7_IndividualRT99_Fails marks record FAILED without halting file.
 func TestStage7_IndividualRT99_MarksFailed(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
@@ -272,7 +272,7 @@ func TestStage7_IndividualRT99_MarksFailed(t *testing.T) {
 // TestStage7_FullFileHalt_RT99Only halts file, dead-letters, emits alert.
 func TestStage7_FullFileHalt_RT99Only(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	_, err := stage.Run(context.Background(), batchFile, buildReturnFile(rt99Record("E99")))
 
@@ -291,7 +291,7 @@ func TestStage7_FullFileHalt_RT99Only(t *testing.T) {
 	if !strings.Contains(m.deadLetters.Entries[0].FailureReason, "rt99_full_file_halt") {
 		t.Errorf("failure_reason = %q; want rt99_full_file_halt", m.deadLetters.Entries[0].FailureReason)
 	}
-	// Audit should record TRANSFERRED → HALTED
+	// Audit should record SUBMITTED → HALTED
 	if len(m.audit.Entries) == 0 {
 		t.Fatal("expected audit entry")
 	}
@@ -304,7 +304,7 @@ func TestStage7_FullFileHalt_RT99Only(t *testing.T) {
 // does not abort the file — remaining records processed, file reaches COMPLETE.
 func TestStage7_RecordReconcileError_NonFatal(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	// Seed seq=2 successfully, leave seq=1 unseeded (GetStaged will fail)
 	recordID := uuid.New()
@@ -332,10 +332,10 @@ func TestStage7_RecordReconcileError_NonFatal(t *testing.T) {
 	}
 }
 
-// TestStage7_AuditOnComplete verifies audit entry for TRANSFERRED → COMPLETE.
+// TestStage7_AuditOnComplete verifies audit entry for SUBMITTED → COMPLETE.
 func TestStage7_AuditOnComplete(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	// Empty return file — no data records, just completes
 	_, err := stage.Run(context.Background(), batchFile, buildReturnFile())
@@ -361,7 +361,7 @@ func TestStage7_AuditOnComplete(t *testing.T) {
 // TestStage7_DomainCommandStatusUpdated verifies domain_command transitions to Completed.
 func TestStage7_DomainCommandStatusUpdated(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	recordID := uuid.New()
 	cmdID := uuid.New()
@@ -393,7 +393,7 @@ func TestStage7_DomainCommandStatusUpdated(t *testing.T) {
 // TestStage7_ParseFailure_ReturnsError verifies that a corrupt return file errors immediately.
 func TestStage7_ParseFailure_ReturnsError(t *testing.T) {
 	stage, m := newStage7WithMocks()
-	batchFile := makeBatchFileTransferred(m.batchFiles)
+	batchFile := makeBatchFileSubmitted(m.batchFiles)
 
 	// Provide a reader that errors mid-stream
 	pr, pw := io.Pipe()

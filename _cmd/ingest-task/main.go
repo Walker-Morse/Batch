@@ -95,7 +95,7 @@ type PipelineDeps struct {
 	Stage2 *stage2.ValidationStage
 	Stage3 *stage3.RowProcessingStage
 	Stage4 *stage4.BatchAssemblyStage
-	Stage5 *stage5.FISTransferStage
+	Stage5 *stage5.ProcessorDepositStage
 	Stage6 *stage6.ReturnFileWaitStage
 	Stage7 *stage7.ReconciliationStage
 }
@@ -281,7 +281,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			StagedBucket:      cfg.StagedBucket,
 			FISExchangeBucket: cfg.FISExchangeBucket,
 		},
-		Stage5: &stage5.FISTransferStage{
+		Stage5: &stage5.ProcessorDepositStage{
 			Files:             fileStore,
 			BatchFiles:        batchFileRepo,
 			Audit:             auditRepo,
@@ -417,7 +417,7 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage5: %w", err))
 	}
 	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s5Start).Milliseconds()), map[string]string{
-		"stage": "stage5_fis_transfer", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+		"stage": "stage5_processor_deposit", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
 	// ── Stage 6 — Return File Wait ────────────────────────────────────────

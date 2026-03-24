@@ -147,7 +147,7 @@ func TestDashboard_PipelineRunOverview_CleanRun(t *testing.T) {
 		CorrelationID: corrID,
 		TenantID:      "rfu-oregon",
 		BatchFileID:   batchID,
-		Stage:         strPtr("stage5_fis_transfer"),
+		Stage:         strPtr("stage5_processor_deposit"),
 		Filename:      &fn4,
 		Message:       "transferred: filename=MORSEUSA03192601.issuance.txt",
 	})

@@ -44,7 +44,7 @@ func makeBatchFileForStage6(bf *testutil.MockBatchFileRepository) *ports.BatchFi
 		ID:            uuid.New(),
 		CorrelationID: uuid.New(),
 		TenantID:      "rfu-oregon",
-		Status:        "TRANSFERRED",
+		Status:        "SUBMITTED",
 	}
 	bf.Files[f.ID] = f
 	return f
@@ -94,7 +94,7 @@ func TestStage6_PollTimeout(t *testing.T) {
 	if !strings.Contains(err.Error(), "return file wait timeout") {
 		t.Errorf("error = %q; want 'return file wait timeout'", err.Error())
 	}
-	// Audit entry must record TRANSFERRED → STALLED
+	// Audit entry must record SUBMITTED → STALLED
 	if len(audit.Entries) == 0 {
 		t.Fatal("expected audit entry on timeout")
 	}

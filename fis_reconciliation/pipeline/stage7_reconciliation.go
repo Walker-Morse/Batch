@@ -10,7 +10,7 @@
 //   → emit "batch.halt.triggered" log event
 //   → page on-call immediately (CloudWatch alarm → Datadog P0)
 //
-// Status transition: TRANSFERRED → COMPLETE (or HALTED on RT99 full-file halt)
+// Status transition: SUBMITTED → COMPLETE (or HALTED on RT99 full-file halt)
 package pipeline
 
 import (
@@ -103,7 +103,7 @@ func (s *ReconciliationStage) Run(ctx context.Context, batchFile *ports.BatchFil
 		TenantID:      batchFile.TenantID,
 		EntityType:    "batch_files",
 		EntityID:      batchFile.ID.String(),
-		OldState:      strPtr("TRANSFERRED"),
+		OldState:      strPtr("SUBMITTED"),
 		NewState:      "COMPLETE",
 		ChangedBy:     "ingest-task:stage7",
 		CorrelationID: &batchFile.CorrelationID,
@@ -267,7 +267,7 @@ func (s *ReconciliationStage) handleFullFileHalt(ctx context.Context, batchFile 
 		TenantID:      batchFile.TenantID,
 		EntityType:    "batch_files",
 		EntityID:      batchFile.ID.String(),
-		OldState:      strPtr("TRANSFERRED"),
+		OldState:      strPtr("SUBMITTED"),
 		NewState:      "HALTED",
 		ChangedBy:     "ingest-task:stage7",
 		CorrelationID: &batchFile.CorrelationID,

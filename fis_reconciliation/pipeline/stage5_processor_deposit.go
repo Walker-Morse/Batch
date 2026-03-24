@@ -13,7 +13,7 @@
 // Egress S3 key convention: {tenant_id}/{filename}
 //   e.g. rfu-oregon/ppppppppmmddccyyss.issuance.txt
 //
-// Status transition: ASSEMBLED → TRANSFERRED
+// Status transition: ASSEMBLED → SUBMITTED
 package pipeline
 
 import (
@@ -25,8 +25,8 @@ import (
 	"github.com/walker-morse/batch/_shared/ports"
 )
 
-// FISTransferStage implements Stage 5 of the ingest-task pipeline.
-type FISTransferStage struct {
+// ProcessorDepositStage implements Stage 5 of the ingest-task pipeline.
+type ProcessorDepositStage struct {
 	Files      ports.FileStore
 	BatchFiles ports.BatchFileRepository
 	Audit      ports.AuditLogWriter
@@ -38,7 +38,7 @@ type FISTransferStage struct {
 }
 
 // Run deposits the assembled file into the egress bucket for FIS pickup.
-func (s *FISTransferStage) Run(ctx context.Context, batchFile *ports.BatchFile, assembly *BatchAssemblyResult) error {
+func (s *ProcessorDepositStage) Run(ctx context.Context, batchFile *ports.BatchFile, assembly *BatchAssemblyResult) error {
 	// Fetch the PGP-encrypted file from fis-exchange (written by Stage 4)
 	body, err := s.Files.GetObject(ctx, s.FISExchangeBucket, assembly.S3Key)
 	if err != nil {
@@ -55,7 +55,7 @@ func (s *FISTransferStage) Run(ctx context.Context, batchFile *ports.BatchFile, 
 			CorrelationID: batchFile.CorrelationID,
 			TenantID:      batchFile.TenantID,
 			BatchFileID:   batchFile.ID,
-			Stage:         strPtr("stage5_fis_transfer"),
+			Stage:         strPtr("stage5_processor_deposit"),
 			Message:       fmt.Sprintf("egress deposit failed: key=%s/%s", batchFile.TenantID, assembly.Filename),
 			Error:         strPtr(err.Error()),
 		})
@@ -63,8 +63,8 @@ func (s *FISTransferStage) Run(ctx context.Context, batchFile *ports.BatchFile, 
 	}
 
 	// Transition batch_files → TRANSFERRED
-	if err := s.BatchFiles.UpdateStatus(ctx, batchFile.ID, string(domain.BatchFileTransferred), time.Now().UTC()); err != nil {
-		return fmt.Errorf("stage5: update status TRANSFERRED: %w", err)
+	if err := s.BatchFiles.UpdateStatus(ctx, batchFile.ID, string(domain.BatchFileSubmitted), time.Now().UTC()); err != nil {
+		return fmt.Errorf("stage5: update status SUBMITTED: %w", err)
 	}
 
 	_ = s.Audit.Write(ctx, &ports.AuditEntry{
@@ -72,7 +72,7 @@ func (s *FISTransferStage) Run(ctx context.Context, batchFile *ports.BatchFile, 
 		EntityType:    "batch_files",
 		EntityID:      batchFile.ID.String(),
 		OldState:      strPtr("ASSEMBLED"),
-		NewState:      "TRANSFERRED",
+		NewState:      "SUBMITTED",
 		ChangedBy:     "ingest-task:stage5",
 		CorrelationID: &batchFile.CorrelationID,
 		Notes:         strPtr(fmt.Sprintf("egress_key=%s/%s records=%d", batchFile.TenantID, assembly.Filename, assembly.RecordCount)),
@@ -85,7 +85,7 @@ func (s *FISTransferStage) Run(ctx context.Context, batchFile *ports.BatchFile, 
 		CorrelationID: batchFile.CorrelationID,
 		TenantID:      batchFile.TenantID,
 		BatchFileID:   batchFile.ID,
-		Stage:         strPtr("stage5_fis_transfer"),
+		Stage:         strPtr("stage5_processor_deposit"),
 		Filename:      &fn,
 		Message:       fmt.Sprintf("egress deposit complete: key=%s/%s records=%d", batchFile.TenantID, assembly.Filename, assembly.RecordCount),
 	})

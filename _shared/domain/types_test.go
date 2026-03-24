@@ -127,7 +127,7 @@ func TestFailureStageValues(t *testing.T) {
 		{"validation",       FailureValidation,     "validation"},
 		{"row_processing",   FailureRowProcessing,  "row_processing"},
 		{"batch_assembly",   FailureBatchAssembly,  "batch_assembly"},
-		{"fis_transfer",     FailureFISTransfer,    "fis_transfer"},
+		{"processor_deposit", FailureProcessorDeposit, "processor_deposit"},
 		{"return_file_wait", FailureReturnFileWait, "return_file_wait"},
 		{"reconciliation",   FailureReconciliation, "reconciliation"},
 	}

@@ -194,7 +194,7 @@ const (
 	BatchFileStalled     BatchFileStatus = "STALLED"    // unresolved dead letters
 	BatchFileHalted      BatchFileStatus = "HALTED"     // RT99 full-file rejection
 	BatchFileAssembled   BatchFileStatus = "ASSEMBLED"
-	BatchFileTransferred BatchFileStatus = "TRANSFERRED"
+	BatchFileSubmitted   BatchFileStatus = "SUBMITTED"
 	BatchFileComplete    BatchFileStatus = "COMPLETE"
 )
 
@@ -240,7 +240,7 @@ const (
 	FailureValidation     FailureStage = "validation"
 	FailureRowProcessing  FailureStage = "row_processing"
 	FailureBatchAssembly  FailureStage = "batch_assembly"
-	FailureFISTransfer    FailureStage = "fis_transfer"
+	FailureProcessorDeposit FailureStage = "processor_deposit"
 	FailureReturnFileWait FailureStage = "return_file_wait"
 	FailureReconciliation FailureStage = "reconciliation"
 )

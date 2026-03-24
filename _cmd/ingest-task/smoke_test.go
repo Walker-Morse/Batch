@@ -251,7 +251,7 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			StagedBucket:      smokeStagedBucket,
 			FISExchangeBucket: smokeFISBucket,
 		},
-		Stage5: &stage5.FISTransferStage{
+		Stage5: &stage5.ProcessorDepositStage{
 			Transport:         &nullFISTransport{},
 			Files:             fileStore,
 			BatchFiles:        batchFiles,
@@ -424,7 +424,7 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 			Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
-		Stage5: &stage5.FISTransferStage{
+		Stage5: &stage5.ProcessorDepositStage{
 			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
 		},
@@ -501,7 +501,7 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 			Audit: audit, Obs: obs,
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
-		Stage5: &stage5.FISTransferStage{
+		Stage5: &stage5.ProcessorDepositStage{
 			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
 		},
