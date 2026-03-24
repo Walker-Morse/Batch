@@ -217,6 +217,9 @@ func parsePhone(s string) (int64, error) {
 	if clean == "" {
 		return 0, fmt.Errorf("field \"phone_number\": non-empty value %q contains no digits", s)
 	}
+	if len(clean) != 10 {
+		return 0, fmt.Errorf("field \"phone_number\": must be exactly 10 digits after stripping formatting, got %d digits in %q", len(clean), s)
+	}
 	v, err := strconv.ParseInt(clean, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("field \"phone_number\": cannot parse %q: %w", s, err)

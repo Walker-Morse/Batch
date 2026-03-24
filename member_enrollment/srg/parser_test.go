@@ -42,17 +42,18 @@ func TestParseSRG310_ValidRow(t *testing.T) {
 
 func TestParseSRG310_PhoneNumber(t *testing.T) {
 	tests := []struct {
-		name  string
-		phone string
-		want  int64
+		name    string
+		phone   string
+		want    int64
 		wantErr bool
 	}{
-		{"plain digits", "5035551234", 5035551234, false},
+		{"plain 10 digits", "5035551234", 5035551234, false},
 		{"formatted with dashes", "503-555-1234", 5035551234, false},
 		{"formatted with parens", "(503) 555-1234", 5035551234, false},
 		{"empty", "", 0, false},
-		{"zero explicit", "0", 0, false},
-		{"11 digit with country code", "15035551234", 15035551234, false},
+		{"11 digits with country code - too long", "15035551234", 0, true},
+		{"9 digits - too short", "503555123", 0, true},
+		{"non-numeric non-empty", "abc", 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
