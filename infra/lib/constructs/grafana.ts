@@ -102,13 +102,21 @@ export class GrafanaConstruct extends Construct {
         "logs:GetQueryResults",
         "logs:GetLogEvents",
         "logs:FilterLogEvents",
-        "logs:DescribeLogGroups",
         "logs:DescribeLogStreams",
       ],
       resources: [
         `arn:aws:logs:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:log-group:/onefintech/${env}/*`,
         `arn:aws:logs:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:log-group:/onefintech/${env}/*:*`,
       ],
+    }));
+
+    // DescribeLogGroups must be at account level — Grafana CloudWatch plugin calls it against
+    // arn:...:log-group::log-stream: (root) to enumerate log groups before filtering client-side.
+    // Scoping to /onefintech/dev/* causes AccessDeniedException on every CloudWatch health check.
+    grafanaTaskRole.addToPolicy(new iam.PolicyStatement({
+      sid: "CloudWatchDescribeLogGroups",
+      actions: ["logs:DescribeLogGroups"],
+      resources: [`arn:aws:logs:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:*`],
     }));
 
     // CloudWatch Metrics — read-only, all resources (metrics don't have resource-level scoping)
