@@ -83,8 +83,12 @@ export class IamConstruct extends Construct {
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "SecretsManagerRead",
       actions: ["secretsmanager:GetSecretValue"],
-      resources: [props.dbSecret.secretArn, props.ingestTaskSecret.secretArn, ...pgpSecretArns],
+      resources: [props.dbSecret.secretArn, ...pgpSecretArns],
     }));
+    // grantRead() appends -?????? wildcard to the resource ARN, required for fromSecretNameV2
+    // imports where the random suffix is unknown at synth time. addToPolicy(secretArn) produces
+    // a suffix-less ARN that does not match the real secret ARN at runtime.
+    props.ingestTaskSecret.grantRead(this.taskRole);
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "KmsUsage",
       actions: ["kms:GenerateDataKey", "kms:Decrypt", "kms:DescribeKey"],
@@ -111,8 +115,11 @@ export class IamConstruct extends Construct {
     this.executionRole.addToPolicy(new iam.PolicyStatement({
       sid: "ExecutionRoleSecrets",
       actions: ["secretsmanager:GetSecretValue"],
-      resources: [props.dbSecret.secretArn, props.ingestTaskSecret.secretArn],
+      resources: [props.dbSecret.secretArn],
     }));
+    // grantRead() for ingestTaskSecret produces -?????? wildcard ARN — required for ECS
+    // secrets injection to resolve the secret at task startup (fromSecretNameV2 pattern).
+    props.ingestTaskSecret.grantRead(this.executionRole);
 
     this.schedulerRole = new iam.Role(this, "SchedulerRole", {
       roleName: `onefintech-${props.env}-scheduler-role`,

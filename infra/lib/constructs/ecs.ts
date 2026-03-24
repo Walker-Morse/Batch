@@ -81,10 +81,12 @@ export class EcsConstruct extends Construct {
         FIS_EXCHANGE_BUCKET: props.fisExchangeBucketName,
         FIS_COMPANY_ID:      props.fisCompanyId,
       },
-      // DB_SECRET_ARN injected at runtime via Secrets Manager — never baked into image.
-      // The ingest_task role has SELECT/INSERT/UPDATE/DELETE; not the master credential.
+      // DB_PASSWORD injected at task startup by ECS from the ingestTaskSecret JSON key 'password'.
+      // fromSecretsManager(secret, 'password') sets valueFrom to the full secret ARN + ':password::',
+      // which ECS resolves by calling GetSecretValue on the execution role and extracting the key.
+      // DB_SECRET_ARN is intentionally removed — the app reads DB_PASSWORD (main.go:592).
       secrets: {
-        DB_SECRET_ARN: ecs.Secret.fromSecretsManager(props.ingestTaskSecret),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(props.ingestTaskSecret, 'password'),
       },
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "ingest-task", logGroup }),
       essential: true,
