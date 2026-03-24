@@ -129,6 +129,7 @@ type MockFileStore struct {
 	Objects     map[string][]byte
 	Deleted     []string
 	GetObjectFn func(ctx context.Context, bucket, key string) (io.ReadCloser, error)
+	PutObjectFn func(ctx context.Context, bucket, key string, body io.Reader) error
 }
 
 func NewMockFileStore() *MockFileStore {
@@ -142,7 +143,10 @@ func (m *MockFileStore) GetObject(ctx context.Context, bucket, key string) (io.R
 	return nil, nil
 }
 
-func (m *MockFileStore) PutObject(_ context.Context, _, key string, _ io.Reader) error {
+func (m *MockFileStore) PutObject(ctx context.Context, bucket, key string, body io.Reader) error {
+	if m.PutObjectFn != nil {
+		return m.PutObjectFn(ctx, bucket, key, body)
+	}
 	return nil
 }
 

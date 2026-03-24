@@ -10,6 +10,7 @@ export class StorageConstruct extends Construct {
   public readonly inboundBucket: s3.Bucket;
   public readonly stagedBucket: s3.Bucket;
   public readonly fisExchangeBucket: s3.Bucket;
+  public readonly egressBucket: s3.Bucket;
   private readonly logsBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props: StorageProps) {
@@ -84,6 +85,28 @@ export class StorageConstruct extends Construct {
         // TODO: transition to Glacier after 90 days before PRD (Open Item #36)
         id: "fis-exchange-7yr-retention",
         expiration: cdk.Duration.days(2555),
+      }],
+    });
+
+    // egress — FIS-readable outbound files (replaces SSH/SCP Transfer Family delivery)
+    // ingest-task has PutObject only. FIS IAM principal has GetObject + ListBucket only.
+    // 7-day lifecycle: FIS SLA is same-day pickup; 7 days is generous safety margin.
+    // Separate from fis-exchange to give FIS a clean, single-purpose bucket boundary
+    // (§5.4.5 — no prefix-condition complexity, clean CloudTrail signal).
+    this.egressBucket = new s3.Bucket(this, "EgressBucket", {
+      bucketName: `onefintech-${props.env}-egress-placeholder`,
+      encryptionKey: this.kmsKey,
+      encryption: s3.BucketEncryption.KMS,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      versioned: true,
+      serverAccessLogsBucket: this.logsBucket,
+      serverAccessLogsPrefix: "egress/",
+      removalPolicy,
+      autoDeleteObjects,
+      lifecycleRules: [{
+        id: "egress-7d-expiry",
+        expiration: cdk.Duration.days(7),
       }],
     });
 

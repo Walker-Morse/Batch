@@ -57,6 +57,7 @@ export class OneFintechStack extends cdk.Stack {
       inboundBucket: storage.inboundBucket,
       stagedBucket: storage.stagedBucket,
       fisExchangeBucket: storage.fisExchangeBucket,
+      egressBucket: storage.egressBucket,
       dbSecret: aurora.dbSecret,
       ingestTaskSecret,
       kmsKey: storage.kmsKey,
@@ -75,6 +76,7 @@ export class OneFintechStack extends cdk.Stack {
       inboundBucketName: storage.inboundBucket.bucketName,
       stagedBucketName: storage.stagedBucket.bucketName,
       fisExchangeBucketName: storage.fisExchangeBucket.bucketName,
+      egressBucketName: storage.egressBucket.bucketName,
       kmsKeyArn: storage.kmsKey.keyArn,
       fisCompanyId,
     });
@@ -124,6 +126,7 @@ export class OneFintechStack extends cdk.Stack {
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
     new cdk.CfnOutput(this, "StagedBucketName",     { value: storage.stagedBucket.bucketName });
     new cdk.CfnOutput(this, "FisExchangeBucketName",{ value: storage.fisExchangeBucket.bucketName });
+    new cdk.CfnOutput(this, "EgressBucketName",        { value: storage.egressBucket.bucketName });
     new cdk.CfnOutput(this, "ClusterArn",           { value: ecs.cluster.clusterArn });
     new cdk.CfnOutput(this, "TaskDefinitionArn",    { value: ecs.taskDefinition.taskDefinitionArn });
     new cdk.CfnOutput(this, "EcrRepositoryUri",     { value: ecs.repository.repositoryUri });

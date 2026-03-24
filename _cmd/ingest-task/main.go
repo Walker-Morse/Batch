@@ -6,7 +6,7 @@
 //   Stage 2 — Validation         PGP decrypt → SRG parse → dead-letter malformed rows
 //   Stage 3 — Row Processing     Sequential row-by-row: idempotency → domain writes → staging
 //   Stage 4 — Batch Assembly     FIS 400-byte fixed-width records → PGP-encrypt → S3
-//   Stage 5 — FIS Transfer       SSH/SCP → FIS Transfer Family SFTP endpoint
+//   Stage 5 — FIS Egress Deposit  PutObject → S3 egress bucket (FIS polls for pickup)
 //   Stage 6 — Return File Wait   Poll fis-exchange S3 for FIS return file (6h timeout)
 //   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers
 //
@@ -69,6 +69,7 @@ type PipelineConfig struct {
 	KMSKeyARN         string
 	StagedBucket      string
 	FISExchangeBucket string
+	EgressBucket      string
 	ReturnFilePrefix  string
 
 	// FIS assembler
@@ -79,10 +80,7 @@ type PipelineConfig struct {
 	PGPPassphraseSecretARN   string
 	PGPFISPublicKeySecretARN string
 
-	// FIS SFTP (Stage 5). Empty = transport skipped in DEV mode.
-	FISSFTPHostSecretARN       string
-	FISSFTPUserSecretARN       string
-	FISSFTPPrivateKeySecretARN string
+	// FIS SFTP fields removed — Stage 5 now uses S3 egress bucket (OI #19 superseded).
 
 	// Replay mode
 	ReplayMode        bool
@@ -232,51 +230,17 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 		pgpEncrypt = enc.Encrypt
 	}
 
-	// FIS transport (Stages 5 + 6)
-	var fisTransport ports.FISTransport
-	if cfg.FISSFTPHostSecretARN == "" || cfg.FISSFTPPrivateKeySecretARN == "" {
-		if cfg.PipelineEnv != "DEV" {
-			pool.Close()
-			return nil, fmt.Errorf("FIS SFTP secrets required in %s", cfg.PipelineEnv)
-		}
-		_ = obs.LogEvent(ctx, &ports.LogEvent{
-			EventType:     "pipeline.warn",
-			Level:         "WARN",
-			CorrelationID: cfg.CorrelationID,
-			TenantID:      cfg.TenantID,
-			BatchFileID:   uuid.Nil,
-			Stage:         strPtr("pipeline"),
-			Message:       "NullFISTransport active — DEV only; Stages 5-6 will no-op",
-		})
-		fisTransport = &nullFISTransport{}
-	} else {
-		sftpHost, err := getSecretString(ctx, smClient, cfg.FISSFTPHostSecretARN)
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("load FIS SFTP host: %w", err)
-		}
-		sftpUser, err := getSecretString(ctx, smClient, cfg.FISSFTPUserSecretARN)
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("load FIS SFTP user: %w", err)
-		}
-		sftpKey, err := getSecretString(ctx, smClient, cfg.FISSFTPPrivateKeySecretARN)
-		if err != nil {
-			pool.Close()
-			return nil, fmt.Errorf("load FIS SFTP private key: %w", err)
-		}
-		returnPrefix := cfg.ReturnFilePrefix
-		if returnPrefix == "" {
-			returnPrefix = "return/"
-		}
-		fisTransport = &adtransport.FISTransportAdapter{
-			SFTPHost:          sftpHost,
-			SFTPUser:          sftpUser,
-			SFTPPrivateKey:    []byte(sftpKey),
-			S3Client:          s3Client,
-			FISExchangeBucket: cfg.FISExchangeBucket,
-			ReturnFilePrefix:  returnPrefix,
-		}
+	// FIS transport — Stage 6 only (return file polling via S3).
+	// Stage 5 outbound delivery now writes directly to the egress S3 bucket;
+	// SFTP/SSH transport is no longer used for the outbound path (OI #19 superseded).
+	returnPrefix := cfg.ReturnFilePrefix
+	if returnPrefix == "" {
+		returnPrefix = "return/"
+	}
+	var fisTransport ports.FISTransport = &adtransport.FISTransportAdapter{
+		S3Client:          s3Client,
+		FISExchangeBucket: cfg.FISExchangeBucket,
+		ReturnFilePrefix:  returnPrefix,
 	}
 
 	var martWriter ports.MartWriter = &noopMartWriter{}
@@ -318,12 +282,12 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			FISExchangeBucket: cfg.FISExchangeBucket,
 		},
 		Stage5: &stage5.FISTransferStage{
-			Transport:         fisTransport,
 			Files:             fileStore,
 			BatchFiles:        batchFileRepo,
 			Audit:             auditRepo,
 			Obs:               obs,
 			FISExchangeBucket: cfg.FISExchangeBucket,
+			EgressBucket:      cfg.EgressBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport:  fisTransport,
@@ -541,20 +505,6 @@ func pipelineError(ctx context.Context, obs ports.IObservabilityPort, cfg *Pipel
 
 // ─── Noop adapters for DEV / deferred features ───────────────────────────────
 
-type nullFISTransport struct{}
-
-func (n *nullFISTransport) Deliver(_ context.Context, _ io.Reader, filename string) error {
-	return nil
-}
-
-func (n *nullFISTransport) PollForReturn(_ context.Context, _ uuid.UUID, _ time.Duration) (io.ReadCloser, error) {
-	return io.NopCloser(emptyReader{}), nil
-}
-
-type emptyReader struct{}
-
-func (emptyReader) Read(_ []byte) (int, error) { return 0, io.EOF }
-
 type noopMartWriter struct{}
 
 func (n *noopMartWriter) UpsertMember(_ context.Context, _ *ports.MemberRecord) (int64, error)         { return 0, nil }
@@ -594,14 +544,13 @@ func parseConfig() (*PipelineConfig, error) {
 	kmsKey                := flag.String("kms-key-arn",                  os.Getenv("KMS_KEY_ARN"),                  "KMS key ARN")
 	stagedBucket          := flag.String("staged-bucket",                os.Getenv("STAGED_BUCKET"),                "staged S3 bucket")
 	fisBucket             := flag.String("fis-exchange-bucket",          os.Getenv("FIS_EXCHANGE_BUCKET"),          "fis-exchange S3 bucket")
+	egressBucket          := flag.String("egress-bucket",                os.Getenv("EGRESS_BUCKET"),                "egress S3 bucket for FIS pickup")
 	returnPrefix          := flag.String("return-prefix",                envOrDefault("RETURN_FILE_PREFIX", "return/"), "S3 prefix for FIS return files")
 	fisCompanyID          := flag.String("fis-company-id",               os.Getenv("FIS_COMPANY_ID"),               "FIS company ID (8 chars)")
 	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "ARN: Morse PGP private key")
 	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "ARN: PGP passphrase")
 	pgpFISPublicKeyARN    := flag.String("pgp-fis-public-key-secret-arn",os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"),"ARN: FIS PGP public key")
-	sftpHostARN           := flag.String("fis-sftp-host-secret-arn",     os.Getenv("FIS_SFTP_HOST_SECRET_ARN"),     "ARN: FIS SFTP host")
-	sftpUserARN           := flag.String("fis-sftp-user-secret-arn",     os.Getenv("FIS_SFTP_USER_SECRET_ARN"),     "ARN: FIS SFTP user")
-	sftpKeyARN            := flag.String("fis-sftp-key-secret-arn",      os.Getenv("FIS_SFTP_KEY_SECRET_ARN"),      "ARN: FIS SSH private key PEM")
+	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).
 	replay                := flag.Bool("replay", false, "replay mode")
 	replaySeq             := flag.Int("replay-seq", 0, "row sequence for replay")
 	returnTimeout         := flag.Duration("return-file-timeout", 6*time.Hour, "Stage 6 return file wait timeout")
@@ -671,14 +620,13 @@ func parseConfig() (*PipelineConfig, error) {
 		KMSKeyARN:                  *kmsKey,
 		StagedBucket:               *stagedBucket,
 		FISExchangeBucket:          *fisBucket,
+		EgressBucket:               *egressBucket,
 		ReturnFilePrefix:           *returnPrefix,
 		FISCompanyID:               *fisCompanyID,
 		PGPPrivateKeySecretARN:     *pgpPrivateKeyARN,
 		PGPPassphraseSecretARN:     *pgpPassphraseARN,
 		PGPFISPublicKeySecretARN:   *pgpFISPublicKeyARN,
-		FISSFTPHostSecretARN:       *sftpHostARN,
-		FISSFTPUserSecretARN:       *sftpUserARN,
-		FISSFTPPrivateKeySecretARN: *sftpKeyARN,
+
 		ReplayMode:                 *replay,
 		ReturnFileWaitTimeout:      *returnTimeout,
 	}

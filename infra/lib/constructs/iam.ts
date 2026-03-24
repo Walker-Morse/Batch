@@ -23,6 +23,7 @@ export interface IamProps {
   pgpPrivateKeySecretArn: string;
   pgpPassphraseSecretArn: string;
   pgpFisPublicKeySecretArn: string;
+  egressBucket: s3.IBucket;
 }
 
 /**
@@ -68,10 +69,16 @@ export class IamConstruct extends Construct {
         props.fisExchangeBucket.arnForObjects("*"),
       ],
     }));
+    // Egress bucket: pipeline writes only. FIS has GetObject (separate FIS IAM principal).
+    this.taskRole.addToPolicy(new iam.PolicyStatement({
+      sid: "EgressWrite",
+      actions: ["s3:PutObject", "s3:HeadObject"],
+      resources: [props.egressBucket.arnForObjects("*")],
+    }));
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "S3BucketList",
       actions: ["s3:ListBucket"],
-      resources: [props.inboundBucket.bucketArn, props.stagedBucket.bucketArn],
+      resources: [props.inboundBucket.bucketArn, props.stagedBucket.bucketArn, props.egressBucket.bucketArn],
     }));
     // Build PGP secret ARN list — filter empty strings (passphrase is optional)
     const pgpSecretArns = [

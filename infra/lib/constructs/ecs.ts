@@ -18,6 +18,7 @@ export interface EcsProps {
   inboundBucketName: string;
   stagedBucketName: string;
   fisExchangeBucketName: string;
+  egressBucketName: string;
   kmsKeyArn: string;
   fisCompanyId: string;
 }
@@ -79,6 +80,7 @@ export class EcsConstruct extends Construct {
         DB_SSL:              "require",
         STAGED_BUCKET:       props.stagedBucketName,
         FIS_EXCHANGE_BUCKET: props.fisExchangeBucketName,
+        EGRESS_BUCKET:       props.egressBucketName,
         FIS_COMPANY_ID:      props.fisCompanyId,
       },
       // DB_PASSWORD injected at task startup by ECS from the ingestTaskSecret JSON key 'password'.
@@ -101,9 +103,8 @@ export class EcsConstruct extends Construct {
       "HTTPS - AWS APIs via VPC endpoints");
     this.taskSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432),
       "PostgreSQL to RDS Proxy");
-    // TODO: lock to FIS Transfer Family endpoint IP once confirmed (Open Item #19)
-    this.taskSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22),
-      "SFTP to FIS Transfer Family (Stage 5 - lock down IP before TST)");
+    // Port 22 egress removed: Stage 5 now writes to S3 egress bucket (no SFTP delivery).
+    // FIS Transfer Family SFTP is inbound-only (Stage 6 return file polling via S3).
 
     cdk.Tags.of(this).add("Project", "OneFintechFIS");
     cdk.Tags.of(this).add("Environment", props.env);
