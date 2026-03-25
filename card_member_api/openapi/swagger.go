@@ -184,10 +184,10 @@ const swaggerHTML = `<!DOCTYPE html>
           if (preview.startsWith('X-Dev-Claims: ') && !req.headers['Authorization']) {
             req.headers['X-Dev-Claims'] = preview.replace('X-Dev-Claims: ', '');
           }
-          // Auto-generate X-Correlation-ID if not present
-          if (!req.headers['X-Correlation-ID']) {
-            req.headers['X-Correlation-ID'] = generateUUID();
-          }
+          // X-Correlation-ID: auto-generate per request (tracing only, not idempotency)
+          req.headers['X-Correlation-ID'] = generateUUID();
+          // X-Idempotency-Key: left to the caller — do not auto-generate.
+          // Callers must supply a stable UUID across retries of the same operation.
           return req;
         },
         onComplete: function() {

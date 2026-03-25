@@ -22,9 +22,10 @@ import (
 
 func newRctx() ports.RequestContext {
 	return ports.RequestContext{
-		CorrelationID: uuid.New(),
-		TenantID:      "rfu-oregon",
-		CallerType:    ports.CallerUniversalWallet,
+		CorrelationID:  uuid.New(),
+		IdempotencyKey: uuid.New(),
+		TenantID:       "rfu-oregon",
+		CallerType:     ports.CallerUniversalWallet,
 	}
 }
 

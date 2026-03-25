@@ -343,7 +343,7 @@ func (s *CardService) idempotencyGate(ctx context.Context, rctx ports.RequestCon
 	}
 	cmdID := uuid.New()
 	if err := s.cmds.Insert(ctx, &sharedports.DomainCommand{
-		ID: cmdID, CorrelationID: rctx.CorrelationID,
+		ID: cmdID, CorrelationID: rctx.IdempotencyKey,
 		TenantID: rctx.TenantID, ClientMemberID: clientMemberID,
 		CommandType: cmdType, BenefitPeriod: benefitPeriod,
 		Status: string(domain.CommandAccepted), BatchFileID: uuid.Nil,
