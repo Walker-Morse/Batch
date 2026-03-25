@@ -116,6 +116,8 @@ jobs:
         run: npx cdk bootstrap aws://${{ env.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} --require-approval never
       - name: CDK Deploy DEV
         working-directory: infra
+        env:
+          API_SERVER_IMAGE_TAG: ${{ github.sha }}
         run: npm run deploy:dev
       - name: Print Swagger UI URL
         run: |

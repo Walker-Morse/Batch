@@ -16,6 +16,8 @@ export interface ApiServerProps {
   executionRole: iam.IRole;
   dbProxyEndpoint: string;
   ingestTaskSecret: secretsmanager.ISecret; // shared DB credential (onefintech/{env}/db/ingest-task)
+  /** Git SHA image tag — forces new task definition revision on every image push. */
+  imageTag: string;
 }
 
 /**
@@ -76,7 +78,7 @@ export class ApiServerConstruct extends Construct {
     });
 
     taskDef.addContainer("api-server", {
-      image: ecs.ContainerImage.fromEcrRepository(this.repository, "latest"),
+      image: ecs.ContainerImage.fromEcrRepository(this.repository, props.imageTag),
       command: [
         "/api-server",
         `-addr=:8080`,

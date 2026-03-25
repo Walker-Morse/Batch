@@ -16,3 +16,6 @@ infra/*.d.ts
 *.pgp
 *.key
 secrets/
+
+# infra/bin contains TypeScript source — must not be ignored
+!infra/bin/

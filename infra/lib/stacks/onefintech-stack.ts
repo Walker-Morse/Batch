@@ -23,6 +23,8 @@ export interface OneFintechStackProps extends cdk.StackProps {
   pgpPrivateKeySecretArn: string;
   pgpPassphraseSecretArn: string;
   pgpFisPublicKeySecretArn: string;
+  /** Git SHA for the api-server image tag. Defaults to "latest" if not provided. */
+  apiServerImageTag?: string;
 }
 
 /**
@@ -135,6 +137,7 @@ export class OneFintechStack extends cdk.Stack {
       executionRole: iam.executionRole,
       dbProxyEndpoint: aurora.proxyEndpoint,
       ingestTaskSecret,
+      imageTag: props.apiServerImageTag ?? "latest",
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });

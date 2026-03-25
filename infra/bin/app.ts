@@ -28,6 +28,10 @@ new OneFintechStack(app, "OneFintechDev", {
   pgpPrivateKeySecretArn: process.env.PGP_PRIVATE_KEY_SECRET_ARN ?? "",
   pgpPassphraseSecretArn: process.env.PGP_PASSPHRASE_SECRET_ARN ?? "",
   pgpFisPublicKeySecretArn: process.env.PGP_FIS_PUBLIC_KEY_SECRET_ARN ?? "",
+  // Git SHA of the api-server image to deploy. Set by CI via API_SERVER_IMAGE_TAG.
+  // Pinning to a SHA forces a new task definition revision on every image push,
+  // ensuring ECS always deploys the latest build. Falls back to "latest" for local synth.
+  apiServerImageTag: process.env.API_SERVER_IMAGE_TAG ?? "latest",
   description: "One Fintech / FIS Prepaid Sunrise — DEV environment",
 });
 
