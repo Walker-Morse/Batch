@@ -164,9 +164,13 @@ export class ApiServerConstruct extends Construct {
       securityGroups: [taskSg],
       assignPublicIp: false,
       enableECSManagedTags: true,
-      // Rolling update: keep 100% minimum, 200% maximum — zero downtime deploys
-      minHealthyPercent: 100,
+      minHealthyPercent: 0,   // allow 0 running during deploy (single-task DEV service)
       maxHealthyPercent: 200,
+      // Circuit breaker: fail fast instead of retrying indefinitely.
+      // Without this CloudFormation hangs in CREATE_IN_PROGRESS until timeout.
+      circuitBreaker: { rollback: false },
+      // Grace period: give the binary 30s to start before ALB health checks count
+      healthCheckGracePeriod: cdk.Duration.seconds(30),
     });
 
     this.service.attachToApplicationTargetGroup(targetGroup);
