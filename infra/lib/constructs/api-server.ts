@@ -55,6 +55,7 @@ export class ApiServerConstruct extends Construct {
       repositoryName: `onefintech-${env}/api-server`,
       imageScanOnPush: true,
       removalPolicy: env === "dev" ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
+      emptyOnDelete: env === "dev",  // allows CFN to delete repo even when images exist
       lifecycleRules: [{ maxImageCount: 10, rulePriority: 1 }],
     });
 
