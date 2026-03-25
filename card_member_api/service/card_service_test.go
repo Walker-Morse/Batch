@@ -111,7 +111,6 @@ func TestCancelCard_HappyPath_MemberID(t *testing.T) {
 func TestCancelCard_IVRTokenPath(t *testing.T) {
 	consumer := resolvedConsumer()
 	card := resolvedCard(consumer.ID)
-	token := "tok_ivr_test"
 
 	fisMock := mock.NewFisCodeConnectMock()
 	fisCardID := fis.FisCardID(*card.FISCardID)
