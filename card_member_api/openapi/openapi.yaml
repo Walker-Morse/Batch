@@ -1,0 +1,679 @@
+openapi: "3.0.3"
+info:
+  title: One Fintech Card & Member API
+  description: |
+    Internal domain API for Medicaid food benefit prepaid card and member lifecycle management.
+
+    **Caller surfaces:**
+    - Universal Wallet (Cognito JWT, member-authenticated)
+    - IVR (token-based card resolution)
+    - Batch pipeline & dead letter repair (service-to-service)
+    - Ops portal (service-to-service)
+
+    **Authentication:**
+    All requests require a Cognito JWT Bearer token (production) or the
+    `X-Dev-Claims` header (local development / mock mode).
+
+    `X-Dev-Claims` format:
+    ```json
+    {"tenant_id":"rfu-oregon","caller_type":"universal_wallet","subject_member_id":"<uuid>"}
+    ```
+
+    **Idempotency:**
+    All mutating operations are idempotent on `X-Correlation-ID`. Dead letter repair
+    reuses the original batch correlation ID — the same idempotency gate fires.
+
+    **PHI notice:**
+    This API handles Protected Health Information (HIPAA 45 CFR § 164.312).
+    All fields marked `[PHI]` must be transmitted over TLS and never logged.
+  version: "1.0.0"
+  contact:
+    name: One Fintech Platform
+    email: platform@morse.llc
+
+servers:
+  - url: http://localhost:8080
+    description: Local (mock FIS)
+  - url: https://api.onefintech.internal/v1
+    description: DEV
+  - url: https://api.onefintech.internal/v1
+    description: PRD
+
+tags:
+  - name: Members
+    description: Member enrollment and demographic management
+  - name: Cards
+    description: Card lifecycle operations
+
+# ─── Security ─────────────────────────────────────────────────────────────────
+security:
+  - BearerAuth: []
+  - DevClaims: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito JWT (RS256). Pending John Stevens auth pool setup.
+    DevClaims:
+      type: apiKey
+      in: header
+      name: X-Dev-Claims
+      description: |
+        Development bypass. JSON object:
+        `{"tenant_id":"rfu-oregon","caller_type":"universal_wallet","subject_member_id":"<uuid>"}`
+
+  parameters:
+    MemberID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: One Fintech member UUID (consumers.id)
+    CorrelationID:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: |
+        Idempotency key. If omitted, one is generated and returned in the response header.
+        For dead letter repair, pass the original batch correlation UUID.
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    EnrollMemberRequest:
+      type: object
+      required:
+        - client_member_id
+        - subprogram_id
+        - benefit_period
+        - first_name
+        - last_name
+        - dob
+        - address1
+        - city
+        - state
+        - zip
+        - phone
+      properties:
+        client_member_id:
+          type: string
+          description: "[PHI] Health plan member ID. Natural key within tenant."
+          example: "MBR-RFU-001234"
+        subprogram_id:
+          type: integer
+          format: int64
+          description: FIS subprogram ID. e.g. 26071 for RFU Oregon.
+          example: 26071
+        benefit_period:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: ISO YYYY-MM benefit period.
+          example: "2026-06"
+        first_name:
+          type: string
+          description: "[PHI]"
+        last_name:
+          type: string
+          description: "[PHI]"
+        dob:
+          type: string
+          format: date
+          description: "[PHI] Date of birth."
+        address1:
+          type: string
+          description: "[PHI]"
+        address2:
+          type: string
+          description: "[PHI]"
+        city:
+          type: string
+          description: "[PHI]"
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: "[PHI] 2-char state code."
+        zip:
+          type: string
+          description: "[PHI]"
+        phone:
+          type: string
+          description: "[PHI] Digits only."
+        email:
+          type: string
+          format: email
+          description: "[PHI]"
+        card_design_id:
+          type: string
+
+    EnrollMemberResponse:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        card_id:
+          type: string
+          format: uuid
+        fis_resolved:
+          type: boolean
+          description: True when FIS has assigned personId and cardId synchronously.
+        created_at:
+          type: string
+          format: date-time
+
+    MemberView:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        client_member_id:
+          type: string
+          description: "[PHI]"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, TERMINATED, TRANSFERRED]
+        fis_resolved:
+          type: boolean
+        card_id:
+          type: string
+          format: uuid
+        card_status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateMemberRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: "[PHI]"
+        last_name:
+          type: string
+          description: "[PHI]"
+        dob:
+          type: string
+          format: date
+          description: "[PHI]"
+        address1:
+          type: string
+          description: "[PHI]"
+        address2:
+          type: string
+          description: "[PHI]"
+        city:
+          type: string
+          description: "[PHI]"
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+        zip:
+          type: string
+        phone:
+          type: string
+          description: "[PHI]"
+        email:
+          type: string
+          format: email
+          description: "[PHI]"
+
+    CancelCardRequest:
+      type: object
+      required: [cancel_reason]
+      properties:
+        cancel_reason:
+          type: string
+          enum: [LOST, STOLEN, MEMBER_REQUEST, PROGRAM_END, FRAUD, OPS_OVERRIDE]
+        card_token:
+          type: string
+          description: IVR path — card number token from physical card swipe. Mutually exclusive with member UUID path parameter.
+
+    CancelCardResponse:
+      type: object
+      properties:
+        card_id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        cancelled_at:
+          type: string
+          format: date-time
+        purses_closed:
+          type: integer
+          description: Number of purse slots explicitly closed at FIS.
+
+    ReplaceCardRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [LOST, COMPROMISED, RENEWAL, BIN_CHANGE]
+
+    ReplaceCardResponse:
+      type: object
+      properties:
+        old_card_id:
+          type: string
+          format: uuid
+        new_card_id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        replaced_at:
+          type: string
+          format: date-time
+
+    LoadFundsRequest:
+      type: object
+      required: [benefit_type, amount_cents, benefit_period]
+      properties:
+        benefit_type:
+          type: string
+          enum: [OTC, FOD]
+          description: Routes to the correct FIS purse slot. OTC = Fruits & Vegetables, FOD = Pantry Foods.
+        amount_cents:
+          type: integer
+          format: int64
+          description: Amount in cents. e.g. 9500 = $95.00.
+          example: 9500
+        benefit_period:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+
+    LoadFundsResponse:
+      type: object
+      properties:
+        card_id:
+          type: string
+          format: uuid
+        purse_id:
+          type: string
+          format: uuid
+        amount_cents:
+          type: integer
+          format: int64
+        loaded_at:
+          type: string
+          format: date-time
+
+    PurseBalance:
+      type: object
+      properties:
+        benefit_type:
+          type: string
+        purse_name:
+          type: string
+        available_cents:
+          type: integer
+          format: int64
+        settled_cents:
+          type: integer
+          format: int64
+        status:
+          type: string
+
+    GetBalanceResponse:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        card_id:
+          type: string
+          format: uuid
+        purses:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurseBalance'
+        as_of:
+          type: string
+          format: date-time
+
+    ResolveCardRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Card number token or proxy from physical card swipe.
+
+    ResolveCardResponse:
+      type: object
+      properties:
+        member_id:
+          type: string
+          format: uuid
+        card_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+
+paths:
+
+  /members:
+    post:
+      tags: [Members]
+      summary: Enroll a new member
+      description: |
+        Creates a new member, issues a card, and seeds purse slots.
+        Equivalent to a single SRG310 enrollment row — same validation
+        and idempotency gate as the batch pipeline.
+
+        **Orphan recovery:** if a previous attempt partially succeeded,
+        retry with the same `X-Correlation-ID` — the operation resumes
+        from the last successful step.
+      operationId: enrollMember
+      parameters:
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollMemberRequest'
+            example:
+              client_member_id: "MBR-RFU-001234"
+              subprogram_id: 26071
+              benefit_period: "2026-06"
+              first_name: "Jane"
+              last_name: "Smith"
+              dob: "1985-03-15"
+              address1: "123 Main St"
+              city: "Portland"
+              state: "OR"
+              zip: "97201"
+              phone: "5031234567"
+              email: "jane.smith@example.com"
+      responses:
+        '201':
+          description: Member enrolled
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollMemberResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate request in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /members/{id}:
+    get:
+      tags: [Members]
+      summary: Get member state
+      description: Returns member state from Aurora. Not a live FIS call.
+      operationId: getMember
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      responses:
+        '200':
+          description: Member found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberView'
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Members]
+      summary: Update member demographics
+      description: |
+        Updates member demographics in Aurora and propagates to FIS if the member
+        is resolved. If FIS update fails, Aurora is updated and FIS is flagged
+        as stale — a warning is logged.
+      operationId: updateMember
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "updated"
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cards/{id}/cancel:
+    post:
+      tags: [Cards]
+      summary: Cancel a card
+      description: |
+        Closes the card and all purse slots at FIS, then updates Aurora.
+
+        **Two resolution paths:**
+        - **UW / repair path:** `{id}` is the One Fintech member UUID; `card_token` omitted.
+        - **IVR path:** `{id}` is ignored; provide `card_token` (physical card number token).
+
+        **Idempotent:** if the card is already closed, returns success without calling FIS.
+      operationId: cancelCard
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelCardRequest'
+            examples:
+              uw_path:
+                summary: Universal Wallet (member UUID in path)
+                value:
+                  cancel_reason: "MEMBER_REQUEST"
+              ivr_path:
+                summary: IVR (card token in body)
+                value:
+                  cancel_reason: "LOST"
+                  card_token: "4111111111111234"
+      responses:
+        '200':
+          description: Card cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelCardResponse'
+        '404':
+          description: Member or card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate request or member not resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cards/{id}/replace:
+    post:
+      tags: [Cards]
+      summary: Replace a card
+      description: |
+        Replaces the physical card with a new card number and CVV.
+        The old card is permanently closed. Aurora is updated atomically
+        with the new FIS-assigned cardId.
+      operationId: replaceCard
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceCardRequest'
+      responses:
+        '200':
+          description: Card replaced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplaceCardResponse'
+        '404':
+          description: Member or card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Member not resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cards/{id}/load:
+    post:
+      tags: [Cards]
+      summary: Load benefit funds
+      description: |
+        Loads benefit funds to the specified purse slot.
+        `benefit_type` routes to the correct FIS purse number — callers
+        never specify raw purse numbers.
+
+        Used by dead letter repair for failed RT60 records.
+      operationId: loadFunds
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadFundsRequest'
+            example:
+              benefit_type: "OTC"
+              amount_cents: 9500
+              benefit_period: "2026-06"
+      responses:
+        '200':
+          description: Funds loaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadFundsResponse'
+        '404':
+          description: Member or card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cards/{id}/balance:
+    get:
+      tags: [Cards]
+      summary: Get live card balance
+      description: |
+        Returns live purse balances from FIS. Never served from Aurora sub-ledger.
+        All purse slots are returned (OTC + FOD for RFU).
+      operationId: getBalance
+      parameters:
+        - $ref: '#/components/parameters/MemberID'
+        - $ref: '#/components/parameters/CorrelationID'
+      responses:
+        '200':
+          description: Balances retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBalanceResponse'
+        '404':
+          description: Member or card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /cards/resolve:
+    post:
+      tags: [Cards]
+      summary: Resolve card token to member
+      description: |
+        Translates a card number token or proxy to a One Fintech member context.
+        Entry point for IVR flows — IVR calls this first, then uses the returned
+        `member_id` for subsequent cancel or balance operations.
+      operationId: resolveCard
+      parameters:
+        - $ref: '#/components/parameters/CorrelationID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveCardRequest'
+      responses:
+        '200':
+          description: Card resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveCardResponse'
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

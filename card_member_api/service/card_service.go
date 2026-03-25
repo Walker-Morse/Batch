@@ -1,16 +1,3 @@
-// Package service implements the ICardService and IMemberService domain service
-// interfaces for the Card and Member API.
-//
-// The service layer owns:
-//   - Idempotency gate (domain_commands table — same gate as batch pipeline)
-//   - FIS identifier resolution (consumers.fis_person_id, cards.fis_card_id)
-//   - Multi-step FIS operation sequencing with failure compensation
-//   - Aurora writes after FIS confirmation
-//   - Audit log entries (append-only, via AuditLogWriter)
-//   - Observability events (zero-PHI, via IObservabilityPort)
-//
-// Handlers call services. Services call IFisCodeConnectPort and Aurora repositories.
-// Services never import net/http.
 package service
 
 import (
@@ -27,42 +14,16 @@ import (
 	"github.com/walker-morse/batch/card_member_api/ports"
 )
 
-// ─── CardService ──────────────────────────────────────────────────────────────
-
 // CardService implements ICardService.
 type CardService struct {
-	fis     fis_code_connect.IFisCodeConnectPort
-	repo    CardRepository       // Aurora read/write for card + consumer + purse rows
-	cmds    sharedports.DomainCommandRepository // idempotency gate — shared with batch pipeline
-	audit   sharedports.AuditLogWriter
-	obs     sharedports.IObservabilityPort
-	log     *slog.Logger
+	fis   fis_code_connect.IFisCodeConnectPort
+	repo  CardRepository
+	cmds  sharedports.DomainCommandRepository
+	audit sharedports.AuditLogWriter
+	obs   sharedports.IObservabilityPort
+	log   *slog.Logger
 }
 
-// CardRepository is the narrow Aurora interface required by CardService.
-// Defined here so it can be mocked in unit tests without a live DB.
-type CardRepository interface {
-	// GetConsumerByID returns the consumer row including FISPersonID and FISCUID.
-	GetConsumerByID(ctx context.Context, id uuid.UUID) (*domain.Consumer, error)
-
-	// GetCardByMemberID returns the active card for a member.
-	GetCardByMemberID(ctx context.Context, memberID uuid.UUID) (*domain.Card, error)
-
-	// GetCardByFisCardID looks up a One Fintech card row by the FIS-assigned cardId.
-	// Used after TranslateCardNumber resolves an IVR token to a FisCardID.
-	GetCardByFisCardID(ctx context.Context, fisCardID string) (*domain.Card, error)
-
-	// GetPursesByCardID returns all purse slots for a card.
-	GetPursesByCardID(ctx context.Context, cardID uuid.UUID) ([]*domain.Purse, error)
-
-	// SetCardStatus updates the card status and sets ClosedAt when status = CardClosed.
-	SetCardStatus(ctx context.Context, cardID uuid.UUID, status domain.CardStatus, at time.Time) error
-
-	// SetPurseStatus updates a purse status and sets ClosedAt when status = PurseClosed.
-	SetPurseStatus(ctx context.Context, purseID uuid.UUID, status domain.PurseStatus, at time.Time) error
-}
-
-// NewCardService constructs a CardService.
 func NewCardService(
 	fis fis_code_connect.IFisCodeConnectPort,
 	repo CardRepository,
@@ -71,297 +32,337 @@ func NewCardService(
 	obs sharedports.IObservabilityPort,
 	log *slog.Logger,
 ) *CardService {
-	return &CardService{
-		fis:   fis,
-		repo:  repo,
-		cmds:  cmds,
-		audit: audit,
-		obs:   obs,
-		log:   log,
-	}
+	return &CardService{fis: fis, repo: repo, cmds: cmds, audit: audit, obs: obs, log: log}
 }
 
-// Compile-time assertion.
 var _ ports.ICardService = (*CardService)(nil)
 
 // ─── CancelCard ───────────────────────────────────────────────────────────────
 
-// CancelCard is the exemplar for the full domain operation pattern:
-//
-//  1. Validate request shape
-//  2. Idempotency gate — write domain_commands row (Accepted) or return duplicate
-//  3. Resolve One Fintech identifiers (memberID / card row)
-//  4. If IVR path: translate card token → FisCardID → look up One Fintech card row
-//  5. Guard: if already CardClosed, mark command Completed and return success
-//  6. Call FIS: CloseCard
-//  7. Call FIS: SetPurseStatus(CLOSED) for each purse
-//  8. Write Aurora: card status → CardClosed, purse statuses → PurseClosed
-//  9. Write audit log
-// 10. Mark domain_commands row Completed
-// 11. Emit observability event
-//
-// Failure modes:
-//   - FIS CloseCard fails: mark command Failed, return error (caller retries with same correlationID)
-//   - FIS SetPurseStatus partially fails: card is closed at FIS but one or more purses
-//     still open. Mark command Failed, log which purses succeeded. On retry the idempotency
-//     gate sees the existing Failed command and allows re-entry. The compensation check
-//     (step 5) calls GetCard at FIS to verify current state before re-calling CloseCard.
-//   - Aurora write fails after FIS success: card is closed at FIS but Aurora is stale.
-//     Mark command Failed. On retry, step 5 detects the FIS-side closed state and
-//     skips CloseCard, proceeding directly to the Aurora write.
 func (s *CardService) CancelCard(ctx context.Context, req ports.CancelCardRequest) (*ports.CancelCardResult, error) {
+	if req.MemberID == nil && req.CardToken == nil {
+		return nil, fmt.Errorf("%w: exactly one of MemberID or CardToken required", ports.ErrInvalidRequest)
+	}
+	if req.MemberID != nil && req.CardToken != nil {
+		return nil, fmt.Errorf("%w: MemberID and CardToken are mutually exclusive", ports.ErrInvalidRequest)
+	}
+	if req.CancelReason == "" {
+		return nil, fmt.Errorf("%w: CancelReason required", ports.ErrInvalidRequest)
+	}
+
 	rctx := req.Rctx
 	now := time.Now().UTC()
 
-	// ── 1. Validate request shape ─────────────────────────────────────────────
-
-	if req.MemberID == nil && req.CardToken == nil {
-		return nil, fmt.Errorf("cancel_card: exactly one of MemberID or CardToken must be set")
-	}
-	if req.MemberID != nil && req.CardToken != nil {
-		return nil, fmt.Errorf("cancel_card: MemberID and CardToken are mutually exclusive")
-	}
-	if req.CancelReason == "" {
-		return nil, fmt.Errorf("cancel_card: CancelReason is required")
-	}
-
-	// ── 2. Idempotency gate ───────────────────────────────────────────────────
-	//
-	// CommandType CANCEL_CARD. BenefitPeriod is empty for card lifecycle commands
-	// (benefit period scoping only applies to fund load commands).
-	// The composite key is (tenant_id, client_member_id, command_type, benefit_period).
-	// For the IVR path we don't have client_member_id yet — we resolve it in step 4
-	// then re-check. This is a known asymmetry: IVR callers must ensure their
-	// correlationID is unique per cancel attempt at the caller side.
-
-	// ── 3. Resolve One Fintech card row ──────────────────────────────────────
-
-	var card *domain.Card
-	var consumer *domain.Consumer
-
-	if req.MemberID != nil {
-		// UW / batch repair path — we have the One Fintech member UUID directly.
-		var err error
-		consumer, err = s.repo.GetConsumerByID(ctx, *req.MemberID)
-		if err != nil {
-			return nil, fmt.Errorf("cancel_card: member lookup failed: %w", err)
-		}
-		card, err = s.repo.GetCardByMemberID(ctx, *req.MemberID)
-		if err != nil {
-			return nil, fmt.Errorf("cancel_card: card lookup failed: %w", err)
-		}
-	} else {
-		// IVR path — translate token to FisCardID, then look up our card row.
-		fisCardID, err := s.fis.TranslateCardNumber(ctx, *req.CardToken)
-		if err != nil {
-			return nil, fmt.Errorf("cancel_card: token translation failed: %w", err)
-		}
-		card, err = s.repo.GetCardByFisCardID(ctx, string(fisCardID))
-		if err != nil {
-			return nil, fmt.Errorf("cancel_card: card lookup by FIS ID failed: %w", err)
-		}
-		consumer, err = s.repo.GetConsumerByID(ctx, card.ConsumerID)
-		if err != nil {
-			return nil, fmt.Errorf("cancel_card: consumer lookup failed: %w", err)
-		}
-	}
-
-	// ── Idempotency gate (deferred until we have clientMemberID) ─────────────
-
-	dup, err := s.cmds.FindDuplicate(ctx, rctx.TenantID, consumer.ClientMemberID, "CANCEL_CARD", "")
+	// Resolve card and consumer
+	consumer, card, err := s.resolveCardIdentity(ctx, req.MemberID, req.CardToken)
 	if err != nil {
-		return nil, fmt.Errorf("cancel_card: idempotency check failed: %w", err)
-	}
-	if dup != nil {
-		switch dup.Status {
-		case string(domain.CommandCompleted):
-			// Already successfully cancelled — return idempotent success.
-			return &ports.CancelCardResult{
-				CardID:   card.ID,
-				MemberID: consumer.ID,
-				// ClosedAt is not re-derivable here without a FIS call; return zero time
-				// to signal idempotent replay. Caller should treat this as success.
-			}, nil
-		case string(domain.CommandAccepted):
-			// Another goroutine is processing — surface as duplicate.
-			return nil, fmt.Errorf("cancel_card: %w", ports.ErrDuplicateRequest)
-		}
-		// CommandFailed — allow retry to proceed.
+		return nil, err
 	}
 
-	cmdID := uuid.New()
-	if err := s.cmds.Insert(ctx, &sharedports.DomainCommand{
-		ID:             cmdID,
-		CorrelationID:  rctx.CorrelationID,
-		TenantID:       rctx.TenantID,
-		ClientMemberID: consumer.ClientMemberID,
-		CommandType:    "CANCEL_CARD",
-		BenefitPeriod:  "",
-		Status:         string(domain.CommandAccepted),
-		BatchFileID:    uuid.Nil,
-		SequenceInFile: 0,
-		CreatedAt:      now,
-	}); err != nil {
-		return nil, fmt.Errorf("cancel_card: failed to write command row: %w", err)
+	// Idempotency gate
+	result, cmdID, err := s.idempotencyGate(ctx, rctx, consumer.ClientMemberID, "CANCEL_CARD", "")
+	if err != nil {
+		return nil, err
+	}
+	if result != nil {
+		// Already completed — return idempotent success
+		return &ports.CancelCardResult{CardID: card.ID, MemberID: consumer.ID, CancelledAt: now}, nil
 	}
 
-	// ── 5. Guard: already cancelled ───────────────────────────────────────────
-	//
-	// Check FIS state, not just Aurora state. If a previous attempt closed the card
-	// at FIS but failed to update Aurora, we proceed directly to the Aurora write.
-	// If FIS also shows closed, skip FIS calls entirely.
-
+	// Guard: already cancelled in Aurora
 	if card.Status == domain.CardClosed {
-		// Aurora already knows. Skip FIS calls, clean up command, return success.
 		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandCompleted), nil)
-		return &ports.CancelCardResult{
-			CardID:      card.ID,
-			MemberID:    consumer.ID,
-			CancelledAt: now,
-		}, nil
+		return &ports.CancelCardResult{CardID: card.ID, MemberID: consumer.ID, CancelledAt: now}, nil
 	}
-
-	// ── 6. Resolve FisCardID — required for FIS calls ─────────────────────────
 
 	if card.FISCardID == nil {
-		reason := "fis_card_id not yet assigned — batch return file pending (Stage 7)"
+		reason := "fis_card_id not yet assigned"
 		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
-		return nil, fmt.Errorf("cancel_card: %w", ports.ErrMemberNotResolved)
+		return nil, ports.ErrMemberNotResolved
 	}
 	fisCardID := fis_code_connect.FisCardID(*card.FISCardID)
 
-	// ── 7. FIS: CloseCard ─────────────────────────────────────────────────────
-
-	if err := s.fis.CloseCard(ctx, fisCardID); err != nil {
-		reason := fmt.Sprintf("fis CloseCard failed: %v", err)
+	// FIS: close card
+	if err := s.fis.CloseCard(ctx, fisCardID, fis_code_connect.CloseCardRequest{
+		Comment: fmt.Sprintf("cancel_reason=%s correlation=%s", req.CancelReason, rctx.CorrelationID),
+	}); err != nil {
+		reason := err.Error()
 		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
-		_ = s.obs.LogEvent(ctx, &sharedports.LogEvent{
-			CorrelationID: rctx.CorrelationID,
-			TenantID:      rctx.TenantID,
-			BatchFileID:   uuid.Nil,
-			EventType:     "card.cancel.fis_close_failed",
-			Level:         "ERROR",
-			Message:       "FIS CloseCard rejected",
-			Error:         &reason,
-		})
 		return nil, fmt.Errorf("cancel_card: FIS close failed: %w", err)
 	}
 
-	// ── 8. FIS: SetPurseStatus(CLOSED) for each purse ────────────────────────
-	//
-	// RFU has 2 purses. We close all active purses explicitly.
-	// Partial failure is recorded per-purse; the command is marked Failed so
-	// the retry path can re-enter and close only the remaining open purses.
-
-	purses, err := s.repo.GetPursesByCardID(ctx, card.ID)
-	if err != nil {
-		reason := fmt.Sprintf("purse lookup failed after FIS close: %v", err)
-		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
-		return nil, fmt.Errorf("cancel_card: purse lookup failed: %w", err)
-	}
-
+	// FIS: close all purses
+	purses, _ := s.repo.GetPursesByCardID(ctx, card.ID)
 	pursesClosed := 0
-	var purseCloseErr error
-	for _, purse := range purses {
-		if purse.Status == domain.PurseClosed {
+	for _, p := range purses {
+		if p.Status == domain.PurseClosed || p.FISPurseNumber == nil {
 			pursesClosed++
 			continue
 		}
-		if purse.FISPurseNumber == nil {
-			continue // purse not yet resolved at FIS — skip
-		}
-		fisPurseNum := fis_code_connect.FisPurseNumber(*purse.FISPurseNumber)
-		if err := s.fis.SetPurseStatus(ctx, fisCardID, fisPurseNum, fis_code_connect.PurseStatusClosed); err != nil {
-			purseCloseErr = fmt.Errorf("purse %d close failed: %w", *purse.FISPurseNumber, err)
-			break
+		if err := s.fis.SetPurseStatus(ctx, fisCardID,
+			fis_code_connect.FisPurseNumber(*p.FISPurseNumber),
+			fis_code_connect.PurseStatusClosed,
+		); err != nil {
+			reason := fmt.Sprintf("purse %d close failed: %v", *p.FISPurseNumber, err)
+			_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
+			return nil, fmt.Errorf("cancel_card: partial purse close: %w", err)
 		}
 		pursesClosed++
 	}
 
-	if purseCloseErr != nil {
-		reason := purseCloseErr.Error()
-		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
-		return nil, fmt.Errorf("cancel_card: partial purse close: %w", purseCloseErr)
-	}
-
-	// ── 9. Aurora: update card and purse statuses ─────────────────────────────
-
-	if err := s.repo.SetCardStatus(ctx, card.ID, domain.CardClosed, now); err != nil {
-		// FIS is closed; Aurora is stale. Mark failed so retry can recover.
-		reason := fmt.Sprintf("aurora card status update failed after FIS close: %v", err)
-		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
-		return nil, fmt.Errorf("cancel_card: aurora card update failed: %w", err)
-	}
-
-	for _, purse := range purses {
-		if purse.Status == domain.PurseClosed {
-			continue
-		}
-		if err := s.repo.SetPurseStatus(ctx, purse.ID, domain.PurseClosed, now); err != nil {
-			// Non-fatal: card is closed. Log but don't fail.
-			s.log.ErrorContext(ctx, "failed to update purse status in Aurora after FIS close",
-				slog.String("purse_id", purse.ID.String()),
-				slog.String("error", err.Error()),
-			)
+	// Aurora writes
+	_ = s.repo.SetCardStatus(ctx, card.ID, domain.CardClosed, now)
+	for _, p := range purses {
+		if p.Status != domain.PurseClosed {
+			_ = s.repo.SetPurseStatus(ctx, p.ID, domain.PurseClosed, now)
 		}
 	}
 
-	// ── 10. Audit log ─────────────────────────────────────────────────────────
-
+	// Audit + complete
 	_ = s.audit.Write(ctx, &sharedports.AuditEntry{
-		TenantID:       rctx.TenantID,
-		EntityType:     "card",
-		EntityID:       card.ID.String(),
-		OldState:       statusName(card.Status),
-		NewState:       "CLOSED",
-		ChangedBy:      string(rctx.CallerType),
-		CorrelationID:  &rctx.CorrelationID,
+		TenantID: rctx.TenantID, EntityType: "card", EntityID: card.ID.String(),
+		OldState: strPtr(cardStatusName(card.Status)), NewState: "CLOSED",
+		ChangedBy: string(rctx.CallerType), CorrelationID: &rctx.CorrelationID,
 		ClientMemberID: &consumer.ClientMemberID,
-		Notes:          cancelReasonNote(req.CancelReason),
+		Notes:          strPtr(fmt.Sprintf("cancel_reason=%s", req.CancelReason)),
 	})
-
-	// ── 11. Mark Completed ────────────────────────────────────────────────────
-
 	_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandCompleted), nil)
-
-	// ── 12. Observability ─────────────────────────────────────────────────────
-
 	_ = s.obs.LogEvent(ctx, &sharedports.LogEvent{
-		CorrelationID: rctx.CorrelationID,
-		TenantID:      rctx.TenantID,
-		BatchFileID:   uuid.Nil,
-		EventType:     "card.cancel.completed",
-		Level:         "INFO",
-		Message:       "card cancelled successfully",
+		CorrelationID: rctx.CorrelationID, TenantID: rctx.TenantID, BatchFileID: uuid.Nil,
+		EventType: "card.cancel.completed", Level: "INFO", Message: "card cancelled",
 		DomainCommandID: &cmdID,
 	})
 
-	return &ports.CancelCardResult{
-		CardID:       card.ID,
-		MemberID:     consumer.ID,
-		CancelledAt:  now,
-		PursesClosed: pursesClosed,
+	return &ports.CancelCardResult{CardID: card.ID, MemberID: consumer.ID, CancelledAt: now, PursesClosed: pursesClosed}, nil
+}
+
+// ─── ReplaceCard ──────────────────────────────────────────────────────────────
+
+func (s *CardService) ReplaceCard(ctx context.Context, req ports.ReplaceCardRequest) (*ports.ReplaceCardResult, error) {
+	now := time.Now().UTC()
+	consumer, err := s.repo.GetConsumerByID(ctx, req.MemberID)
+	if err != nil {
+		return nil, ports.ErrMemberNotFound
+	}
+	card, err := s.repo.GetCardByMemberID(ctx, req.MemberID)
+	if err != nil {
+		return nil, ports.ErrCardNotFound
+	}
+	if card.FISCardID == nil {
+		return nil, ports.ErrMemberNotResolved
+	}
+
+	_, cmdID, err := s.idempotencyGate(ctx, req.Rctx, consumer.ClientMemberID, "REPLACE_CARD", "")
+	if err != nil {
+		return nil, err
+	}
+
+	fisCardID := fis_code_connect.FisCardID(*card.FISCardID)
+	newFisCardID, err := s.fis.ReplaceCard(ctx, fisCardID, fis_code_connect.ReplaceCardRequest{
+		ShippingMethod: fis_code_connect.ShipUSPS1stClass,
+		Comment:        fmt.Sprintf("reason=%s", req.Reason),
+	})
+	if err != nil {
+		reason := err.Error()
+		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
+		return nil, fmt.Errorf("replace_card: FIS replace failed: %w", err)
+	}
+
+	// Create new card row in Aurora
+	newCard := &domain.Card{
+		ID:                uuid.New(),
+		TenantID:          card.TenantID,
+		ConsumerID:        card.ConsumerID,
+		ClientMemberID:    card.ClientMemberID,
+		FISCardID:         strPtr(string(newFisCardID)),
+		Status:            domain.CardReady,
+		SourceBatchFileID: card.SourceBatchFileID,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	_ = s.repo.CreateCard(ctx, newCard)
+	// Mark old card closed
+	_ = s.repo.SetCardStatus(ctx, card.ID, domain.CardClosed, now)
+
+	_ = s.audit.Write(ctx, &sharedports.AuditEntry{
+		TenantID: req.Rctx.TenantID, EntityType: "card", EntityID: card.ID.String(),
+		OldState: strPtr("ACTIVE"), NewState: "REPLACED",
+		ChangedBy: string(req.Rctx.CallerType), CorrelationID: &req.Rctx.CorrelationID,
+	})
+	_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandCompleted), nil)
+
+	return &ports.ReplaceCardResult{OldCardID: card.ID, NewCardID: newCard.ID, MemberID: req.MemberID, ReplacedAt: now}, nil
+}
+
+// ─── LoadFunds ────────────────────────────────────────────────────────────────
+
+func (s *CardService) LoadFunds(ctx context.Context, req ports.LoadFundsRequest) (*ports.LoadFundsResult, error) {
+	now := time.Now().UTC()
+	consumer, err := s.repo.GetConsumerByID(ctx, req.MemberID)
+	if err != nil {
+		return nil, ports.ErrMemberNotFound
+	}
+	card, err := s.repo.GetCardByMemberID(ctx, req.MemberID)
+	if err != nil {
+		return nil, ports.ErrCardNotFound
+	}
+	if card.FISCardID == nil {
+		return nil, ports.ErrMemberNotResolved
+	}
+	purse, err := s.repo.GetPurseByBenefitType(ctx, card.ID, req.BenefitType)
+	if err != nil || purse.FISPurseNumber == nil {
+		return nil, fmt.Errorf("load_funds: purse not found for benefit_type=%s", req.BenefitType)
+	}
+
+	_, cmdID, err := s.idempotencyGate(ctx, req.Rctx, consumer.ClientMemberID, "LOAD_FUNDS", req.BenefitPeriod)
+	if err != nil {
+		return nil, err
+	}
+
+	fisCardID := fis_code_connect.FisCardID(*card.FISCardID)
+	_, err = s.fis.LoadFunds(ctx, fisCardID, fis_code_connect.LoadFundsRequest{
+		PurseNumber:     fis_code_connect.FisPurseNumber(*purse.FISPurseNumber),
+		AmountCents:     req.AmountCents,
+		ClientReference: req.Rctx.CorrelationID.String(),
+	})
+	if err != nil {
+		reason := err.Error()
+		_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
+		return nil, fmt.Errorf("load_funds: FIS load failed: %w", err)
+	}
+
+	_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandCompleted), nil)
+	_ = s.obs.LogEvent(ctx, &sharedports.LogEvent{
+		CorrelationID: req.Rctx.CorrelationID, TenantID: req.Rctx.TenantID, BatchFileID: uuid.Nil,
+		EventType: "card.load_funds.completed", Level: "INFO", Message: "funds loaded",
+	})
+
+	return &ports.LoadFundsResult{CardID: card.ID, PurseID: purse.ID, AmountCents: req.AmountCents, LoadedAt: now}, nil
+}
+
+// ─── GetBalance ───────────────────────────────────────────────────────────────
+
+func (s *CardService) GetBalance(ctx context.Context, req ports.GetBalanceRequest) (*ports.GetBalanceResult, error) {
+	card, err := s.repo.GetCardByMemberID(ctx, req.MemberID)
+	if err != nil {
+		return nil, ports.ErrCardNotFound
+	}
+	if card.FISCardID == nil {
+		return nil, ports.ErrMemberNotResolved
+	}
+	fisPurses, err := s.fis.GetPurses(ctx, fis_code_connect.FisCardID(*card.FISCardID))
+	if err != nil {
+		return nil, fmt.Errorf("get_balance: FIS purse read failed: %w", err)
+	}
+	balances := make([]ports.PurseBalance, 0, len(fisPurses))
+	for _, p := range fisPurses {
+		benefitType := "OTC"
+		if len(p.PurseName) >= 3 {
+			benefitType = p.PurseName[:3]
+		}
+		balances = append(balances, ports.PurseBalance{
+			BenefitType:    benefitType,
+			PurseName:      p.PurseName,
+			AvailableCents: p.AvailableBalanceCents,
+			SettledCents:   p.SettledBalanceCents,
+			Status:         string(p.Status),
+		})
+	}
+	return &ports.GetBalanceResult{MemberID: req.MemberID, CardID: card.ID, Purses: balances, AsOf: time.Now().UTC()}, nil
+}
+
+// ─── ResolveCard ─────────────────────────────────────────────────────────────
+
+func (s *CardService) ResolveCard(ctx context.Context, req ports.ResolveCardRequest) (*ports.ResolveCardResult, error) {
+	fisCardID, err := s.fis.TranslateCardNumber(ctx, req.Token)
+	if err != nil {
+		// Try proxy fallback
+		fisCardID, err = s.fis.TranslateProxy(ctx, req.Token, 0)
+		if err != nil {
+			return nil, fmt.Errorf("resolve_card: token not found: %w", ports.ErrCardNotFound)
+		}
+	}
+	card, err := s.repo.GetCardByFisCardID(ctx, string(fisCardID))
+	if err != nil {
+		return nil, ports.ErrCardNotFound
+	}
+	return &ports.ResolveCardResult{
+		MemberID: card.ConsumerID,
+		CardID:   card.ID,
+		Status:   cardStatusName(card.Status),
 	}, nil
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-func statusName(s domain.CardStatus) *string {
-	names := map[domain.CardStatus]string{
-		domain.CardReady:     "READY",
-		domain.CardActive:    "ACTIVE",
-		domain.CardLost:      "LOST",
-		domain.CardSuspended: "SUSPENDED",
-		domain.CardClosed:    "CLOSED",
+func (s *CardService) resolveCardIdentity(ctx context.Context, memberID *uuid.UUID, cardToken *string) (*domain.Consumer, *domain.Card, error) {
+	if memberID != nil {
+		consumer, err := s.repo.GetConsumerByID(ctx, *memberID)
+		if err != nil {
+			return nil, nil, ports.ErrMemberNotFound
+		}
+		card, err := s.repo.GetCardByMemberID(ctx, *memberID)
+		if err != nil {
+			return nil, nil, ports.ErrCardNotFound
+		}
+		return consumer, card, nil
 	}
-	n := names[s]
-	if n == "" {
-		n = fmt.Sprintf("UNKNOWN(%d)", s)
+	// IVR token path
+	fisCardID, err := s.fis.TranslateCardNumber(ctx, *cardToken)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve token: %w", ports.ErrCardNotFound)
 	}
-	return &n
+	card, err := s.repo.GetCardByFisCardID(ctx, string(fisCardID))
+	if err != nil {
+		return nil, nil, ports.ErrCardNotFound
+	}
+	consumer, err := s.repo.GetConsumerByID(ctx, card.ConsumerID)
+	if err != nil {
+		return nil, nil, ports.ErrMemberNotFound
+	}
+	return consumer, card, nil
 }
 
-func cancelReasonNote(r ports.CancelReason) *string {
-	s := fmt.Sprintf("cancel_reason=%s", r)
-	return &s
+// idempotencyGate checks for existing commands and inserts a new Accepted row.
+// Returns (non-nil result, uuid.Nil, nil) if already Completed (idempotent replay).
+// Returns (nil, cmdID, nil) if new — proceed with operation.
+// Returns (nil, uuid.Nil, err) if Accepted in-flight (duplicate) or DB error.
+func (s *CardService) idempotencyGate(ctx context.Context, rctx ports.RequestContext, clientMemberID, cmdType, benefitPeriod string) (*struct{}, uuid.UUID, error) {
+	dup, err := s.cmds.FindDuplicate(ctx, rctx.TenantID, clientMemberID, cmdType, benefitPeriod)
+	if err != nil {
+		return nil, uuid.Nil, fmt.Errorf("idempotency check: %w", err)
+	}
+	if dup != nil {
+		switch dup.Status {
+		case string(domain.CommandCompleted):
+			return &struct{}{}, uuid.Nil, nil
+		case string(domain.CommandAccepted):
+			return nil, uuid.Nil, ports.ErrDuplicateRequest
+		}
+		// Failed — allow retry
+	}
+	cmdID := uuid.New()
+	if err := s.cmds.Insert(ctx, &sharedports.DomainCommand{
+		ID: cmdID, CorrelationID: rctx.CorrelationID,
+		TenantID: rctx.TenantID, ClientMemberID: clientMemberID,
+		CommandType: cmdType, BenefitPeriod: benefitPeriod,
+		Status: string(domain.CommandAccepted), BatchFileID: uuid.Nil,
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		return nil, uuid.Nil, fmt.Errorf("insert command: %w", err)
+	}
+	return nil, cmdID, nil
+}
+
+func strPtr(s string) *string { return &s }
+
+func cardStatusName(s domain.CardStatus) string {
+	m := map[domain.CardStatus]string{
+		domain.CardReady: "READY", domain.CardActive: "ACTIVE",
+		domain.CardLost: "LOST", domain.CardSuspended: "SUSPENDED", domain.CardClosed: "CLOSED",
+	}
+	if n, ok := m[s]; ok {
+		return n
+	}
+	return fmt.Sprintf("UNKNOWN(%d)", s)
 }

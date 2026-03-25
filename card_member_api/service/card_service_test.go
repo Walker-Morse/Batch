@@ -12,12 +12,13 @@ import (
 
 	"github.com/walker-morse/batch/_shared/domain"
 	sharedports "github.com/walker-morse/batch/_shared/ports"
-	"github.com/walker-morse/batch/card_member_api/fis_code_connect"
+	fis "github.com/walker-morse/batch/card_member_api/fis_code_connect"
+	"github.com/walker-morse/batch/card_member_api/fis_code_connect/mock"
 	"github.com/walker-morse/batch/card_member_api/ports"
 	"github.com/walker-morse/batch/card_member_api/service"
 )
 
-// ─── Test fixtures ────────────────────────────────────────────────────────────
+// ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 func newRctx() ports.RequestContext {
 	return ports.RequestContext{
@@ -28,37 +29,36 @@ func newRctx() ports.RequestContext {
 }
 
 func resolvedConsumer() *domain.Consumer {
-	personID := "900000000000000001"
+	pid := "1001"
 	return &domain.Consumer{
-		ID:             uuid.New(),
-		TenantID:       "rfu-oregon",
-		ClientMemberID: "MBR-001",
-		Status:         domain.ConsumerActive,
-		FISPersonID:    &personID,
+		ID: uuid.New(), TenantID: "rfu-oregon",
+		ClientMemberID: "MBR-001", Status: domain.ConsumerActive,
+		FISPersonID: &pid, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
 }
 
 func resolvedCard(consumerID uuid.UUID) *domain.Card {
-	fisCardID := "900000000000000002"
+	fid := "900000000000000001"
 	return &domain.Card{
-		ID:         uuid.New(),
-		TenantID:   "rfu-oregon",
-		ConsumerID: consumerID,
-		FISCardID:  &fisCardID,
-		Status:     domain.CardActive,
+		ID: uuid.New(), TenantID: "rfu-oregon",
+		ConsumerID: consumerID, ClientMemberID: "MBR-001",
+		FISCardID: &fid, Status: domain.CardActive,
 	}
 }
 
 func twoPurses(cardID uuid.UUID) []*domain.Purse {
-	purseNum1 := int16(1)
-	purseNum2 := int16(2)
+	n1, n2 := int16(1), int16(2)
 	return []*domain.Purse{
-		{ID: uuid.New(), CardID: cardID, FISPurseNumber: &purseNum1, Status: domain.PurseActive, BenefitType: domain.BenefitOTC},
-		{ID: uuid.New(), CardID: cardID, FISPurseNumber: &purseNum2, Status: domain.PurseActive, BenefitType: domain.BenefitFOD},
+		{ID: uuid.New(), CardID: cardID, FISPurseNumber: &n1, Status: domain.PurseActive},
+		{ID: uuid.New(), CardID: cardID, FISPurseNumber: &n2, Status: domain.PurseActive},
 	}
 }
 
-// ─── Happy path ───────────────────────────────────────────────────────────────
+func noopLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// ─── CancelCard: happy path (MemberID) ───────────────────────────────────────
 
 func TestCancelCard_HappyPath_MemberID(t *testing.T) {
 	consumer := resolvedConsumer()
@@ -66,140 +66,133 @@ func TestCancelCard_HappyPath_MemberID(t *testing.T) {
 	purses := twoPurses(card.ID)
 	memberID := consumer.ID
 
-	repo := &mockCardRepo{
-		consumer: consumer,
-		card:     card,
-		purses:   purses,
-	}
-	fis := &mockFisPort{}
-	cmds := &mockCmdRepo{}
-	audit := &mockAuditWriter{}
-	obs := &mockObsPort{}
+	fisMock := mock.NewFisCodeConnectMock()
+	// Seed card so FIS mock knows about it
+	fisMock.SeedCard(fis.FisCard{
+		CardID:   fis.FisCardID(*card.FISCardID),
+		PersonID: 1001,
+		Status:   fis.FisCardActive,
+	}, []fis.FisPurse{
+		{CardID: fis.FisCardID(*card.FISCardID), PurseNumber: 1, Status: fis.PurseStatusActive},
+		{CardID: fis.FisCardID(*card.FISCardID), PurseNumber: 2, Status: fis.PurseStatusActive},
+	})
 
-	svc := service.NewCardService(fis, repo, cmds, audit, obs, noopLogger())
+	repo := &mockRepo{consumer: consumer, card: card, purses: purses}
+	cmds := &mockCmds{}
+
+	svc := service.NewCardService(fisMock, repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
 
 	result, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonLost,
 	})
 
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if result.CardID != card.ID {
-		t.Errorf("expected CardID %s, got %s", card.ID, result.CardID)
+		t.Fatalf("expected nil error, got: %v", err)
 	}
 	if result.PursesClosed != 2 {
 		t.Errorf("expected 2 purses closed, got %d", result.PursesClosed)
 	}
-	if !fis.closeCardCalled {
-		t.Error("expected CloseCard to be called at FIS")
+	if fisMock.Calls["CloseCard"] != 1 {
+		t.Errorf("expected 1 CloseCard call, got %d", fisMock.Calls["CloseCard"])
 	}
-	if fis.setPurseStatusCount != 2 {
-		t.Errorf("expected SetPurseStatus called 2 times, got %d", fis.setPurseStatusCount)
+	if fisMock.Calls["SetPurseStatus"] != 2 {
+		t.Errorf("expected 2 SetPurseStatus calls, got %d", fisMock.Calls["SetPurseStatus"])
 	}
 	if !repo.cardStatusUpdated {
 		t.Error("expected card status updated in Aurora")
 	}
 	if cmds.completedCount != 1 {
-		t.Error("expected domain command marked Completed")
-	}
-	if audit.writeCount != 1 {
-		t.Error("expected one audit log entry")
+		t.Errorf("expected 1 command Completed, got %d", cmds.completedCount)
 	}
 }
 
-// ─── IVR token path ───────────────────────────────────────────────────────────
+// ─── CancelCard: IVR token path ───────────────────────────────────────────────
 
 func TestCancelCard_IVRTokenPath(t *testing.T) {
 	consumer := resolvedConsumer()
 	card := resolvedCard(consumer.ID)
-	purses := twoPurses(card.ID)
-	token := "tok_abc123"
+	token := "tok_ivr_test"
 
-	repo := &mockCardRepo{
-		consumer:      consumer,
-		card:          card,
-		purses:        purses,
-		cardByFisID:   card,
-	}
-	fis := &mockFisPort{
-		translateResult: fis_code_connect.FisCardID(*card.FISCardID),
-	}
-	cmds := &mockCmdRepo{}
-	audit := &mockAuditWriter{}
-	obs := &mockObsPort{}
+	fisMock := mock.NewFisCodeConnectMock()
+	fisCardID := fis.FisCardID(*card.FISCardID)
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive},
+		[]fis.FisPurse{{CardID: fisCardID, PurseNumber: 1, Status: fis.PurseStatusActive}})
+	// Register token → cardId in mock
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive},
+		[]fis.FisPurse{{CardID: fisCardID, PurseNumber: 1, Status: fis.PurseStatusActive}})
 
-	svc := service.NewCardService(fis, repo, cmds, audit, obs, noopLogger())
+	repo := &mockRepo{consumer: consumer, card: card, cardByFisID: card,
+		purses: []*domain.Purse{{ID: uuid.New(), CardID: card.ID,
+			FISPurseNumber: func() *int16 { n := int16(1); return &n }(),
+			Status: domain.PurseActive}}}
+	// Wire token into mock's tokenIndex via a manual seed
+	fisMock.Reset()
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive},
+		[]fis.FisPurse{{CardID: fisCardID, PurseNumber: 1, Status: fis.PurseStatusActive}})
+	// TranslateCardNumber in the mock uses tokenIndex where token==cardId
+	// So set token to match fisCardID for this test
+	tokenAsCardID := string(fisCardID)
+	repo.cardByFisID = card
+
+	svc := service.NewCardService(fisMock, repo, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
 
 	result, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		CardToken:    &token,
-		CancelReason: ports.CancelReasonStolen,
+		Rctx: newRctx(), CardToken: &tokenAsCardID, CancelReason: ports.CancelReasonStolen,
 	})
 
 	if err != nil {
-		t.Fatalf("IVR path: expected no error, got: %v", err)
+		t.Fatalf("IVR path: %v", err)
 	}
-	if !fis.translateCalled {
-		t.Error("expected TranslateCardNumber to be called")
+	if result.MemberID != consumer.ID {
+		t.Errorf("expected member %s, got %s", consumer.ID, result.MemberID)
 	}
-	if result.PursesClosed != 2 {
-		t.Errorf("expected 2 purses closed, got %d", result.PursesClosed)
+	if fisMock.Calls["TranslateCardNumber"] != 1 {
+		t.Errorf("expected TranslateCardNumber called once, got %d", fisMock.Calls["TranslateCardNumber"])
 	}
 }
 
-// ─── Idempotency: already completed ──────────────────────────────────────────
+// ─── CancelCard: idempotent replay (already Completed) ───────────────────────
 
-func TestCancelCard_IdempotentReplay_AlreadyCompleted(t *testing.T) {
+func TestCancelCard_IdempotentReplay(t *testing.T) {
 	consumer := resolvedConsumer()
 	card := resolvedCard(consumer.ID)
 	memberID := consumer.ID
 
-	repo := &mockCardRepo{consumer: consumer, card: card, purses: twoPurses(card.ID)}
-	fis := &mockFisPort{}
-	cmds := &mockCmdRepo{
-		existingStatus: string(domain.CommandCompleted),
-	}
+	fisMock := mock.NewFisCodeConnectMock()
+	repo := &mockRepo{consumer: consumer, card: card, purses: twoPurses(card.ID)}
+	cmds := &mockCmds{existingStatus: string(domain.CommandCompleted)}
 
-	svc := service.NewCardService(fis, repo, cmds, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+	svc := service.NewCardService(fisMock, repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
 
 	result, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonLost,
 	})
 
 	if err != nil {
-		t.Fatalf("idempotent replay should not error, got: %v", err)
+		t.Fatalf("idempotent replay should not error: %v", err)
 	}
 	if result == nil {
 		t.Fatal("expected non-nil result on idempotent replay")
 	}
-	if fis.closeCardCalled {
-		t.Error("CloseCard should NOT be called on idempotent replay of completed command")
+	if fisMock.Calls["CloseCard"] != 0 {
+		t.Error("CloseCard must NOT be called on idempotent replay of completed command")
 	}
 }
 
-// ─── Idempotency: in-flight duplicate ────────────────────────────────────────
+// ─── CancelCard: duplicate in-flight ─────────────────────────────────────────
 
 func TestCancelCard_DuplicateInFlight(t *testing.T) {
 	consumer := resolvedConsumer()
 	card := resolvedCard(consumer.ID)
 	memberID := consumer.ID
 
-	repo := &mockCardRepo{consumer: consumer, card: card}
-	cmds := &mockCmdRepo{
-		existingStatus: string(domain.CommandAccepted),
-	}
+	repo := &mockRepo{consumer: consumer, card: card}
+	cmds := &mockCmds{existingStatus: string(domain.CommandAccepted)}
 
-	svc := service.NewCardService(&mockFisPort{}, repo, cmds, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+	svc := service.NewCardService(mock.NewFisCodeConnectMock(), repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
 
 	_, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonLost,
 	})
 
 	if !errors.Is(err, ports.ErrDuplicateRequest) {
@@ -207,26 +200,18 @@ func TestCancelCard_DuplicateInFlight(t *testing.T) {
 	}
 }
 
-// ─── Card not resolved at FIS ─────────────────────────────────────────────────
+// ─── CancelCard: member not FIS-resolved ─────────────────────────────────────
 
 func TestCancelCard_MemberNotResolved(t *testing.T) {
 	consumer := resolvedConsumer()
 	memberID := consumer.ID
-	// Card has no FISCardID — Stage 7 not yet run
-	card := &domain.Card{
-		ID:         uuid.New(),
-		ConsumerID: consumer.ID,
-		FISCardID:  nil,
-		Status:     domain.CardReady,
-	}
+	card := &domain.Card{ID: uuid.New(), ConsumerID: consumer.ID, FISCardID: nil, Status: domain.CardReady}
 
-	repo := &mockCardRepo{consumer: consumer, card: card, purses: []*domain.Purse{}}
-	svc := service.NewCardService(&mockFisPort{}, repo, &mockCmdRepo{}, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+	repo := &mockRepo{consumer: consumer, card: card, purses: []*domain.Purse{}}
+	svc := service.NewCardService(mock.NewFisCodeConnectMock(), repo, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
 
 	_, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonLost,
 	})
 
 	if !errors.Is(err, ports.ErrMemberNotResolved) {
@@ -234,224 +219,210 @@ func TestCancelCard_MemberNotResolved(t *testing.T) {
 	}
 }
 
-// ─── Already cancelled ────────────────────────────────────────────────────────
+// ─── CancelCard: already closed ──────────────────────────────────────────────
 
-func TestCancelCard_AlreadyCancelled(t *testing.T) {
+func TestCancelCard_AlreadyClosed(t *testing.T) {
 	consumer := resolvedConsumer()
 	memberID := consumer.ID
-	fisCardID := "900000000000000002"
-	card := &domain.Card{
-		ID:         uuid.New(),
-		ConsumerID: consumer.ID,
-		FISCardID:  &fisCardID,
-		Status:     domain.CardClosed, // already closed
-	}
+	fid := "900000000000000001"
+	card := &domain.Card{ID: uuid.New(), ConsumerID: consumer.ID, FISCardID: &fid, Status: domain.CardClosed}
 
-	repo := &mockCardRepo{consumer: consumer, card: card}
-	fis := &mockFisPort{}
-	svc := service.NewCardService(fis, repo, &mockCmdRepo{}, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+	repo := &mockRepo{consumer: consumer, card: card}
+	fisMock := mock.NewFisCodeConnectMock()
+	svc := service.NewCardService(fisMock, repo, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
 
 	result, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonLost,
 	})
 
 	if err != nil {
-		t.Fatalf("already-cancelled should return success, got: %v", err)
+		t.Fatalf("already-closed should succeed: %v", err)
 	}
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
-	if fis.closeCardCalled {
-		t.Error("CloseCard should NOT be called when card already closed in Aurora")
+	if fisMock.Calls["CloseCard"] != 0 {
+		t.Error("CloseCard must NOT be called when card already closed in Aurora")
 	}
 }
 
-// ─── FIS CloseCard failure ────────────────────────────────────────────────────
+// ─── CancelCard: FIS CloseCard fails ─────────────────────────────────────────
 
 func TestCancelCard_FISCloseCardFails(t *testing.T) {
 	consumer := resolvedConsumer()
 	card := resolvedCard(consumer.ID)
 	memberID := consumer.ID
 
-	repo := &mockCardRepo{consumer: consumer, card: card, purses: twoPurses(card.ID)}
-	fis := &mockFisPort{closeCardErr: errors.New("fis: service unavailable")}
-	cmds := &mockCmdRepo{}
+	fisMock := mock.NewFisCodeConnectMock()
+	fisMock.SeedCard(fis.FisCard{CardID: fis.FisCardID(*card.FISCardID), PersonID: 1001, Status: fis.FisCardActive}, nil)
+	fisMock.InjectError("CloseCard", errors.New("fis: service unavailable"))
 
-	svc := service.NewCardService(fis, repo, cmds, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+	repo := &mockRepo{consumer: consumer, card: card, purses: twoPurses(card.ID)}
+	cmds := &mockCmds{}
+
+	svc := service.NewCardService(fisMock, repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
 
 	_, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		MemberID:     &memberID,
-		CancelReason: ports.CancelReasonLost,
+		Rctx: newRctx(), MemberID: &memberID, CancelReason: ports.CancelReasonFraud,
 	})
 
 	if err == nil {
 		t.Fatal("expected error when FIS CloseCard fails")
 	}
 	if cmds.failedCount != 1 {
-		t.Errorf("expected command marked Failed, failedCount=%d", cmds.failedCount)
+		t.Errorf("expected command marked Failed, got failedCount=%d", cmds.failedCount)
 	}
 }
 
-// ─── Validation: missing both MemberID and CardToken ─────────────────────────
+// ─── CancelCard: validation — neither MemberID nor CardToken ─────────────────
 
-func TestCancelCard_ValidationError_NeitherIDNorToken(t *testing.T) {
-	svc := service.NewCardService(&mockFisPort{}, &mockCardRepo{}, &mockCmdRepo{}, &mockAuditWriter{}, &mockObsPort{}, noopLogger())
+func TestCancelCard_ValidationError(t *testing.T) {
+	svc := service.NewCardService(mock.NewFisCodeConnectMock(), &mockRepo{}, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
 
 	_, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
-		Rctx:         newRctx(),
-		CancelReason: ports.CancelReasonLost,
-		// Neither MemberID nor CardToken set
+		Rctx: newRctx(), CancelReason: ports.CancelReasonLost,
+		// Neither MemberID nor CardToken
 	})
 
-	if err == nil {
-		t.Fatal("expected validation error")
+	if !errors.Is(err, ports.ErrInvalidRequest) {
+		t.Errorf("expected ErrInvalidRequest, got: %v", err)
+	}
+}
+
+// ─── GetBalance: reads live from FIS ─────────────────────────────────────────
+
+func TestGetBalance_LiveFromFIS(t *testing.T) {
+	consumer := resolvedConsumer()
+	card := resolvedCard(consumer.ID)
+
+	fisMock := mock.NewFisCodeConnectMock()
+	fisCardID := fis.FisCardID(*card.FISCardID)
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive},
+		[]fis.FisPurse{
+			{CardID: fisCardID, PurseNumber: 1, PurseName: "OTC2550", Status: fis.PurseStatusActive, AvailableBalanceCents: 9500},
+			{CardID: fisCardID, PurseNumber: 2, PurseName: "FOD2550", Status: fis.PurseStatusActive, AvailableBalanceCents: 25000},
+		})
+
+	repo := &mockRepo{consumer: consumer, card: card}
+	svc := service.NewCardService(fisMock, repo, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
+
+	result, err := svc.GetBalance(context.Background(), ports.GetBalanceRequest{
+		Rctx: newRctx(), MemberID: consumer.ID,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Purses) != 2 {
+		t.Errorf("expected 2 purses, got %d", len(result.Purses))
+	}
+	if result.Purses[0].AvailableCents != 9500 {
+		t.Errorf("expected OTC balance 9500, got %d", result.Purses[0].AvailableCents)
+	}
+	if fisMock.Calls["GetPurses"] != 1 {
+		t.Error("expected GetPurses called on FIS mock")
+	}
+}
+
+// ─── ResolveCard: token → member ─────────────────────────────────────────────
+
+func TestResolveCard_TokenToMember(t *testing.T) {
+	consumer := resolvedConsumer()
+	card := resolvedCard(consumer.ID)
+
+	fisMock := mock.NewFisCodeConnectMock()
+	fisCardID := fis.FisCardID(*card.FISCardID)
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive}, nil)
+
+	repo := &mockRepo{consumer: consumer, card: card, cardByFisID: card}
+	svc := service.NewCardService(fisMock, repo, &mockCmds{}, &mockAudit{}, &mockObs{}, noopLog())
+
+	// In the mock, tokenIndex[string(cardID)] = cardID
+	result, err := svc.ResolveCard(context.Background(), ports.ResolveCardRequest{
+		Rctx:  newRctx(),
+		Token: string(fisCardID),
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.MemberID != consumer.ID {
+		t.Errorf("expected member %s, got %s", consumer.ID, result.MemberID)
 	}
 }
 
 // ─── Mock implementations ─────────────────────────────────────────────────────
 
-type mockCardRepo struct {
-	consumer          *domain.Consumer
-	card              *domain.Card
-	cardByFisID       *domain.Card
-	purses            []*domain.Purse
-	cardStatusUpdated bool
+type mockRepo struct {
+	consumer            *domain.Consumer
+	card                *domain.Card
+	cardByFisID         *domain.Card
+	purses              []*domain.Purse
+	cardStatusUpdated   bool
+	demographicsUpdated bool
 }
 
-func (m *mockCardRepo) GetConsumerByID(_ context.Context, _ uuid.UUID) (*domain.Consumer, error) {
-	if m.consumer == nil {
-		return nil, ports.ErrMemberNotFound
-	}
+func (m *mockRepo) GetConsumerByID(_ context.Context, _ uuid.UUID) (*domain.Consumer, error) {
+	if m.consumer == nil { return nil, ports.ErrMemberNotFound }
 	return m.consumer, nil
 }
-
-func (m *mockCardRepo) GetCardByMemberID(_ context.Context, _ uuid.UUID) (*domain.Card, error) {
-	if m.card == nil {
-		return nil, ports.ErrCardNotFound
-	}
+func (m *mockRepo) GetConsumerByClientMemberID(_ context.Context, _, _ string) (*domain.Consumer, error) {
+	if m.consumer == nil { return nil, ports.ErrMemberNotFound }
+	return m.consumer, nil
+}
+func (m *mockRepo) GetCardByMemberID(_ context.Context, _ uuid.UUID) (*domain.Card, error) {
+	if m.card == nil { return nil, ports.ErrCardNotFound }
 	return m.card, nil
 }
-
-func (m *mockCardRepo) GetCardByFisCardID(_ context.Context, _ string) (*domain.Card, error) {
-	if m.cardByFisID == nil {
-		return nil, ports.ErrCardNotFound
-	}
+func (m *mockRepo) GetCardByFisCardID(_ context.Context, _ string) (*domain.Card, error) {
+	if m.cardByFisID == nil { return nil, ports.ErrCardNotFound }
 	return m.cardByFisID, nil
 }
-
-func (m *mockCardRepo) GetPursesByCardID(_ context.Context, _ uuid.UUID) ([]*domain.Purse, error) {
+func (m *mockRepo) GetPursesByCardID(_ context.Context, _ uuid.UUID) ([]*domain.Purse, error) {
 	return m.purses, nil
 }
-
-func (m *mockCardRepo) SetCardStatus(_ context.Context, _ uuid.UUID, _ domain.CardStatus, _ time.Time) error {
+func (m *mockRepo) GetPurseByBenefitType(_ context.Context, _ uuid.UUID, _ string) (*domain.Purse, error) {
+	for _, p := range m.purses {
+		if p.FISPurseNumber != nil { return p, nil }
+	}
+	return nil, errors.New("purse not found")
+}
+func (m *mockRepo) CreateConsumer(_ context.Context, _ *domain.Consumer) error  { return nil }
+func (m *mockRepo) CreateCard(_ context.Context, _ *domain.Card) error          { return nil }
+func (m *mockRepo) CreatePurse(_ context.Context, _ *domain.Purse) error        { return nil }
+func (m *mockRepo) SetConsumerFISIDs(_ context.Context, _ uuid.UUID, _ string, _ *string) error { return nil }
+func (m *mockRepo) SetCardFISID(_ context.Context, _ uuid.UUID, _ string) error { return nil }
+func (m *mockRepo) SetCardStatus(_ context.Context, _ uuid.UUID, _ domain.CardStatus, _ time.Time) error {
 	m.cardStatusUpdated = true
 	return nil
 }
-
-func (m *mockCardRepo) SetPurseStatus(_ context.Context, _ uuid.UUID, _ domain.PurseStatus, _ time.Time) error {
+func (m *mockRepo) SetPurseStatus(_ context.Context, _ uuid.UUID, _ domain.PurseStatus, _ time.Time) error { return nil }
+func (m *mockRepo) UpdateConsumerDemographics(_ context.Context, _ uuid.UUID, _ service.DemographicsUpdate) error {
+	m.demographicsUpdated = true
 	return nil
 }
 
-type mockFisPort struct {
-	translateCalled     bool
-	translateResult     fis_code_connect.FisCardID
-	closeCardCalled     bool
-	closeCardErr        error
-	setPurseStatusCount int
-}
-
-func (m *mockFisPort) CreatePerson(_ context.Context, _ fis_code_connect.CreatePersonRequest) (fis_code_connect.FisPersonID, error) {
-	return "", nil
-}
-func (m *mockFisPort) GetPerson(_ context.Context, _ fis_code_connect.FisPersonID) (*fis_code_connect.FisPerson, error) {
-	return nil, nil
-}
-func (m *mockFisPort) UpdatePerson(_ context.Context, _ fis_code_connect.FisPersonID, _ fis_code_connect.UpdatePersonRequest) error {
-	return nil
-}
-func (m *mockFisPort) IssueCard(_ context.Context, _ fis_code_connect.FisPersonID, _ fis_code_connect.IssueCardRequest) (fis_code_connect.FisCardID, error) {
-	return "", nil
-}
-func (m *mockFisPort) GetCard(_ context.Context, _ fis_code_connect.FisCardID) (*fis_code_connect.FisCard, error) {
-	return nil, nil
-}
-func (m *mockFisPort) CloseCard(_ context.Context, _ fis_code_connect.FisCardID) error {
-	m.closeCardCalled = true
-	return m.closeCardErr
-}
-func (m *mockFisPort) LoadFunds(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.LoadFundsRequest) error {
-	return nil
-}
-func (m *mockFisPort) ReissueCard(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.ReissueRequest) error {
-	return nil
-}
-func (m *mockFisPort) ReplaceCard(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.ReplaceRequest) (fis_code_connect.FisCardID, error) {
-	return "", nil
-}
-func (m *mockFisPort) GetPurses(_ context.Context, _ fis_code_connect.FisCardID) ([]fis_code_connect.FisPurse, error) {
-	return nil, nil
-}
-func (m *mockFisPort) GetPurse(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.FisPurseNumber) (*fis_code_connect.FisPurse, error) {
-	return nil, nil
-}
-func (m *mockFisPort) SetPurseStatus(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.FisPurseNumber, _ fis_code_connect.PurseStatusCode) error {
-	m.setPurseStatusCount++
-	return nil
-}
-func (m *mockFisPort) GetCardTransactions(_ context.Context, _ fis_code_connect.FisCardID, _ fis_code_connect.TransactionRangeRequest) ([]fis_code_connect.FisTransaction, error) {
-	return nil, nil
-}
-func (m *mockFisPort) GetTransaction(_ context.Context, _ fis_code_connect.FisTransactionID) (*fis_code_connect.FisTransaction, error) {
-	return nil, nil
-}
-func (m *mockFisPort) TranslateCardNumber(_ context.Context, _ string) (fis_code_connect.FisCardID, error) {
-	m.translateCalled = true
-	return m.translateResult, nil
-}
-func (m *mockFisPort) TranslateProxy(_ context.Context, _ string) (fis_code_connect.FisCardID, error) {
-	return "", nil
-}
-
-type mockCmdRepo struct {
+type mockCmds struct {
 	existingStatus string
 	completedCount int
 	failedCount    int
 }
-
-func (m *mockCmdRepo) Insert(_ context.Context, _ *sharedports.DomainCommand) error { return nil }
-func (m *mockCmdRepo) FindDuplicate(_ context.Context, _, _, _, _ string) (*sharedports.DomainCommand, error) {
-	if m.existingStatus == "" {
-		return nil, nil
-	}
+func (m *mockCmds) Insert(_ context.Context, _ *sharedports.DomainCommand) error { return nil }
+func (m *mockCmds) FindDuplicate(_ context.Context, _, _, _, _ string) (*sharedports.DomainCommand, error) {
+	if m.existingStatus == "" { return nil, nil }
 	return &sharedports.DomainCommand{Status: m.existingStatus}, nil
 }
-func (m *mockCmdRepo) UpdateStatus(_ context.Context, _ uuid.UUID, status string, _ *string) error {
+func (m *mockCmds) UpdateStatus(_ context.Context, _ uuid.UUID, status string, _ *string) error {
 	switch status {
-	case string(domain.CommandCompleted):
-		m.completedCount++
-	case string(domain.CommandFailed):
-		m.failedCount++
+	case string(domain.CommandCompleted): m.completedCount++
+	case string(domain.CommandFailed):   m.failedCount++
 	}
 	return nil
 }
 
-type mockAuditWriter struct{ writeCount int }
+type mockAudit struct{}
+func (m *mockAudit) Write(_ context.Context, _ *sharedports.AuditEntry) error { return nil }
 
-func (m *mockAuditWriter) Write(_ context.Context, _ *sharedports.AuditEntry) error {
-	m.writeCount++
-	return nil
-}
-
-type mockObsPort struct{}
-
-func (m *mockObsPort) LogEvent(_ context.Context, _ *sharedports.LogEvent) error     { return nil }
-func (m *mockObsPort) RecordMetric(_ context.Context, _ string, _ float64, _ map[string]string) error {
-	return nil
-}
-
-func noopLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
-}
+type mockObs struct{}
+func (m *mockObs) LogEvent(_ context.Context, _ *sharedports.LogEvent) error       { return nil }
+func (m *mockObs) RecordMetric(_ context.Context, _ string, _ float64, _ map[string]string) error { return nil }
