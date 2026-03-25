@@ -107,11 +107,12 @@ export class ApiServerConstruct extends Construct {
       description: `One Fintech api-server ALB (${env}) - internal`,
       allowAllOutbound: false,
     });
-    // Allow inbound HTTP from within the VPC (Grafana, other ECS tasks, VPN clients)
+    // DEV: open to internet so Swagger UI is browser-accessible.
+    // TST/PRD: restrict to VPC CIDR only.
     albSg.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      env === "dev" ? ec2.Peer.anyIpv4() : ec2.Peer.ipv4(vpc.vpcCidrBlock),
       ec2.Port.tcp(80),
-      "Internal VPC HTTP to API server"
+      "HTTP to API server"
     );
     albSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(8080), "ALB to api-server containers");
 
@@ -127,8 +128,12 @@ export class ApiServerConstruct extends Construct {
     // ── Internal Application Load Balancer ────────────────────────────────
     const alb = new elbv2.ApplicationLoadBalancer(this, "Alb", {
       vpc,
-      internetFacing: false,                // internal only
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      // internet-facing in DEV so Swagger UI is browser-accessible.
+      // For TST/PRD flip to false and restrict via security group or WAF.
+      internetFacing: env === "dev",
+      vpcSubnets: env === "dev"
+        ? { subnetType: ec2.SubnetType.PUBLIC }
+        : { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroup: albSg,
       loadBalancerName: `onefintech-${env}-api`,
     });
