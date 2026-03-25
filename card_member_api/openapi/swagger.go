@@ -154,6 +154,18 @@ const swaggerHTML = `<!DOCTYPE html>
       }
     }
 
+    // UUID generator that works over HTTP (no secure context required).
+    // Falls back to Math.random when crypto.randomUUID is unavailable.
+    function generateUUID() {
+      if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
     window.onload = function() {
       window.ui = SwaggerUIBundle({
         url: "/docs/openapi.yaml",
@@ -174,7 +186,7 @@ const swaggerHTML = `<!DOCTYPE html>
           }
           // Auto-generate X-Correlation-ID if not present
           if (!req.headers['X-Correlation-ID']) {
-            req.headers['X-Correlation-ID'] = crypto.randomUUID();
+            req.headers['X-Correlation-ID'] = generateUUID();
           }
           return req;
         },
