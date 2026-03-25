@@ -1,0 +1,24 @@
+# One Fintech api-server — multi-stage build
+# Go 1.25.8 — matches ingest-task builder version
+FROM golang:1.25.8-alpine AS builder
+
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /build
+COPY go.mod go.sum ./
+ENV GONOSUMDB="*" GOFLAGS="-mod=mod"
+RUN go mod download
+COPY . .
+
+# Embed openapi.yaml at build time via //go:embed in openapi/swagger.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GONOSUMDB="*" GOFLAGS="-mod=mod" \
+    go build -ldflags="-s -w" -o /api-server ./_cmd/api-server
+
+# ── Runtime — minimal scratch image ──────────────────────────────────────────
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /api-server /api-server
+
+EXPOSE 8080
+ENTRYPOINT ["/api-server"]

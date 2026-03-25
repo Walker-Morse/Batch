@@ -11,6 +11,7 @@ import { TriggerConstruct } from "../constructs/trigger";
 import { SftpConstruct } from "../constructs/sftp";
 import { GrafanaConstruct } from "../constructs/grafana";
 import { S3ListerConstruct } from "../constructs/s3-lister";
+import { ApiServerConstruct } from "../constructs/api-server";
 
 export interface OneFintechStackProps extends cdk.StackProps {
   environment: "dev" | "tst" | "prd";
@@ -123,6 +124,19 @@ export class OneFintechStack extends cdk.Stack {
       inboundBucket: storage.inboundBucket,
     });
 
+    // Card & Member API server — long-lived Fargate service behind internal ALB
+    // Swagger UI: http://{ApiServerAlbDns}/docs/
+    // DEV: -fis-mock=true (no FIS credentials required)
+    const apiServer = new ApiServerConstruct(this, "ApiServer", {
+      env,
+      vpc: networking.vpc,
+      cluster: ecs.cluster,
+      taskRole: iam.taskRole,
+      executionRole: iam.executionRole,
+      dbProxyEndpoint: aurora.proxyEndpoint,
+      ingestTaskSecret,
+    });
+
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
     new cdk.CfnOutput(this, "StagedBucketName",     { value: storage.stagedBucket.bucketName });
     new cdk.CfnOutput(this, "FisExchangeBucketName",{ value: storage.fisExchangeBucket.bucketName });
@@ -132,5 +146,9 @@ export class OneFintechStack extends cdk.Stack {
     new cdk.CfnOutput(this, "EcrRepositoryUri",     { value: ecs.repository.repositoryUri });
     new cdk.CfnOutput(this, "AuroraProxyEndpoint",  { value: aurora.proxyEndpoint });
     new cdk.CfnOutput(this, "DbSecretArn",          { value: aurora.dbSecret.secretArn });
+    new cdk.CfnOutput(this, "ApiServerSwaggerUrl",  {
+      value: `http://${apiServer.albDns}/docs/`,
+      description: "One Fintech Card & Member API — Swagger UI",
+    });
   }
 }
