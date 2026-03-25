@@ -15,6 +15,7 @@ ALL_PKGS := \
 	./dead_letter/... \
 	./sanctions_screening/... \
 	./fbo_reconciliation/... \
+	./card_member_api/... \
 	./_shared/... \
 	./_cmd/...
 
