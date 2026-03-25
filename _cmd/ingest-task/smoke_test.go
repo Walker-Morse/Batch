@@ -252,7 +252,6 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			FISExchangeBucket: smokeFISBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
-			Transport:         &nullFISTransport{},
 			Files:             fileStore,
 			BatchFiles:        batchFiles,
 			Audit:             audit,
@@ -260,7 +259,7 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			FISExchangeBucket: smokeFISBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
-			Transport:  &nullFISTransport{},
+			Transport:  testutil.NewMockFISTransport(),
 			BatchFiles: batchFiles,
 			Audit:      audit,
 			Obs:        obs,
@@ -425,11 +424,11 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
-			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
+			Files: fileStore, BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
-			Transport: &nullFISTransport{}, BatchFiles: batchFiles,
+			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,
 		},
 		Stage7: &stage7.ReconciliationStage{
@@ -502,11 +501,11 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
-			Transport: &nullFISTransport{}, Files: fileStore, BatchFiles: batchFiles,
+			Files: fileStore, BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
-			Transport: &nullFISTransport{}, BatchFiles: batchFiles,
+			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,
 		},
 		Stage7: &stage7.ReconciliationStage{
