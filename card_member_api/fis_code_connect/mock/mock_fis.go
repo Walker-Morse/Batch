@@ -82,6 +82,15 @@ func (m *FisCodeConnectMock) InjectError(method string, err error) {
 	}
 }
 
+// SeedPerson directly inserts a person into the mock — used in tests to represent
+// a person that was already created at FIS in a prior attempt.
+func (m *FisCodeConnectMock) SeedPerson(person fis_code_connect.FisPerson) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p := person
+	m.persons[person.PersonID] = &p
+}
+
 // SeedCard directly inserts a card and its purses into the mock — used in tests
 // to set up pre-existing state without going through the full enroll flow.
 func (m *FisCodeConnectMock) SeedCard(card fis_code_connect.FisCard, purses []fis_code_connect.FisPurse) {

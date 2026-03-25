@@ -118,7 +118,8 @@ func (s *MemberService) EnrollMember(ctx context.Context, req ports.EnrollMember
 
 	// ── Step 2: FIS CreatePerson (skip if already resolved) ───────────────────
 	var fisPersonID fis_code_connect.FisPersonID
-	if consumer.FISPersonID == nil {
+	fisPersonResolved := consumer.FISPersonID != nil
+	if !fisPersonResolved {
 		fisPersonID, err = s.fis.CreatePerson(ctx, fis_code_connect.CreatePersonRequest{
 			ClientID:         s.fisClientID,
 			ClientUniqueID:   req.ClientMemberID,
@@ -139,6 +140,7 @@ func (s *MemberService) EnrollMember(ctx context.Context, req ports.EnrollMember
 			_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
 			return nil, fmt.Errorf("enroll_member: FIS person creation failed: %w", err)
 		}
+		fisPersonResolved = true
 		fisPersonIDStr := fmt.Sprintf("%d", fisPersonID)
 		if err := s.repo.SetConsumerFISIDs(ctx, consumer.ID, fisPersonIDStr, nil); err != nil {
 			s.log.ErrorContext(ctx, "failed to store fisPersonID — will orphan on retry",
@@ -170,7 +172,8 @@ func (s *MemberService) EnrollMember(ctx context.Context, req ports.EnrollMember
 	}
 
 	// ── Step 4: FIS IssueCard (skip if already resolved) ─────────────────────
-	if card.FISCardID == nil {
+	fisCardResolved := card.FISCardID != nil
+	if !fisCardResolved {
 		fisCardID, err := s.fis.IssueCard(ctx, fisPersonID, fis_code_connect.IssueCardRequest{
 			ClientID: s.fisClientID, SubprogramID: s.fisSubprogID,
 			PackageID: s.fisPackageID,
@@ -181,6 +184,7 @@ func (s *MemberService) EnrollMember(ctx context.Context, req ports.EnrollMember
 			_ = s.cmds.UpdateStatus(ctx, cmdID, string(domain.CommandFailed), &reason)
 			return nil, fmt.Errorf("enroll_member: FIS card issuance failed: %w", err)
 		}
+		fisCardResolved = true
 		if err := s.repo.SetCardFISID(ctx, card.ID, string(fisCardID)); err != nil {
 			s.log.ErrorContext(ctx, "failed to store fisCardID after IssueCard",
 				slog.String("card_id", card.ID.String()),
@@ -228,7 +232,7 @@ func (s *MemberService) EnrollMember(ctx context.Context, req ports.EnrollMember
 
 	return &ports.EnrollMemberResult{
 		MemberID: consumer.ID, CardID: card.ID,
-		FISResolved: consumer.FISPersonID != nil, CreatedAt: consumer.CreatedAt,
+		FISResolved: fisPersonResolved && fisCardResolved, CreatedAt: consumer.CreatedAt,
 	}, nil
 }
 

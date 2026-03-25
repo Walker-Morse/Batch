@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/walker-morse/batch/_shared/domain"
+	fis "github.com/walker-morse/batch/card_member_api/fis_code_connect"
 	"github.com/walker-morse/batch/card_member_api/fis_code_connect/mock"
 	"github.com/walker-morse/batch/card_member_api/ports"
 	"github.com/walker-morse/batch/card_member_api/service"
@@ -117,6 +118,8 @@ func TestEnrollMember_OrphanRecovery_PersonCreatedCardNot(t *testing.T) {
 	repo := &mockRepo{consumer: consumer, card: nil}
 	cmds := &mockCmds{}
 	fisMock := mock.NewFisCodeConnectMock()
+	// Seed person 1001 so mock's IssueCard guard passes
+	fisMock.SeedPerson(fis.FisPerson{PersonID: 1001, ClientID: 100, RiskStatus: "Pass"})
 
 	svc := newMemberSvc(repo, cmds, fisMock)
 
