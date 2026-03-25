@@ -148,7 +148,7 @@ export class OneFintechStack extends cdk.Stack {
     new cdk.CfnOutput(this, "DbSecretArn",          { value: aurora.dbSecret.secretArn });
     new cdk.CfnOutput(this, "ApiServerSwaggerUrl",  {
       value: `http://${apiServer.albDns}/docs/`,
-      description: "One Fintech Card & Member API — Swagger UI",
+      description: "One Fintech Card and Member API Swagger UI URL",
     });
   }
 }

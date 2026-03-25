@@ -108,14 +108,14 @@ export class ApiServerConstruct extends Construct {
     // ── Security groups ───────────────────────────────────────────────────
     const albSg = new ec2.SecurityGroup(this, "AlbSg", {
       vpc,
-      description: `One Fintech api-server ALB (${env}) — internal`,
+      description: `One Fintech api-server ALB (${env}) - internal`,
       allowAllOutbound: false,
     });
     // Allow inbound HTTP from within the VPC (Grafana, other ECS tasks, VPN clients)
     albSg.addIngressRule(
       ec2.Peer.ipv4(vpc.vpcCidrBlock),
       ec2.Port.tcp(80),
-      "Internal VPC HTTP access to API server"
+      "Internal VPC HTTP to API server"
     );
     albSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(8080), "ALB to api-server containers");
 
@@ -125,8 +125,8 @@ export class ApiServerConstruct extends Construct {
       allowAllOutbound: false,
     });
     taskSg.addIngressRule(albSg, ec2.Port.tcp(8080), "From ALB only");
-    taskSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), "HTTPS — AWS APIs");
-    taskSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432), "PostgreSQL → RDS Proxy");
+    taskSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), "HTTPS to AWS APIs");
+    taskSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(5432), "PostgreSQL to RDS Proxy");
 
     // ── Internal Application Load Balancer ────────────────────────────────
     const alb = new elbv2.ApplicationLoadBalancer(this, "Alb", {
@@ -181,7 +181,7 @@ export class ApiServerConstruct extends Construct {
     // ── Outputs ───────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, "ApiServerAlbDns", {
       value: alb.loadBalancerDnsName,
-      description: `One Fintech Card & Member API — Swagger UI: http://${alb.loadBalancerDnsName}/docs/`,
+      description: "One Fintech Card and Member API ALB DNS - append /docs/ for Swagger UI",
     });
     new cdk.CfnOutput(this, "ApiServerEcrUri", {
       value: this.repository.repositoryUri,
