@@ -241,6 +241,33 @@ func validateSRG310Row(row *srg.SRG310Row) string {
 		return "missing_required_field: benefit_period"
 	case row.PackageID == "":
 		return "missing_required_field: package_id (required for FIS card production)"
+
+	// ── FIS field-width guards ────────────────────────────────────────────────
+	// The FIS 400-byte record builder silently truncates any value that exceeds
+	// its field width (record_builder.go record.set). For identity fields this
+	// causes silent misidentification: FIS receives a different member ID or
+	// package ID than the one written to domain_commands, making Stage 7
+	// reconciliation impossible to audit. Dead-letter before any DB write.
+	//
+	// Field widths from record_builder.go BuildRT30:
+	//   ClientMemberID  offset  8  length 20
+	//   SubprogramID    offset 28  length 10
+	//   PackageID       offset 38  length 10
+	//   LastName        offset 48  length 26  (formatName applied — lossy but auditable)
+	//   FirstName       offset 74  length 16  (formatName applied — lossy but auditable)
+	//
+	// Name fields are checked here too: a truncated name may pass FIS card
+	// production but will never match the MCO's member record on reconciliation.
+	case len(row.ClientMemberID) > 20:
+		return fmt.Sprintf("field_too_long: client_member_id exceeds FIS limit of 20 chars (got %d)", len(row.ClientMemberID))
+	case len(row.PackageID) > 10:
+		return fmt.Sprintf("field_too_long: package_id exceeds FIS limit of 10 chars (got %d) — confirm Pack ID with Selvi Marappan", len(row.PackageID))
+	case len(row.SubprogramID) > 10:
+		return fmt.Sprintf("field_too_long: subprogram_id exceeds FIS limit of 10 chars (got %d)", len(row.SubprogramID))
+	case len(row.FirstName) > 16:
+		return fmt.Sprintf("field_too_long: first_name exceeds FIS limit of 16 chars (got %d)", len(row.FirstName))
+	case len(row.LastName) > 26:
+		return fmt.Sprintf("field_too_long: last_name exceeds FIS limit of 26 chars (got %d)", len(row.LastName))
 	}
 	return ""
 }

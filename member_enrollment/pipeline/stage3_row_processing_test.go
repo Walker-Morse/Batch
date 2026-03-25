@@ -863,6 +863,13 @@ func TestValidateSRG310Row_MissingRequiredFields(t *testing.T) {
 		{"invalid zip",          func(r *srg.SRG310Row) { r.ZIP = "1234" },        "invalid_field: zip must be 5 or 9 digits"},
 		{"missing benefit_period", func(r *srg.SRG310Row) { r.BenefitPeriod = "" }, "missing_required_field: benefit_period"},
 		{"missing package_id",   func(r *srg.SRG310Row) { r.PackageID = "" },      "missing_required_field: package_id"},
+
+		// FIS field-width guards — identity fields must not be silently truncated
+		{"client_member_id too long",  func(r *srg.SRG310Row) { r.ClientMemberID = strings.Repeat("X", 21) }, "field_too_long: client_member_id"},
+		{"package_id too long",        func(r *srg.SRG310Row) { r.PackageID = "PKG-OTC-001" },                "field_too_long: package_id"},
+		{"subprogram_id too long",     func(r *srg.SRG310Row) { r.SubprogramID = "12345678901" },             "field_too_long: subprogram_id"},
+		{"first_name too long",        func(r *srg.SRG310Row) { r.FirstName = strings.Repeat("A", 17) },      "field_too_long: first_name"},
+		{"last_name too long",         func(r *srg.SRG310Row) { r.LastName = strings.Repeat("B", 27) },       "field_too_long: last_name"},
 	}
 
 	for _, tc := range cases {
