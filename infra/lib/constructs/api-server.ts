@@ -96,13 +96,8 @@ export class ApiServerConstruct extends Construct {
       portMappings: [{ containerPort: 8080, protocol: ecs.Protocol.TCP }],
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: "api-server", logGroup }),
       essential: true,
-      healthCheck: {
-        command: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"],
-        interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(5),
-        retries: 3,
-        startPeriod: cdk.Duration.seconds(10),
-      },
+      // No container health check — scratch image has no shell or wget.
+      // ALB target group health check (GET /healthz → 200) is the liveness gate.
     });
 
     // ── Security groups ───────────────────────────────────────────────────
