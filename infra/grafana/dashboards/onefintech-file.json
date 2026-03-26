@@ -1,0 +1,508 @@
+{
+  "uid": "onefintech-file",
+  "title": "File Detail",
+  "tags": [
+    "onefintech",
+    "detail",
+    "file"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Client",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT f.client_id FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "File Type",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT f.file_type FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Status",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT f.status FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Declared Rows",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT f.record_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Malformed Rows",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT f.malformed_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Arrived At",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 15,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Submitted At",
+      "type": "stat",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "\ud83d\udccb  Records in File",
+      "type": "table",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "width": 180
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.batch_file_id = '${fileId}'::uuid\nORDER BY r.sequence_in_file",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "\ud83d\udc80  Dead Letters for File",
+      "type": "table",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "width": 180
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE d.batch_file_id = '${fileId}'::bigint\nORDER BY d.created_at DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "\ud83d\udcb3  Purses Created from File",
+      "type": "table",
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "width": 180
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.status                                    AS \"Status\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.source_batch_file_id = '${fileId}'::uuid\nORDER BY p.activated_at DESC NULLS LAST",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": [
+      {
+        "name": "fileId",
+        "label": "File ID",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "value": "",
+          "text": ""
+        },
+        "hide": 0,
+        "options": [],
+        "refresh": 0,
+        "skipUrlSync": false,
+        "description": "UUID of the batch file to inspect"
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "\u2190 Overview",
+      "url": "/d/onefintech-home",
+      "type": "link",
+      "targetBlank": false
+    },
+    {
+      "title": "\u2190 Detail View",
+      "url": "/d/onefintech-detail",
+      "type": "link",
+      "targetBlank": false
+    }
+  ]
+}

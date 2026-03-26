@@ -14,6 +14,7 @@ not edited directly in the Grafana UI.
 | `onefintech-files.json`  | `onefintech-files`  | File Manifest                   |
 | `onefintech-tests.json`  | `onefintech-tests`  | Test Runs                       |
 | `onefintech-detail.json` | `onefintech-detail` | Detail View (drill-through)     |
+| `onefintech-file.json`    | `onefintech-file`    | File Detail (per-file viewer)   |
 
 ## How provisioning works
 

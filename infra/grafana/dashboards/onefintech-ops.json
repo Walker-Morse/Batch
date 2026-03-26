@@ -217,7 +217,14 @@
         "defaults": {
           "custom": {
             "align": "left"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -260,7 +267,14 @@
         "defaults": {
           "custom": {
             "align": "left"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -296,5 +310,5 @@
   "timezone": "browser",
   "title": "Pipeline Operations",
   "uid": "onefintech-ops",
-  "version": 3
+  "version": 4
 }

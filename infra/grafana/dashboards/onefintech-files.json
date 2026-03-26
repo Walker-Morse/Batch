@@ -112,7 +112,14 @@
         "defaults": {
           "custom": {
             "align": "left"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": [
           {
@@ -194,7 +201,14 @@
         "defaults": {
           "custom": {
             "align": "left"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -421,7 +435,15 @@
       },
       "description": "Files that did not reach COMPLETE status. stopped_at shows the last stage reached. reason gives the best available explanation from dead letters or domain command failures.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
             "matcher": {
@@ -626,5 +648,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 3
+  "version": 4
 }

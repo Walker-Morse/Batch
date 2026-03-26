@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 5,
+  "version": 6,
   "refresh": "30s",
   "panels": [
     {
@@ -62,7 +62,14 @@
           "custom": {
             "align": "left",
             "width": 180
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -130,7 +137,14 @@
           "custom": {
             "align": "left",
             "width": 180
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -300,7 +314,14 @@
           "custom": {
             "align": "left",
             "width": 180
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -334,7 +355,14 @@
           "custom": {
             "align": "left",
             "width": 180
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -368,7 +396,14 @@
           "custom": {
             "align": "left",
             "width": 180
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc4 View File Detail",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
