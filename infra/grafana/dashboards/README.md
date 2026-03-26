@@ -8,10 +8,12 @@ not edited directly in the Grafana UI.
 
 | File | UID | Title |
 |------|-----|-------|
-| `onefintech-ops.json`   | `onefintech-ops`   | Pipeline Operations |
-| `onefintech-uat.json`   | `onefintech-uat`   | UAT Test Validation |
-| `onefintech-files.json` | `onefintech-files` | File Manifest       |
-| `onefintech-tests.json` | `onefintech-tests` | Test Runs           |
+| `onefintech-home.json`   | `onefintech-home`   | One Fintech Platform — Overview |
+| `onefintech-ops.json`    | `onefintech-ops`    | Pipeline Operations             |
+| `onefintech-uat.json`    | `onefintech-uat`    | UAT Test Validation             |
+| `onefintech-files.json`  | `onefintech-files`  | File Manifest                   |
+| `onefintech-tests.json`  | `onefintech-tests`  | Test Runs                       |
+| `onefintech-detail.json` | `onefintech-detail` | Detail View (drill-through)     |
 
 ## How provisioning works
 

@@ -10,7 +10,14 @@
           "color": {
             "fixedColor": "blue",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udd04 See pipeline runs",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=9&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -54,7 +61,14 @@
           "color": {
             "fixedColor": "green",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc8 See row detail",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=10&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -110,7 +124,14 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udc80 See dead letters (7d)",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=8&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -270,5 +291,6 @@
   },
   "timezone": "browser",
   "title": "Pipeline Operations",
-  "uid": "onefintech-ops"
+  "uid": "onefintech-ops",
+  "version": 2
 }

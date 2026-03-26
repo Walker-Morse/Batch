@@ -16,7 +16,14 @@
                 "value": null
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc1 See files",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -61,7 +68,14 @@
                 "value": null
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcca See row detail",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=12&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -603,5 +617,6 @@
   },
   "timezone": "browser",
   "title": "File Manifest",
-  "uid": "onefintech-files"
+  "uid": "onefintech-files",
+  "version": 2
 }

@@ -26,7 +26,14 @@
           "color": {
             "fixedColor": "blue",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcc1 See files",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -70,7 +77,14 @@
           "color": {
             "fixedColor": "blue",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udc65 See members",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=3&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -126,7 +140,14 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udc80 See dead letters",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=1&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -182,7 +203,14 @@
                 "value": 1
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\u26a0\ufe0f See incomplete files",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=4&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -226,7 +254,14 @@
           "color": {
             "fixedColor": "green",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcb3 See active purses",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=5&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -270,7 +305,14 @@
           "color": {
             "fixedColor": "blue",
             "mode": "fixed"
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83c\udfd7\ufe0f See programs",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=6&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -452,5 +494,6 @@
     "to": "now"
   },
   "title": "One Fintech Platform \u2014 Overview",
-  "uid": "onefintech-home"
+  "uid": "onefintech-home",
+  "version": 2
 }

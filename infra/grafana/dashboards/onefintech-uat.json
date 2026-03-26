@@ -16,7 +16,14 @@
                 "value": null
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udc65 See all members",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=3&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -61,7 +68,14 @@
                 "value": null
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\u2705 See enrolled members",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=7&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -114,7 +128,14 @@
                 "value": 5
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udc80 See dead letters",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=1&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -158,7 +179,14 @@
                 "value": null
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "\ud83d\udcb3 See active purses",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=5&${__url_time_range}",
+              "targetBlank": false
+            }
+          ]
         }
       },
       "gridPos": {
@@ -1118,5 +1146,6 @@
   },
   "timezone": "browser",
   "title": "UAT Test Validation",
-  "uid": "onefintech-uat"
+  "uid": "onefintech-uat",
+  "version": 2
 }
