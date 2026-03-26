@@ -271,7 +271,8 @@
       },
       "id": 5,
       "options": {
-        "noValue": "No records"
+        "noValue": "No records",
+        "filterable": true
       },
       "targets": [
         {
@@ -329,7 +330,8 @@
       },
       "id": 6,
       "options": {
-        "noValue": "No members found"
+        "noValue": "No members found",
+        "filterable": true
       },
       "targets": [
         {
@@ -381,7 +383,10 @@
         }
       ],
       "title": "Dead Letter Detail",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     },
     {
       "datasource": {
@@ -402,7 +407,10 @@
         }
       ],
       "title": "APL Version Status",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     },
     {
       "datasource": {
@@ -423,7 +431,10 @@
         }
       ],
       "title": "Seeded Programs",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     },
     {
       "datasource": {
@@ -759,7 +770,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No records"
+        "noValue": "No records",
+        "filterable": true
       },
       "targets": [
         {
@@ -1098,7 +1110,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No failures \u2705"
+        "noValue": "No failures \u2705",
+        "filterable": true
       },
       "targets": [
         {
@@ -1147,5 +1160,5 @@
   "timezone": "browser",
   "title": "UAT Test Validation",
   "uid": "onefintech-uat",
-  "version": 2
+  "version": 3
 }

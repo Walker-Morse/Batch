@@ -181,7 +181,10 @@
         }
       ],
       "title": "File Inventory",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     },
     {
       "datasource": {
@@ -209,7 +212,10 @@
         }
       ],
       "title": "Rows by Record Type and Status",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     },
     {
       "datasource": {
@@ -355,7 +361,8 @@
             "desc": true,
             "displayName": "Last Modified"
           }
-        ]
+        ],
+        "filterable": true
       },
       "targets": [
         {
@@ -571,7 +578,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "All files complete \u2705"
+        "noValue": "All files complete \u2705",
+        "filterable": true
       },
       "targets": [
         {
@@ -618,5 +626,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 2
+  "version": 3
 }

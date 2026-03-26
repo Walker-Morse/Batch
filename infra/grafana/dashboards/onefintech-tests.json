@@ -165,7 +165,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -270,7 +271,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -307,7 +309,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -452,7 +455,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -597,7 +601,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -740,7 +745,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -777,7 +783,8 @@
         "footer": {
           "show": false
         },
-        "noValue": "No data"
+        "noValue": "No data",
+        "filterable": true
       },
       "targets": [
         {
@@ -826,5 +833,6 @@
     "to": "now"
   },
   "title": "Test Runs",
-  "uid": "onefintech-tests"
+  "uid": "onefintech-tests",
+  "version": 2
 }

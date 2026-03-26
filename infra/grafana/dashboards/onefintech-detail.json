@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 5,
   "refresh": "30s",
   "panels": [
     {
@@ -33,12 +33,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\",\n  d.batch_file_id                             AS \"Batch File ID\",\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\"\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 200",
+          "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\",\n  d.batch_file_id                             AS \"Batch File ID\"\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 200",
           "refId": "A"
         }
       ]
@@ -66,12 +67,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
+          "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ]
@@ -99,12 +101,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\",\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\"\nFROM batch_records_common r\nORDER BY r.staged_at DESC NULLS LAST\nLIMIT 500",
+          "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nORDER BY r.staged_at DESC NULLS LAST\nLIMIT 500",
           "refId": "A"
         }
       ]
@@ -132,12 +135,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\"\nFROM batch_files f\nWHERE f.status != 'COMPLETE'\nORDER BY f.arrived_at DESC",
+          "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.status != 'COMPLETE'\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ]
@@ -165,12 +169,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\",\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.status                                    AS \"Status\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\"\nFROM purses p\nWHERE p.status = 'active'\nORDER BY p.activated_at DESC NULLS LAST\nLIMIT 500",
+          "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.status                                    AS \"Status\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.status = 'active'\nORDER BY p.activated_at DESC NULLS LAST\nLIMIT 500",
           "refId": "A"
         }
       ]
@@ -198,12 +203,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  pg.id                                       AS \"Program ID\",\n  pg.client_name                              AS \"Client\",\n  pg.subprogram_name                          AS \"Subprogram Name\",\n  pg.fis_client_id                            AS \"FIS Client ID\",\n  pg.fis_program_id                           AS \"FIS Program ID\",\n  pg.fis_subprogram_id                        AS \"FIS Subprogram ID\",\n  pg.fis_pack_id                              AS \"Pack ID\",\n  pg.benefit_type                             AS \"Benefit Type\",\n  pg.state                                    AS \"State\",\n  pg.is_active                                AS \"Active\",\n  pg.program_start_date                       AS \"Start Date\",\n  pg.created_at    AT TIME ZONE 'UTC'         AS \"Created At\"\nFROM programs pg\nORDER BY pg.created_at DESC",
+          "rawSql": "\nSELECT\n  pg.client_name                              AS \"Client\",\n  pg.subprogram_name                          AS \"Subprogram Name\",\n  pg.benefit_type                             AS \"Benefit Type\",\n  pg.state                                    AS \"State\",\n  pg.is_active                                AS \"Active\",\n  pg.program_start_date                       AS \"Start Date\",\n  pg.fis_pack_id                              AS \"Pack ID\",\n  pg.fis_subprogram_id                        AS \"FIS Subprogram ID\",\n  pg.fis_program_id                           AS \"FIS Program ID\",\n  pg.fis_client_id                            AS \"FIS Client ID\",\n  pg.created_at    AT TIME ZONE 'UTC'         AS \"Created At\",\n  pg.id                                       AS \"Program ID\"\nFROM programs pg\nORDER BY pg.created_at DESC",
           "refId": "A"
         }
       ]
@@ -231,12 +237,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\",\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Enrolled At\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\"\nFROM batch_records_common r\nWHERE r.status = 'enrolled'\nORDER BY r.completed_at DESC NULLS LAST\nLIMIT 500",
+          "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Enrolled At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.status = 'enrolled'\nORDER BY r.completed_at DESC NULLS LAST\nLIMIT 500",
           "refId": "A"
         }
       ]
@@ -264,12 +271,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\",\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\"\nFROM dead_letter_store d\nWHERE d.created_at >= NOW() - INTERVAL '7 days'\nORDER BY d.created_at DESC",
+          "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE d.created_at >= NOW() - INTERVAL '7 days'\nORDER BY d.created_at DESC",
           "refId": "A"
         }
       ]
@@ -297,12 +305,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
+          "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ]
@@ -330,12 +339,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  f.id                                        AS \"File ID\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.record_count                              AS \"Total Rows in File\",\n  COUNT(r.id)                                 AS \"Rows Enrolled\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"File Arrived\"\nFROM batch_files f\nLEFT JOIN batch_records_common r\n  ON r.batch_file_id = f.id\n  AND r.status = 'enrolled'\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nGROUP BY f.id, f.client_id, f.file_type, f.record_count, f.arrived_at\nORDER BY f.arrived_at DESC",
+          "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"File Arrived\",\n  f.record_count                              AS \"Total Rows in File\",\n  COUNT(r.id)                                 AS \"Rows Enrolled\",\n  f.id                                        AS \"File ID\"\nFROM batch_files f\nLEFT JOIN batch_records_common r\n  ON r.batch_file_id = f.id\n  AND r.status = 'enrolled'\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nGROUP BY f.id, f.client_id, f.file_type, f.record_count, f.arrived_at\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ]
@@ -363,12 +373,13 @@
         "overrides": []
       },
       "options": {
-        "sortBy": []
+        "sortBy": [],
+        "filterable": true
       },
       "targets": [
         {
           "format": "table",
-          "rawSql": "\nSELECT\n  f.id                                        AS \"File ID\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.record_count                              AS \"Submitted Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.status                                    AS \"File Status\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
+          "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"File Status\",\n  f.record_count                              AS \"Submitted Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.id                                        AS \"File ID\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ]

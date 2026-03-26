@@ -233,7 +233,8 @@
             "desc": true,
             "displayName": "count"
           }
-        ]
+        ],
+        "filterable": true
       },
       "targets": [
         {
@@ -277,7 +278,10 @@
         }
       ],
       "title": "Recent Pipeline Runs",
-      "type": "table"
+      "type": "table",
+      "options": {
+        "filterable": true
+      }
     }
   ],
   "refresh": "30s",
@@ -292,5 +296,5 @@
   "timezone": "browser",
   "title": "Pipeline Operations",
   "uid": "onefintech-ops",
-  "version": 2
+  "version": 3
 }
