@@ -6,9 +6,10 @@
 //   Stage 2 — Validation         PGP decrypt → SRG parse → dead-letter malformed rows
 //   Stage 3 — Row Processing     Sequential row-by-row: idempotency → domain writes → staging
 //   Stage 4 — Batch Assembly     FIS 400-byte fixed-width records → PGP-encrypt → S3
-//   Stage 5 — FIS Egress Deposit  PutObject → S3 egress bucket (FIS polls for pickup)
+//   Stage 5 — SCP Egress Deposit  PutObject → S3 egress bucket (FIS polls for pickup)
 //   Stage 6 — Return File Wait   Poll fis-exchange S3 for FIS return file (6h timeout)
-//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers//
+//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers
+//
 // Adapters are wired here and injected into stages via port interfaces.
 // No stage imports an adapter directly — all dependencies flow through ports (ADR-001).
 package main
@@ -67,8 +68,9 @@ type PipelineConfig struct {
 	// S3
 	KMSKeyARN         string
 	StagedBucket      string
-	FISExchangeBucket string
-	EgressBucket      string	ReturnFilePrefix  string
+	SCPExchangeBucket string
+	EgressBucket      string
+	ReturnFilePrefix  string
 
 	// SCP assembler
 	SCPCompanyID string
@@ -236,8 +238,9 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	}
 	var fisTransport ports.FISTransport = &adtransport.FISTransportAdapter{
 		S3Client:          s3Client,
-		FISExchangeBucket: cfg.FISExchangeBucket,
-		ReturnFilePrefix:  returnPrefix,	}
+		FISExchangeBucket: cfg.SCPExchangeBucket,
+		ReturnFilePrefix:  returnPrefix,
+	}
 
 	var martWriter ports.MartWriter = &noopMartWriter{}
 
@@ -282,8 +285,9 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			BatchFiles:        batchFileRepo,
 			Audit:             auditRepo,
 			Obs:               obs,
-			FISExchangeBucket: cfg.FISExchangeBucket,
-			EgressBucket:      cfg.EgressBucket,		},
+			FISExchangeBucket: cfg.SCPExchangeBucket,
+			EgressBucket:      cfg.EgressBucket,
+		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport:  fisTransport,
 			BatchFiles: batchFileRepo,
@@ -406,8 +410,9 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		"stage": "stage4_batch_assembly", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
-	// ── Stage 5 — FIS Transfer ────────────────────────────────────────────
-	s5Start := time.Now()	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
+	// ── Stage 5 — SCP Transfer ────────────────────────────────────────────
+	s5Start := time.Now()
+	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage5: %w", err))
 	}
 	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s5Start).Milliseconds()), map[string]string{
@@ -537,14 +542,15 @@ func parseConfig() (*PipelineConfig, error) {
 	dbSSL                 := flag.String("db-ssl",                       envOrDefault("DB_SSL", "require"),         "sslmode")
 	kmsKey                := flag.String("kms-key-arn",                  os.Getenv("KMS_KEY_ARN"),                  "KMS key ARN")
 	stagedBucket          := flag.String("staged-bucket",                os.Getenv("STAGED_BUCKET"),                "staged S3 bucket")
-	fisBucket             := flag.String("fis-exchange-bucket",          os.Getenv("FIS_EXCHANGE_BUCKET"),          "fis-exchange S3 bucket")
+	scpBucket             := flag.String("scp-exchange-bucket",          os.Getenv("SCP_EXCHANGE_BUCKET"),          "scp-exchange S3 bucket")
 	egressBucket          := flag.String("egress-bucket",                os.Getenv("EGRESS_BUCKET"),                "egress S3 bucket for FIS pickup")
-	returnPrefix          := flag.String("return-prefix",                envOrDefault("RETURN_FILE_PREFIX", "return/"), "S3 prefix for FIS return files")
-	fisCompanyID          := flag.String("fis-company-id",               os.Getenv("FIS_COMPANY_ID"),               "FIS company ID (8 chars)")
+	returnPrefix          := flag.String("return-prefix",                envOrDefault("RETURN_FILE_PREFIX", "return/"), "S3 prefix for SCP return files")
+	scpCompanyID          := flag.String("scp-company-id",               os.Getenv("SCP_COMPANY_ID"),               "SCP company ID (8 chars)")
 	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "ARN: Morse PGP private key")
 	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "ARN: PGP passphrase")
-	pgpFISPublicKeyARN    := flag.String("pgp-fis-public-key-secret-arn",os.Getenv("PGP_FIS_PUBLIC_KEY_SECRET_ARN"),"ARN: FIS PGP public key")
-	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).	replay                := flag.Bool("replay", false, "replay mode")
+	pgpSCPPublicKeyARN    := flag.String("pgp-scp-public-key-secret-arn",os.Getenv("PGP_SCP_PUBLIC_KEY_SECRET_ARN"),"ARN: SCP PGP public key")
+	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).
+	replay                := flag.Bool("replay", false, "replay mode")
 	replaySeq             := flag.Int("replay-seq", 0, "row sequence for replay")
 	returnTimeout         := flag.Duration("return-file-timeout", 6*time.Hour, "Stage 6 return file wait timeout")
 	flag.Parse()
@@ -612,12 +618,13 @@ func parseConfig() (*PipelineConfig, error) {
 		DBSSLMode:                  *dbSSL,
 		KMSKeyARN:                  *kmsKey,
 		StagedBucket:               *stagedBucket,
-		FISExchangeBucket:          *fisBucket,
-		EgressBucket:               *egressBucket,		ReturnFilePrefix:           *returnPrefix,
+		SCPExchangeBucket:          *scpBucket,
+		EgressBucket:               *egressBucket,
+		ReturnFilePrefix:           *returnPrefix,
 		SCPCompanyID:               *scpCompanyID,
 		PGPPrivateKeySecretARN:     *pgpPrivateKeyARN,
 		PGPPassphraseSecretARN:     *pgpPassphraseARN,
-		PGPFISPublicKeySecretARN:   *pgpFISPublicKeyARN,
+		PGPSCPPublicKeySecretARN:   *pgpSCPPublicKeyARN,
 		ReplayMode:                 *replay,
 		ReturnFileWaitTimeout:      *returnTimeout,
 	}

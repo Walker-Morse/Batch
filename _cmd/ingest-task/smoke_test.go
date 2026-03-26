@@ -425,7 +425,8 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files: fileStore, BatchFiles: batchFiles,
-			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,		},
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeSCPBucket,
+		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,
@@ -501,7 +502,8 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files: fileStore, BatchFiles: batchFiles,
-			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,		},
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeSCPBucket,
+		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
 			Audit: audit, Obs: obs, Timeout: 100 * time.Millisecond,

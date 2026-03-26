@@ -197,7 +197,8 @@ type DeadLetterEntry struct {
 	RowSequenceNumber *int
 	TenantID          string
 	ClientMemberID    *string
-	FailureStage      string // validation|row_processing|batch_assembly|processor_deposit|return_file_wait|reconciliation	FailureReason     string // structured error code ONLY — no PHI ever
+	FailureStage      string // validation|row_processing|batch_assembly|processor_deposit|return_file_wait|reconciliation
+	FailureReason     string // structured error code ONLY — no PHI ever
 	MessageBody       []byte // JSONB — PHI present; never log this field
 	RetryCount        int
 	LastRetryAt       *time.Time
