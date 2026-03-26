@@ -67,3 +67,72 @@ jobs:
           govulncheck ./member_enrollment/... ./benefit_loading/... \
             ./fis_reconciliation/... ./dead_letter/... ./sanctions_screening/... \
             ./fbo_reconciliation/... ./_shared/... ./_cmd/...
+
+  build-grafana:
+    name: Build & push custom Grafana image
+    runs-on: ubuntu-latest
+    # Only push image on main — PRs just validate the build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            us-east-1
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPO:     onefintech-dev/grafana
+          IMAGE_TAG:    10.4.3-morse
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPO:latest \
+            infra/grafana/
+          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:latest
+          echo "Pushed $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG"
+
+      - name: Update ECS service to use new image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPO:     onefintech-dev/grafana
+          IMAGE_TAG:    10.4.3-morse
+        run: |
+          # Get current task def, swap image, register new revision, update service
+          CURRENT=$(aws ecs describe-task-definition \
+            --task-definition onefintech-dev-grafana \
+            --query 'taskDefinition' --output json)
+
+          NEW_DEF=$(echo "$CURRENT" | python3 -c "
+          import json, sys
+          td = json.load(sys.stdin)
+          for key in ['taskDefinitionArn','revision','status','requiresAttributes',
+                      'compatibilities','registeredAt','registeredBy']:
+              td.pop(key, None)
+          for c in td['containerDefinitions']:
+              if c['name'] == 'grafana':
+                  c['image'] = '$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG'
+                  print(f'Updated image to: {c[\"image\"]}', flush=True)
+          print(json.dumps(td))
+          " 2>/dev/null | tail -1)
+
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_DEF" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Registered: $NEW_ARN"
+
+          aws ecs update-service \
+            --cluster onefintech-dev \
+            --service onefintech-dev-grafana \
+            --task-definition "$NEW_ARN" \
+            --query 'service.taskDefinition' --output text
+          echo "Service updated"
