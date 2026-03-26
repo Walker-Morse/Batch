@@ -1,20 +1,20 @@
-// Package transport implements ports.FISTransport for FIS Prepaid Sunrise.
+// Package transport implements ports.FISTransport for SCP.
 //
-// FIS file exchange uses two distinct paths (§5.1, §5.4.2):
+// SCP file exchange uses two distinct paths (§5.1, §5.4.2):
 //
-//   Outbound (Deliver): ingest-task → SSH/SCP → FIS Transfer Family SFTP endpoint
-//     The PGP-encrypted batch file is delivered to FIS via SSH SCP.
+//   Outbound (Deliver): ingest-task → SSH/SCP → SCP Transfer Family SFTP endpoint
+//     The PGP-encrypted batch file is delivered to SCP via SSH SCP.
 //     SFTP credentials (host, port, user, private key) come from Secrets Manager.
 //     Host key pinning is required before TST (Open Item #19 — confirm IP with Kendra Williams).
 //
-//   Inbound (PollForReturn): FIS → S3 → ingest-task
-//     FIS deposits the return file into the fis-exchange S3 bucket via AWS Transfer Family.
+//   Inbound (PollForReturn): SCP → S3 → ingest-task
+//     SCP deposits the return file into the scp-exchange S3 bucket via AWS Transfer Family.
 //     The ingest-task polls S3 using ListObjectsV2 on the return prefix until the file
 //     appears (by LastModified > task start time) or the timeout expires.
-//     Return file naming suffix must be confirmed against FIS File Processing Spec v1.37
+//     Return file naming suffix must be confirmed against SCP File Processing Spec v1.37
 //     before Stage 6 implementation sprint (Open Item #10).
 //
-// Timeout: 6 hours default — matches FIS SLA (45–60 min per 50K records).
+// Timeout: 6 hours default — matches SCP SLA (45–60 min per 50K records).
 // Confirm with Kendra Williams before TST provisioning (Open Item #25).
 package transport
 
@@ -43,15 +43,15 @@ const (
 // FISTransportAdapter implements ports.FISTransport.
 type FISTransportAdapter struct {
 	// SFTP delivery parameters (Deliver path)
-	SFTPHost       string // FIS SFTP host — confirm with Kendra Williams (OI #19)
-	SFTPUser       string // FIS-assigned SFTP username
+	SFTPHost       string // SCP SFTP host — confirm with Kendra Williams (OI #19)
+	SFTPUser       string // SCP-assigned SFTP username
 	SFTPPrivateKey []byte // PEM-encoded SSH private key from Secrets Manager
 	SFTPPort       int    // defaults to 22
 
 	// S3 polling parameters (PollForReturn path)
 	S3Client          S3Lister      // narrow interface, satisfied by *awss3.Client
-	FISExchangeBucket string        // fis-exchange S3 bucket name
-	ReturnFilePrefix  string        // S3 key prefix for FIS return files (e.g. "return/")
+	FISExchangeBucket string        // scp-exchange S3 bucket name
+	ReturnFilePrefix  string        // S3 key prefix for SCP return files (e.g. "return/")
 	PollInterval      time.Duration // defaults to 30 seconds
 }
 
@@ -62,9 +62,9 @@ type S3Lister interface {
 	GetObject(ctx context.Context, params *awss3.GetObjectInput, optFns ...func(*awss3.Options)) (*awss3.GetObjectOutput, error)
 }
 
-// Deliver sends the PGP-encrypted batch file to FIS via SSH/SCP.
+// Deliver sends the PGP-encrypted batch file to SCP via SSH/SCP.
 // body is a byte-stream of the encrypted file — consumed once, not closed by this method.
-// filename follows FIS naming convention: ppppppppmmddccyyss.issuance.txt (§6.6.1).
+// filename follows SCP naming convention: ppppppppmmddccyyss.issuance.txt (§6.6.1).
 func (t *FISTransportAdapter) Deliver(ctx context.Context, body io.Reader, filename string) error {
 	signer, err := ssh.ParsePrivateKey(t.SFTPPrivateKey)
 	if err != nil {
@@ -77,7 +77,7 @@ func (t *FISTransportAdapter) Deliver(ctx context.Context, body io.Reader, filen
 	}
 
 	// HostKeyCallback: InsecureIgnoreHostKey is acceptable for DEV only.
-	// Pin to the FIS Transfer Family endpoint's host key before TST (Open Item #19).
+	// Pin to the SCP Transfer Family endpoint's host key before TST (Open Item #19).
 	//nolint:gosec // DEV-only; host key pinning required before TST
 	sshCfg := &ssh.ClientConfig{
 		User:            t.SFTPUser,
@@ -139,15 +139,15 @@ func scpSend(conn *ssh.Client, filename string, content []byte) error {
 	return session.Wait()
 }
 
-// PollForReturn polls the fis-exchange S3 bucket for the FIS return file.
+// PollForReturn polls the scp-exchange S3 bucket for the SCP return file.
 //
-// FIS deposits the return file via AWS Transfer Family into the ReturnFilePrefix
+// SCP deposits the return file via AWS Transfer Family into the ReturnFilePrefix
 // of FISExchangeBucket. The return file is identified by:
 //   - LastModified > task start time (eliminates stale files from prior batches)
-//   - Key ends with ".txt" (FIS text format per §6.6.2)
+//   - Key ends with ".txt" (SCP text format per §6.6.2)
 //   - Key does not contain "issuance" (excludes the outbound file written by Stage 4)
 //
-// Return file suffix must be confirmed against FIS File Processing Spec v1.37
+// Return file suffix must be confirmed against SCP File Processing Spec v1.37
 // (Open Item #10). The current filter is conservative — correct before format is confirmed.
 //
 // Returns an io.ReadCloser for the return file body. Caller must close it.

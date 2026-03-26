@@ -141,7 +141,7 @@ const (
 	smokeBucket       = "inbound-bucket"
 	smokeSRGKey       = "inbound-raw/2026/06/01/SMOKE-001.srg310.psv"
 	smokeStagedBucket = "staged-bucket"
-	smokeFISBucket    = "fis-exchange-bucket"
+	smokeSCPBucket    = "scp-exchange-bucket"
 )
 
 // ─── smoke test ───────────────────────────────────────────────────────────────
@@ -154,7 +154,7 @@ const (
 //   - Stage 1 writes a batch_files row and returns a non-nil BatchFile
 //   - Stage 2 parses the SRG310 CSV and returns one SRG310Row (no dead letters)
 //   - Stage 3 writes one RT30 batch record and one domain command (idempotency gate)
-//   - Stage 4 assembles the FIS file and writes to the fis-exchange bucket
+//   - Stage 4 assembles the SCP file and writes to the scp-exchange bucket
 //   - The pipeline exits with nil error
 //   - batch_files status progresses to ASSEMBLED (Stage 4 terminus)
 //   - No panics occur anywhere in the wiring graph
@@ -163,7 +163,7 @@ const (
 //   - Real SQL correctness (constraint violations, transaction semantics)
 //   - Real S3 I/O (multipart upload, SSE-KMS, object ACLs)
 //   - Real PGP decrypt/encrypt round-trip
-//   - FIS record byte offsets and padding rules (covered by fis_adapter unit tests)
+//   - SCP record byte offsets and padding rules (covered by fis_adapter unit tests)
 func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 	ctx := context.Background()
 
@@ -211,8 +211,8 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 		FileType:          "SRG310",
 		PipelineEnv:       "DEV",
 		StagedBucket:      smokeStagedBucket,
-		FISExchangeBucket: smokeFISBucket,
-		FISCompanyID:      "MORSEUSA0",
+		SCPExchangeBucket: smokeSCPBucket,
+		SCPCompanyID:      "MORSEUSA0",
 	}
 
 	deps := &PipelineDeps{
@@ -249,14 +249,14 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 			Obs:               obs,
 			PGPEncrypt:        stage4.NullPGPEncrypt,
 			StagedBucket:      smokeStagedBucket,
-			FISExchangeBucket: smokeFISBucket,
+			FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files:             fileStore,
 			BatchFiles:        batchFiles,
 			Audit:             audit,
 			Obs:               obs,
-			FISExchangeBucket: smokeFISBucket,
+			FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport:  testutil.NewMockFISTransport(),
@@ -342,16 +342,16 @@ func TestSmoke_PipelineStages1Through4_WithFakeDeps(t *testing.T) {
 		t.Errorf("consumers upserted = %d; want 1", len(domainState.Consumers))
 	}
 
-	// Assembled FIS file landed in fis-exchange bucket
+	// Assembled SCP file landed in scp-exchange bucket
 	foundFISFile := false
 	for k := range fileStore.objects {
-		if strings.HasPrefix(k, smokeFISBucket+"/outbound/") {
+		if strings.HasPrefix(k, smokeSCPBucket+"/outbound/") {
 			foundFISFile = true
 			break
 		}
 	}
 	if !foundFISFile {
-		t.Error("no assembled FIS file found in fis-exchange bucket")
+		t.Error("no assembled SCP file found in scp-exchange bucket")
 	}
 
 	// Audit trail non-empty — compliance requirement
@@ -396,7 +396,7 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 		FileType:          "SRG310",
 		PipelineEnv:       "DEV",
 		StagedBucket:      smokeStagedBucket,
-		FISExchangeBucket: smokeFISBucket,
+		SCPExchangeBucket: smokeSCPBucket,
 	}
 	subID2 := int64(26071)
 	stagedRecordsMock2 := testutil.NewMockBatchRecordsLister()
@@ -421,11 +421,11 @@ func TestSmoke_MalformedSRG310_DeadLettered(t *testing.T) {
 			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles,
 			StagedRecords: stagedRecordsMock2,
 			Audit: audit, Obs: obs,
-			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
+			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files: fileStore, BatchFiles: batchFiles,
-			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
@@ -480,7 +480,7 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 	cfg := &PipelineConfig{
 		CorrelationID: uuid.New(), TenantID: smokeTenantID, ClientID: smokeClientID,
 		S3Bucket: smokeBucket, S3Key: smokeSRGKey, FileType: "SRG310",
-		PipelineEnv: "DEV", StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
+		PipelineEnv: "DEV", StagedBucket: smokeStagedBucket, SCPExchangeBucket: smokeSCPBucket,
 	}
 
 	deps := &PipelineDeps{
@@ -498,11 +498,11 @@ func TestSmoke_EmptySRG310_AssemblesCleanly(t *testing.T) {
 			Assembler: assembler, Files: fileStore, BatchFiles: batchFiles,
 			StagedRecords: testutil.NewMockBatchRecordsLister(),
 			Audit: audit, Obs: obs,
-			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeFISBucket,
+			PGPEncrypt: stage4.NullPGPEncrypt, StagedBucket: smokeStagedBucket, FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage5: &stage5.ProcessorDepositStage{
 			Files: fileStore, BatchFiles: batchFiles,
-			Audit: audit, Obs: obs, FISExchangeBucket: smokeFISBucket,
+			Audit: audit, Obs: obs, FISExchangeBucket: smokeSCPBucket,
 		},
 		Stage6: &stage6.ReturnFileWaitStage{
 			Transport: testutil.NewMockFISTransport(), BatchFiles: batchFiles,
