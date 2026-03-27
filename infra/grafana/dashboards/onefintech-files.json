@@ -1,5 +1,5 @@
 {
-  "id": 1,
+  "id": 6,
   "panels": [
     {
       "datasource": {
@@ -45,13 +45,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COUNT(*) FROM batch_files WHERE $__timeFilter(arrived_at)",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Files Received",
@@ -101,13 +101,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Total Rows Submitted",
@@ -124,9 +124,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
             }
           ]
         },
@@ -189,29 +189,29 @@
         "y": 4
       },
       "id": 3,
-      "targets": [
+      "links": [
         {
-          "format": "table",
-          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC\nLIMIT 200",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "targetBlank": false,
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
         }
       ],
-      "title": "File Inventory",
-      "type": "table",
       "options": {
         "filterable": true
       },
-      "links": [
+      "targets": [
         {
-          "title": "\ud83d\udcc4 View File Detail",
-          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-          "targetBlank": false
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC\nLIMIT 200",
+          "refId": "A"
         }
-      ]
+      ],
+      "title": "File Inventory",
+      "type": "table"
     },
     {
       "datasource": {
@@ -232,23 +232,23 @@
         "y": 14
       },
       "id": 4,
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE $__timeFilter(bf.arrived_at)\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ],
-      "title": "Rows by Record Type and Status",
-      "type": "table",
+      "links": [],
       "options": {
         "filterable": true
       },
-      "links": []
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE $__timeFilter(bf.arrived_at)\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
+          "refId": "A"
+        }
+      ],
+      "title": "Rows by Record Type and Status",
+      "type": "table"
     },
     {
       "datasource": {
@@ -386,6 +386,7 @@
       "id": 5,
       "options": {
         "cellHeight": "sm",
+        "filterable": true,
         "footer": {
           "show": false
         },
@@ -394,8 +395,7 @@
             "desc": true,
             "displayName": "Last Modified"
           }
-        ],
-        "filterable": true
+        ]
       },
       "targets": [
         {
@@ -457,9 +457,9 @@
         "defaults": {
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
             }
           ]
         },
@@ -615,12 +615,19 @@
         "y": 32
       },
       "id": 6,
+      "links": [
+        {
+          "targetBlank": false,
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
+        }
+      ],
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "All files complete \u2705",
-        "filterable": true
+        "noValue": "All files complete \u2705"
       },
       "targets": [
         {
@@ -634,14 +641,7 @@
         }
       ],
       "title": "\u26a0\ufe0f  Unprocessed / Incomplete Files",
-      "type": "table",
-      "links": [
-        {
-          "title": "\ud83d\udcc4 View File Detail",
-          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-          "targetBlank": false
-        }
-      ]
+      "type": "table"
     }
   ],
   "refresh": "1m",
@@ -674,5 +674,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 5
+  "version": 26
 }

@@ -1,4 +1,5 @@
 {
+  "id": 7,
   "panels": [
     {
       "gridPos": {
@@ -29,9 +30,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcc1 See files",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}"
             }
           ]
         },
@@ -80,9 +81,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udc65 See members",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=3&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=3&${__url_time_range}"
             }
           ]
         },
@@ -128,6 +129,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "\ud83d\udc80 See dead letters",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=1&${__url_time_range}"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -140,14 +148,7 @@
                 "value": 1
               }
             ]
-          },
-          "links": [
-            {
-              "title": "\ud83d\udc80 See dead letters",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=1&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         },
         "overrides": []
       },
@@ -191,6 +192,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "\u26a0\ufe0f See incomplete files",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=4&${__url_time_range}"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -203,14 +211,7 @@
                 "value": 1
               }
             ]
-          },
-          "links": [
-            {
-              "title": "\u26a0\ufe0f See incomplete files",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=4&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         },
         "overrides": []
       },
@@ -257,9 +258,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcb3 See active purses",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=5&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=5&${__url_time_range}"
             }
           ]
         },
@@ -308,9 +309,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83c\udfd7\ufe0f See programs",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=6&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=6&${__url_time_range}"
             }
           ]
         },
@@ -495,5 +496,5 @@
   },
   "title": "One Fintech Platform \u2014 Overview",
   "uid": "onefintech-home",
-  "version": 4
+  "version": 17
 }

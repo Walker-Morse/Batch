@@ -1,5 +1,5 @@
 {
-  "id": 5,
+  "id": 3,
   "panels": [
     {
       "datasource": {
@@ -45,13 +45,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COUNT(*) as total FROM batch_records_common",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Total Members Submitted",
@@ -101,13 +101,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COUNT(*) as enrolled FROM batch_records_common WHERE status = 'enrolled'",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Successfully Enrolled",
@@ -164,13 +164,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COUNT(*) FROM dead_letter_store",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Dead Lettered",
@@ -220,13 +220,13 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT COUNT(*) FROM purses WHERE status = 'active'",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Active Purses",
@@ -288,18 +288,18 @@
       },
       "id": 5,
       "options": {
-        "noValue": "No records",
-        "filterable": true
+        "filterable": true,
+        "noValue": "No records"
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  bf.correlation_id,\n  brc.sequence_in_file,\n  brc.record_type,\n  brc.client_member_id,\n  brc.status,\n  brc.fis_result_code,\n  brc.fis_result_message,\n  brc.staged_at,\n  brc.completed_at\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.correlation_id::text LIKE CASE WHEN '$correlation_id' = '' THEN '%' ELSE '$correlation_id' END\nORDER BY bf.correlation_id, brc.sequence_in_file ASC\nLIMIT 200",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Pipeline Trace by Correlation ID",
@@ -351,18 +351,18 @@
       },
       "id": 6,
       "options": {
-        "noValue": "No members found",
-        "filterable": true
+        "filterable": true,
+        "noValue": "No members found"
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  c.client_member_id,\n  c.first_name,\n  c.last_name,\n  c.date_of_birth,\n  c.status as consumer_status,\n  p.purse_type,\n  p.status as purse_status,\n  p.available_balance_cents,\n  p.effective_date as benefit_start,\n  p.expiry_date as benefit_end,\n  ca.pan_masked,\n  ca.card_status,\n  c.created_at as enrolled_at\nFROM consumers c\nLEFT JOIN purses p ON p.consumer_id = c.id\nLEFT JOIN cards ca ON ca.consumer_id = c.id\nWHERE c.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY c.created_at DESC\nLIMIT 200",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Member Lookup by Medicaid ID",
@@ -400,22 +400,22 @@
         "y": 13
       },
       "id": 7,
+      "options": {
+        "filterable": true
+      },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  d.client_member_id,\n  d.failure_stage,\n  d.failure_reason,\n  d.retry_count,\n  d.created_at,\n  LEFT(d.message_body::text, 200) as payload_preview\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 50",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Dead Letter Detail",
-      "type": "table",
-      "options": {
-        "filterable": true
-      }
+      "type": "table"
     },
     {
       "datasource": {
@@ -428,22 +428,22 @@
         "y": 20
       },
       "id": 8,
+      "options": {
+        "filterable": true
+      },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  av.id,\n  av.program_id,\n  av.benefit_type,\n  av.version_number,\n  av.rule_count,\n  av.s3_key,\n  av.uploaded_at,\n  av.uploaded_by,\n  av.fis_ack_received_at,\n  av.notes\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 20",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "APL Version Status",
-      "type": "table",
-      "options": {
-        "filterable": true
-      }
+      "type": "table"
     },
     {
       "datasource": {
@@ -456,22 +456,22 @@
         "y": 20
       },
       "id": 9,
+      "options": {
+        "filterable": true
+      },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  id,\n  tenant_id,\n  client_name,\n  fis_subprogram_id,\n  fis_pack_id,\n  benefit_type,\n  state,\n  is_active,\n  program_start_date\nFROM programs\nORDER BY tenant_id, benefit_type",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Seeded Programs",
-      "type": "table",
-      "options": {
-        "filterable": true
-      }
+      "type": "table"
     },
     {
       "datasource": {
@@ -804,11 +804,11 @@
       },
       "id": 10,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No records",
-        "filterable": true
+        "noValue": "No records"
       },
       "targets": [
         {
@@ -1144,11 +1144,11 @@
       },
       "id": 11,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No failures \u2705",
-        "filterable": true
+        "noValue": "No failures \u2705"
       },
       "targets": [
         {
@@ -1197,5 +1197,5 @@
   "timezone": "browser",
   "title": "UAT Test Validation",
   "uid": "onefintech-uat",
-  "version": 4
+  "version": 17
 }

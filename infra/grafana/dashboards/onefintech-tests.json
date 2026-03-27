@@ -1,5 +1,5 @@
 {
-  "id": 4,
+  "id": 2,
   "panels": [
     {
       "datasource": {
@@ -163,11 +163,11 @@
       },
       "id": 1,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -269,11 +269,11 @@
       },
       "id": 2,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -307,11 +307,11 @@
       },
       "id": 3,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -453,11 +453,11 @@
       },
       "id": 4,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -599,11 +599,11 @@
       },
       "id": 5,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -743,11 +743,11 @@
       },
       "id": 7,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -781,11 +781,11 @@
       },
       "id": 8,
       "options": {
+        "filterable": true,
         "footer": {
           "show": false
         },
-        "noValue": "No data",
-        "filterable": true
+        "noValue": "No data"
       },
       "targets": [
         {
@@ -835,5 +835,5 @@
   },
   "title": "Test Runs",
   "uid": "onefintech-tests",
-  "version": 2
+  "version": 1
 }

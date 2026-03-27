@@ -1,5 +1,5 @@
 {
-  "id": 3,
+  "id": 1,
   "panels": [
     {
       "datasource": {
@@ -229,24 +229,25 @@
         "y": 4
       },
       "id": 5,
+      "links": [],
       "options": {
+        "filterable": true,
         "sortBy": [
           {
             "desc": true,
             "displayName": "count"
           }
-        ],
-        "filterable": true
+        ]
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "SELECT\n  failure_stage,\n  failure_reason,\n  COUNT(*) as count,\n  MAX(created_at) as last_seen\nFROM dead_letter_store\nWHERE $__timeFilter(created_at)\nGROUP BY failure_stage, failure_reason\nORDER BY count DESC\nLIMIT 20",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
       ],
       "title": "Dead Letters by Failure Reason",
@@ -256,8 +257,7 @@
           "options": {}
         }
       ],
-      "type": "table",
-      "links": []
+      "type": "table"
     },
     {
       "datasource": {
@@ -270,9 +270,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
             }
           ]
         }
@@ -284,29 +284,29 @@
         "y": 12
       },
       "id": 6,
-      "targets": [
+      "links": [
         {
-          "format": "table",
-          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "targetBlank": false,
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
         }
       ],
-      "title": "Recent Pipeline Runs",
-      "type": "table",
       "options": {
         "filterable": true
       },
-      "links": [
+      "targets": [
         {
-          "title": "\ud83d\udcc4 View File Detail",
-          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
-          "targetBlank": false
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC",
+          "refId": "A"
         }
-      ]
+      ],
+      "title": "Recent Pipeline Runs",
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -321,5 +321,5 @@
   "timezone": "browser",
   "title": "Pipeline Operations",
   "uid": "onefintech-ops",
-  "version": 5
+  "version": 26
 }

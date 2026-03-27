@@ -1,36 +1,34 @@
 {
-  "uid": "onefintech-file",
-  "title": "File Detail",
-  "tags": [
-    "onefintech",
-    "detail",
-    "file"
+  "annotations": {
+    "list": []
+  },
+  "id": 5,
+  "links": [
+    {
+      "targetBlank": false,
+      "title": "\u2190 Overview",
+      "type": "link",
+      "url": "/d/onefintech-home"
+    },
+    {
+      "targetBlank": false,
+      "title": "\u2190 Detail View",
+      "type": "link",
+      "url": "/d/onefintech-detail"
+    }
   ],
-  "timezone": "browser",
-  "schemaVersion": 38,
-  "version": 7,
-  "refresh": "30s",
   "panels": [
     {
-      "id": 1,
-      "title": "File Metadata",
-      "type": "table",
       "datasource": {
-        "uid": "cfglj9j8ghwqob",
-        "type": "grafana-postgresql-datasource"
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 24,
-        "x": 0,
-        "y": 0
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 200,
-            "displayMode": "auto"
+            "displayMode": "auto",
+            "width": 200
           }
         },
         "overrides": [
@@ -59,36 +57,51 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
+                  "fixedColor": "orange",
+                  "mode": "fixed"
                 }
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
       "options": {
         "filterable": false,
         "sortBy": []
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT\n  f.client_id                                         AS \"Client\",\n  f.file_type                                         AS \"File Type\",\n  f.status                                            AS \"Status\",\n  f.record_count                                      AS \"Declared Rows\",\n  f.malformed_count                                   AS \"Malformed Rows\",\n  TO_CHAR(f.arrived_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Arrived At\",\n  TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Submitted At\"\nFROM batch_files f\nWHERE f.id = '${fileId}'::uuid"
+          "rawSql": "SELECT\n  f.client_id                                         AS \"Client\",\n  f.file_type                                         AS \"File Type\",\n  f.status                                            AS \"Status\",\n  f.record_count                                      AS \"Declared Rows\",\n  f.malformed_count                                   AS \"Malformed Rows\",\n  TO_CHAR(f.arrived_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Arrived At\",\n  TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Submitted At\"\nFROM batch_files f\nWHERE f.id = '${fileId}'::uuid",
+          "refId": "A"
         }
-      ]
+      ],
+      "title": "File Metadata",
+      "type": "table"
     },
     {
-      "id": 10,
-      "title": "\ud83d\udccb  Records in File",
-      "type": "table",
       "datasource": {
         "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "width": 180
+          }
+        },
+        "overrides": []
       },
       "gridPos": {
         "h": 10,
@@ -96,6 +109,29 @@
         "x": 0,
         "y": 9
       },
+      "id": 10,
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.batch_file_id = '${fileId}'::uuid\nORDER BY r.sequence_in_file",
+          "refId": "A"
+        }
+      ],
+      "title": "\ud83d\udccb  Records in File",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -104,29 +140,6 @@
           }
         },
         "overrides": []
-      },
-      "options": {
-        "filterable": true,
-        "sortBy": []
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.batch_file_id = '${fileId}'::uuid\nORDER BY r.sequence_in_file",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 11,
-      "title": "\ud83d\udc80  Dead Letters for File",
-      "type": "table",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
       },
       "gridPos": {
         "h": 10,
@@ -134,6 +147,29 @@
         "x": 0,
         "y": 19
       },
+      "id": 11,
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE d.batch_file_id = '${fileId}'::bigint\nORDER BY d.created_at DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "\ud83d\udc80  Dead Letters for File",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -142,29 +178,6 @@
           }
         },
         "overrides": []
-      },
-      "options": {
-        "filterable": true,
-        "sortBy": []
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE d.batch_file_id = '${fileId}'::bigint\nORDER BY d.created_at DESC",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 12,
-      "title": "\ud83d\udcb3  Purses Created from File",
-      "type": "table",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
       },
       "gridPos": {
         "h": 10,
@@ -172,71 +185,59 @@
         "x": 0,
         "y": 29
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "width": 180
-          }
-        },
-        "overrides": []
-      },
+      "id": 12,
       "options": {
         "filterable": true,
         "sortBy": []
       },
       "targets": [
         {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
           "format": "table",
           "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.status                                    AS \"Status\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.source_batch_file_id = '${fileId}'::uuid\nORDER BY p.activated_at DESC NULLS LAST",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "refId": "A"
         }
-      ]
+      ],
+      "title": "\ud83d\udcb3  Purses Created from File",
+      "type": "table"
     }
   ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": [
+    "onefintech",
+    "detail",
+    "file"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "UUID of the batch file to inspect",
+        "hide": 0,
+        "label": "File ID",
+        "name": "fileId",
+        "options": [],
+        "query": "",
+        "refresh": 0,
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
   "time": {
     "from": "now-30d",
     "to": "now"
   },
   "timepicker": {},
-  "templating": {
-    "list": [
-      {
-        "name": "fileId",
-        "label": "File ID",
-        "type": "textbox",
-        "query": "",
-        "current": {
-          "value": "",
-          "text": ""
-        },
-        "hide": 0,
-        "options": [],
-        "refresh": 0,
-        "skipUrlSync": false,
-        "description": "UUID of the batch file to inspect"
-      }
-    ]
-  },
-  "annotations": {
-    "list": []
-  },
-  "links": [
-    {
-      "title": "\u2190 Overview",
-      "url": "/d/onefintech-home",
-      "type": "link",
-      "targetBlank": false
-    },
-    {
-      "title": "\u2190 Detail View",
-      "url": "/d/onefintech-detail",
-      "type": "link",
-      "targetBlank": false
-    }
-  ]
+  "timezone": "browser",
+  "title": "File Detail",
+  "uid": "onefintech-file",
+  "version": 40
 }
