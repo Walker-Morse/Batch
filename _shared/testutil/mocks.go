@@ -303,6 +303,20 @@ func (m *MockDomainCommandRepository) Insert(_ context.Context, cmd *ports.Domai
 	return nil
 }
 
+func (m *MockDomainCommandRepository) FindByIdempotencyKey(_ context.Context, key uuid.UUID) (*ports.DomainCommand, error) {
+	if m.FindErr != nil {
+		return nil, m.FindErr
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.Commands {
+		if c.IdempotencyKey != nil && *c.IdempotencyKey == key && c.Status != "Failed" {
+			return c, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *MockDomainCommandRepository) FindDuplicate(_ context.Context, tenantID, clientMemberID, commandType, benefitPeriod string) (*ports.DomainCommand, error) {
 	if m.FindErr != nil {
 		return nil, m.FindErr

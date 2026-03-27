@@ -13,9 +13,11 @@ import (
 
 // DomainCommandRepo implements ports.DomainCommandRepository against Aurora.
 //
-// This is the idempotency gate (§4.1.1). The composite UNIQUE constraint on
-// (correlation_id, client_member_id, command_type, benefit_period) is enforced
-// at the DB layer. Insert attempts that violate it return a duplicate key error
+// This is the two-layer idempotency gate (§4.1.1).
+// Layer 1: FindByIdempotencyKey — UUID short-circuit for HTTP retry safety.
+// Layer 2: FindDuplicate — composite business-rule check across all callers.
+// The DB enforces both via partial unique index (idempotency_key) and
+// composite unique constraint (tenant_id, client_member_id, command_type, benefit_period). Insert attempts that violate it return a duplicate key error
 // which we surface as a Duplicate status — never a fatal error.
 //
 // MANDATORY: Insert must be called BEFORE any domain state mutation.
@@ -31,17 +33,17 @@ func NewDomainCommandRepo(pool *pgxpool.Pool) *DomainCommandRepo {
 func (r *DomainCommandRepo) Insert(ctx context.Context, cmd *ports.DomainCommand) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO public.domain_commands (
-			id, correlation_id, tenant_id, client_member_id,
+			id, correlation_id, idempotency_key, tenant_id, client_member_id,
 			command_type, benefit_period, status,
 			batch_file_id, sequence_in_file,
 			created_at
 		) VALUES (
-			$1, $2, $3, $4,
-			$5, $6, $7,
-			$8, $9,
-			$10
+			$1, $2, $3, $4, $5,
+			$6, $7, $8,
+			$9, $10,
+			$11
 		)`,
-		cmd.ID, cmd.CorrelationID, cmd.TenantID, cmd.ClientMemberID,
+		cmd.ID, cmd.CorrelationID, cmd.IdempotencyKey, cmd.TenantID, cmd.ClientMemberID,
 		cmd.CommandType, cmd.BenefitPeriod, cmd.Status,
 		cmd.BatchFileID, cmd.SequenceInFile,
 		cmd.CreatedAt,
@@ -52,6 +54,36 @@ func (r *DomainCommandRepo) Insert(ctx context.Context, cmd *ports.DomainCommand
 	return nil
 }
 
+// FindByIdempotencyKey is the Layer 1 short-circuit lookup.
+// Called before the composite check — if the caller retries with the same
+// X-Idempotency-Key UUID, we return the cached result immediately without
+// re-evaluating the composite business key.
+func (r *DomainCommandRepo) FindByIdempotencyKey(ctx context.Context, key uuid.UUID) (*ports.DomainCommand, error) {
+	row := r.pool.QueryRow(ctx, `
+		SELECT id, correlation_id, idempotency_key, tenant_id, client_member_id,
+		       command_type, benefit_period, status,
+		       batch_file_id, sequence_in_file,
+		       created_at, completed_at, failure_reason
+		FROM public.domain_commands
+		WHERE idempotency_key = $1`,
+		key,
+	)
+	cmd := &ports.DomainCommand{}
+	err := row.Scan(
+		&cmd.ID, &cmd.CorrelationID, &cmd.IdempotencyKey, &cmd.TenantID, &cmd.ClientMemberID,
+		&cmd.CommandType, &cmd.BenefitPeriod, &cmd.Status,
+		&cmd.BatchFileID, &cmd.SequenceInFile,
+		&cmd.CreatedAt, &cmd.CompletedAt, &cmd.FailureReason,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("domain_commands.FindByIdempotencyKey: %w", err)
+	}
+	return cmd, nil
+}
+
 func (r *DomainCommandRepo) FindDuplicate(
 	ctx context.Context,
 	tenantID, clientMemberID, commandType, benefitPeriod string,
@@ -60,7 +92,7 @@ func (r *DomainCommandRepo) FindDuplicate(
 	// A member submitted in any prior file for this benefit period is a duplicate.
 	// Only FAILED commands are excluded — they may be retried.
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, correlation_id, tenant_id, client_member_id,
+		SELECT id, correlation_id, idempotency_key, tenant_id, client_member_id,
 		       command_type, benefit_period, status,
 		       batch_file_id, sequence_in_file,
 		       created_at, completed_at, failure_reason
@@ -76,7 +108,7 @@ func (r *DomainCommandRepo) FindDuplicate(
 
 	cmd := &ports.DomainCommand{}
 	err := row.Scan(
-		&cmd.ID, &cmd.CorrelationID, &cmd.TenantID, &cmd.ClientMemberID,
+		&cmd.ID, &cmd.CorrelationID, &cmd.IdempotencyKey, &cmd.TenantID, &cmd.ClientMemberID,
 		&cmd.CommandType, &cmd.BenefitPeriod, &cmd.Status,
 		&cmd.BatchFileID, &cmd.SequenceInFile,
 		&cmd.CreatedAt, &cmd.CompletedAt, &cmd.FailureReason,

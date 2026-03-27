@@ -403,11 +403,22 @@ func (m *mockRepo) UpdateConsumerDemographics(_ context.Context, _ uuid.UUID, _ 
 }
 
 type mockCmds struct {
-	existingStatus string
-	completedCount int
-	failedCount    int
+	existingStatus  string
+	existingIdemKey *uuid.UUID  // for Layer 1 test: simulate a row with this idempotency key
+	completedCount  int
+	failedCount     int
+	lastInserted    *sharedports.DomainCommand
 }
-func (m *mockCmds) Insert(_ context.Context, _ *sharedports.DomainCommand) error { return nil }
+func (m *mockCmds) Insert(_ context.Context, cmd *sharedports.DomainCommand) error {
+	m.lastInserted = cmd
+	return nil
+}
+func (m *mockCmds) FindByIdempotencyKey(_ context.Context, key uuid.UUID) (*sharedports.DomainCommand, error) {
+	if m.existingIdemKey != nil && *m.existingIdemKey == key && m.existingStatus != "" {
+		return &sharedports.DomainCommand{Status: m.existingStatus, IdempotencyKey: m.existingIdemKey}, nil
+	}
+	return nil, nil
+}
 func (m *mockCmds) FindDuplicate(_ context.Context, _, _, _, _ string) (*sharedports.DomainCommand, error) {
 	if m.existingStatus == "" { return nil, nil }
 	return &sharedports.DomainCommand{Status: m.existingStatus}, nil
@@ -426,3 +437,95 @@ func (m *mockAudit) Write(_ context.Context, _ *sharedports.AuditEntry) error { 
 type mockObs struct{}
 func (m *mockObs) LogEvent(_ context.Context, _ *sharedports.LogEvent) error       { return nil }
 func (m *mockObs) RecordMetric(_ context.Context, _ string, _ float64, _ map[string]string) error { return nil }
+
+// ─── Two-layer idempotency tests ──────────────────────────────────────────────
+
+// TestCancelCard_Layer1_UUIDShortCircuit verifies that a retry with the same
+// X-Idempotency-Key is caught by Layer 1 without re-evaluating the composite key.
+func TestCancelCard_Layer1_UUIDShortCircuit(t *testing.T) {
+	consumer := resolvedConsumer()
+	card := resolvedCard(consumer.ID)
+	fisCardID := fis.FisCardID(*card.FISCardID)
+	memberID := consumer.ID
+
+	fisMock := mock.NewFisCodeConnectMock()
+	fisMock.SeedCard(fis.FisCard{CardID: fisCardID, PersonID: 1001, Status: fis.FisCardActive},
+		[]fis.FisPurse{{CardID: fisCardID, PurseNumber: 1, Status: fis.PurseStatusActive}})
+
+	repo := &mockRepo{consumer: consumer, card: card, purses: []*domain.Purse{{
+		ID: uuid.New(), CardID: card.ID,
+		FISPurseNumber: func() *int16 { n := int16(1); return &n }(),
+		Status: domain.PurseActive,
+	}}}
+
+	// First call — succeeds, inserts Completed command with idempotency key
+	idemKey := uuid.New()
+	rctx := ports.RequestContext{
+		CorrelationID:  uuid.New(),
+		IdempotencyKey: idemKey,
+		TenantID:       "rfu-oregon",
+		CallerType:     ports.CallerUniversalWallet,
+	}
+
+	cmds := &mockCmds{}
+	svc := service.NewCardService(fisMock, repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
+
+	_, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
+		Rctx: rctx, MemberID: &memberID, CancelReason: ports.CancelReasonLost,
+	})
+	if err != nil {
+		t.Fatalf("first call failed: %v", err)
+	}
+	firstCallFISCalls := fisMock.Calls["CloseCard"]
+
+	// Second call — same idempotency key, Layer 1 should short-circuit
+	// Simulate: command row now shows Completed with our idemKey
+	cmds.existingStatus = string(domain.CommandCompleted)
+	cmds.existingIdemKey = &idemKey
+
+	_, err = svc.CancelCard(context.Background(), ports.CancelCardRequest{
+		Rctx: rctx, MemberID: &memberID, CancelReason: ports.CancelReasonLost,
+	})
+	if err != nil {
+		t.Fatalf("idempotent retry should succeed: %v", err)
+	}
+
+	// FIS must NOT have been called again on the retry
+	if fisMock.Calls["CloseCard"] != firstCallFISCalls {
+		t.Errorf("Layer 1 short-circuit failed: CloseCard was called again on retry")
+	}
+}
+
+// TestCancelCard_Layer2_BusinessRuleDedup verifies that a different caller with
+// a different idempotency key is blocked by Layer 2 if the operation already succeeded.
+func TestCancelCard_Layer2_BusinessRuleDedup(t *testing.T) {
+	consumer := resolvedConsumer()
+	card := resolvedCard(consumer.ID)
+	memberID := consumer.ID
+
+	repo := &mockRepo{consumer: consumer, card: card}
+	// Different idempotency key from a different caller, but same member+operation
+	cmds := &mockCmds{existingStatus: string(domain.CommandCompleted)}
+
+	svc := service.NewCardService(mock.NewFisCodeConnectMock(), repo, cmds, &mockAudit{}, &mockObs{}, noopLog())
+
+	differentIdemKey := uuid.New()
+	rctx := ports.RequestContext{
+		CorrelationID:  uuid.New(),
+		IdempotencyKey: differentIdemKey, // different key from original caller
+		TenantID:       "rfu-oregon",
+		CallerType:     ports.CallerIVR,
+	}
+
+	result, err := svc.CancelCard(context.Background(), ports.CancelCardRequest{
+		Rctx: rctx, MemberID: &memberID, CancelReason: ports.CancelReasonLost,
+	})
+
+	// Layer 2 finds the composite duplicate — should return idempotent success
+	if err != nil {
+		t.Fatalf("Layer 2 dedup should return success (operation already completed): %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result from Layer 2 dedup")
+	}
+}

@@ -75,6 +75,12 @@ type DomainCommandRepository interface {
 	// submitted in a previous file for the same benefit period is a duplicate
 	// regardless of which file it came from.
 	// Only FAILED commands are excluded — a failed submission may be retried.
+	// FindByIdempotencyKey looks up a command by its caller-supplied idempotency UUID.
+	// Returns nil if not found. Used as the Layer 1 short-circuit before the composite check.
+	FindByIdempotencyKey(ctx context.Context, key uuid.UUID) (*DomainCommand, error)
+	// FindDuplicate is the Layer 2 composite business-rule check.
+	// Checks (tenant_id, client_member_id, command_type, benefit_period) across ALL callers.
+	// Only FAILED commands are excluded — they may be retried.
 	FindDuplicate(ctx context.Context, tenantID, clientMemberID, commandType, benefitPeriod string) (*DomainCommand, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, failureReason *string) error
 }
@@ -174,15 +180,16 @@ type BatchFile struct {
 
 // DomainCommand represents the domain_commands idempotency log row.
 type DomainCommand struct {
-	ID             uuid.UUID
-	CorrelationID  uuid.UUID
-	TenantID       string
-	ClientMemberID string
-	CommandType    string // ENROLL|UPDATE|LOAD|SWEEP|SUSPEND|TERMINATE
-	BenefitPeriod  string // ISO YYYY-MM
-	Status         string
-	BatchFileID    uuid.UUID
-	SequenceInFile int
+	ID              uuid.UUID
+	CorrelationID   uuid.UUID  // per-request trace ID — observability only, not used for dedup
+	IdempotencyKey  *uuid.UUID // Layer 1: caller-supplied UUID; nil for batch pipeline rows
+	TenantID        string
+	ClientMemberID  string
+	CommandType     string // ENROLL|UPDATE|LOAD|SWEEP|SUSPEND|TERMINATE|ENROLL_MEMBER|CANCEL_CARD|REPLACE_CARD|LOAD_FUNDS
+	BenefitPeriod   string // ISO YYYY-MM; empty string for non-period commands
+	Status          string
+	BatchFileID     uuid.UUID
+	SequenceInFile  int
 	CreatedAt      time.Time
 	CompletedAt    *time.Time
 	FailureReason  *string

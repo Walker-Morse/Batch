@@ -94,16 +94,23 @@ components:
         type: string
         format: uuid
       description: |
-        Caller-supplied operation dedup key. Must be a v4 UUID. Hold this value stable
-        across retries of the same logical operation. If the server sees a key it has
-        already processed successfully, it returns the cached result without re-executing
-        at FIS.
+        Caller-supplied operation dedup key (v4 UUID). Two-layer idempotency:
 
-        For dead letter repair: pass the original batch correlation UUID — the same
-        idempotency gate fires regardless of whether the operation arrived via batch
-        pipeline or this REST API.
+        **Layer 1 — UUID short-circuit (retry safety):**
+        Hold this value stable across retries of the same HTTP request. If the
+        server has already processed this key successfully, it returns the cached
+        result immediately without calling FIS again.
 
-        If omitted, the server generates one — but the caller loses retry safety.
+        **Layer 2 — Composite business-rule dedup (cross-caller protection):**
+        Even with a different idempotency key, the server blocks duplicate business
+        operations for the same member+operation+period combination. A cancel request
+        from the IVR will be caught as a duplicate if the UW already cancelled the
+        same card, even with a completely different key.
+
+        For dead letter repair: pass the original batch correlation UUID.
+
+        If omitted, the server generates one — but the caller loses Layer 1 retry safety.
+        Layer 2 always applies regardless.
 
   schemas:
     ErrorResponse:

@@ -323,31 +323,79 @@ func (s *CardService) resolveCardIdentity(ctx context.Context, memberID *uuid.UU
 	return consumer, card, nil
 }
 
-// idempotencyGate checks for existing commands and inserts a new Accepted row.
-// Returns (non-nil result, uuid.Nil, nil) if already Completed (idempotent replay).
-// Returns (nil, cmdID, nil) if new — proceed with operation.
-// Returns (nil, uuid.Nil, err) if Accepted in-flight (duplicate) or DB error.
+// idempotencyGate implements two-layer idempotency (Option C).
+//
+// Layer 1 — UUID short-circuit (fast path, HTTP retry safety):
+//   If the caller supplied X-Idempotency-Key, look it up by UUID first.
+//   Completed → return cached (idempotent success, no FIS call).
+//   Accepted  → 409 in-flight.
+//   Failed    → fall through to Layer 2 (allow retry).
+//   Not found → fall through to Layer 2.
+//
+// Layer 2 — Composite business-rule dedup (cross-caller protection):
+//   Check (tenant_id, client_member_id, command_type, benefit_period).
+//   Catches the case where a different caller with a different idempotency key
+//   attempts the same business operation for the same member in the same period.
+//   Completed → 409 business duplicate.
+//   Accepted  → 409 in-flight.
+//   Failed    → insert new row, proceed.
+//   Not found → insert new row, proceed.
+//
+// Returns:
+//   (&struct{}{}, uuid.Nil, nil) — already Completed, return cached result
+//   (nil, cmdID, nil)            — new command inserted, proceed with operation
+//   (nil, uuid.Nil, err)         — duplicate in-flight or DB error
 func (s *CardService) idempotencyGate(ctx context.Context, rctx ports.RequestContext, clientMemberID, cmdType, benefitPeriod string) (*struct{}, uuid.UUID, error) {
+	// ── Layer 1: UUID short-circuit ──────────────────────────────────────────
+	idemKey := rctx.IdempotencyKey
+	if idemKey != uuid.Nil {
+		existing, err := s.cmds.FindByIdempotencyKey(ctx, idemKey)
+		if err != nil {
+			return nil, uuid.Nil, fmt.Errorf("idempotency key lookup: %w", err)
+		}
+		if existing != nil {
+			switch existing.Status {
+			case string(domain.CommandCompleted):
+				return &struct{}{}, uuid.Nil, nil // idempotent success — return cached result
+			case string(domain.CommandAccepted):
+				return nil, uuid.Nil, ports.ErrDuplicateRequest // in-flight
+			// Failed — fall through to Layer 2 to allow retry
+			}
+		}
+	}
+
+	// ── Layer 2: composite business-rule dedup ────────────────────────────────
 	dup, err := s.cmds.FindDuplicate(ctx, rctx.TenantID, clientMemberID, cmdType, benefitPeriod)
 	if err != nil {
-		return nil, uuid.Nil, fmt.Errorf("idempotency check: %w", err)
+		return nil, uuid.Nil, fmt.Errorf("composite duplicate check: %w", err)
 	}
 	if dup != nil {
 		switch dup.Status {
 		case string(domain.CommandCompleted):
-			return &struct{}{}, uuid.Nil, nil
+			return &struct{}{}, uuid.Nil, nil // business duplicate — same operation already succeeded
 		case string(domain.CommandAccepted):
 			return nil, uuid.Nil, ports.ErrDuplicateRequest
 		}
 		// Failed — allow retry
 	}
+
+	// ── New command — insert Accepted row ────────────────────────────────────
 	cmdID := uuid.New()
+	var idemKeyPtr *uuid.UUID
+	if idemKey != uuid.Nil {
+		idemKeyPtr = &idemKey
+	}
 	if err := s.cmds.Insert(ctx, &sharedports.DomainCommand{
-		ID: cmdID, CorrelationID: rctx.IdempotencyKey,
-		TenantID: rctx.TenantID, ClientMemberID: clientMemberID,
-		CommandType: cmdType, BenefitPeriod: benefitPeriod,
-		Status: string(domain.CommandAccepted), BatchFileID: uuid.Nil,
-		CreatedAt: time.Now().UTC(),
+		ID:             cmdID,
+		CorrelationID:  rctx.CorrelationID,
+		IdempotencyKey: idemKeyPtr,
+		TenantID:       rctx.TenantID,
+		ClientMemberID: clientMemberID,
+		CommandType:    cmdType,
+		BenefitPeriod:  benefitPeriod,
+		Status:         string(domain.CommandAccepted),
+		BatchFileID:    uuid.Nil,
+		CreatedAt:      time.Now().UTC(),
 	}); err != nil {
 		return nil, uuid.Nil, fmt.Errorf("insert command: %w", err)
 	}
