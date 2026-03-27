@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 5,
+  "version": 6,
   "refresh": "30s",
   "panels": [
     {
@@ -40,19 +40,24 @@
               }
             ]
           },
-          "noValue": ""
+          "noValue": "",
+          "unit": "string"
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": ""
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -95,19 +100,24 @@
               }
             ]
           },
-          "noValue": ""
+          "noValue": "",
+          "unit": "string"
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": ""
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -150,19 +160,24 @@
               }
             ]
           },
-          "noValue": ""
+          "noValue": "",
+          "unit": "string"
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": ""
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -313,19 +328,24 @@
               }
             ]
           },
-          "noValue": ""
+          "noValue": "",
+          "unit": "string"
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": ""
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -368,19 +388,24 @@
               }
             ]
           },
-          "noValue": ""
+          "noValue": "",
+          "unit": "string"
         },
         "overrides": []
       },
       "options": {
         "reduceOptions": {
+          "values": false,
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "fields": ""
         },
         "orientation": "auto",
         "textMode": "value",
-        "colorMode": "background"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "targets": [
         {
