@@ -29,7 +29,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -149,7 +150,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -187,7 +189,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           },
           "links": [
             {
@@ -239,7 +242,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -277,7 +281,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -315,7 +320,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -353,7 +359,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -391,7 +398,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           },
           "links": [
             {
@@ -443,7 +451,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           },
           "links": [
             {
@@ -495,7 +504,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           },
           "links": [
             {
@@ -557,6 +567,6 @@
   "timezone": "browser",
   "title": "Detail View",
   "uid": "onefintech-detail",
-  "version": 27,
+  "version": 35,
   "weekStart": ""
 }

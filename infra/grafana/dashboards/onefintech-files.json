@@ -120,7 +120,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "left"
+            "align": "left",
+            "filterable": true
           },
           "links": [
             {
@@ -220,7 +221,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "left"
+            "align": "left",
+            "filterable": true
           },
           "links": []
         }
@@ -461,7 +463,10 @@
               "title": "\ud83d\udcc4 View File Detail",
               "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}"
             }
-          ]
+          ],
+          "custom": {
+            "filterable": true
+          }
         },
         "overrides": [
           {
@@ -674,5 +679,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 26
+  "version": 34
 }

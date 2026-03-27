@@ -28,7 +28,8 @@
           "custom": {
             "align": "left",
             "displayMode": "auto",
-            "width": 200
+            "width": 200,
+            "filterable": true
           }
         },
         "overrides": [
@@ -73,7 +74,7 @@
       },
       "id": 1,
       "options": {
-        "filterable": false,
+        "filterable": true,
         "sortBy": []
       },
       "targets": [
@@ -98,7 +99,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -136,7 +138,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -174,7 +177,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 180
+            "width": 180,
+            "filterable": true
           }
         },
         "overrides": []
@@ -239,5 +243,5 @@
   "timezone": "browser",
   "title": "File Detail",
   "uid": "onefintech-file",
-  "version": 40
+  "version": 48
 }

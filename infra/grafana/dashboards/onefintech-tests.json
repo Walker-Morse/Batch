@@ -8,7 +8,11 @@
       },
       "description": "One row per CI execution. Select a run above to drill into steps.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -190,7 +194,11 @@
       },
       "description": "Every known test in the codebase. Active=true means seen in last run. Gap: a test in this table with no matching step for a run was not executed.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -296,7 +304,11 @@
       },
       "description": "Tests in the canonical set that have no step record for the selected run. Empty = full coverage.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -334,7 +346,11 @@
       },
       "description": "Failing steps in the selected run(s). Output column shows captured detail.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -480,7 +496,11 @@
       },
       "description": "Every step for the selected run(s). One row per test per run.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -660,7 +680,11 @@
       },
       "description": "",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -770,7 +794,11 @@
       },
       "description": "",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -835,5 +863,5 @@
   },
   "title": "Test Runs",
   "uid": "onefintech-tests",
-  "version": 1
+  "version": 9
 }

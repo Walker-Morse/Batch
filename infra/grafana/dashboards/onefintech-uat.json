@@ -240,7 +240,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "left"
+            "align": "left",
+            "filterable": true
           }
         },
         "overrides": [
@@ -313,7 +314,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "left"
+            "align": "left",
+            "filterable": true
           }
         },
         "overrides": [
@@ -389,7 +391,8 @@
         "defaults": {
           "custom": {
             "align": "left",
-            "width": 160
+            "width": 160,
+            "filterable": true
           }
         }
       },
@@ -443,7 +446,14 @@
         }
       ],
       "title": "APL Version Status",
-      "type": "table"
+      "type": "table",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        }
+      }
     },
     {
       "datasource": {
@@ -471,7 +481,14 @@
         }
       ],
       "title": "Seeded Programs",
-      "type": "table"
+      "type": "table",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        }
+      }
     },
     {
       "datasource": {
@@ -482,7 +499,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "minWidth": 50
+            "minWidth": 50,
+            "filterable": true
           }
         },
         "overrides": [
@@ -831,7 +849,11 @@
       },
       "description": "Members with dead letters, failed commands, bad FIS result codes, or missing required demographics.",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
         "overrides": [
           {
             "matcher": {
@@ -1197,5 +1219,5 @@
   "timezone": "browser",
   "title": "UAT Test Validation",
   "uid": "onefintech-uat",
-  "version": 17
+  "version": 25
 }
