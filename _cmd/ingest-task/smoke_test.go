@@ -21,7 +21,7 @@
 //
 //   Option B (docker-compose): full integration against live Postgres + fake S3.
 //     Prerequisite: docker-compose.yml with postgres + localstack or httptest S3 stub.
-//     Status: blocked — awaiting DEV environment confirmation (John Stevens).
+//     Status: not yet implemented — see _docs/SMOKE_TEST_OPTION_B.md.
 //     See _docs/SMOKE_TEST_OPTION_B.md when that unblocks.
 //
 // Fake dependencies used:

@@ -126,7 +126,7 @@ decisions with load-bearing consequences.
 | Date | Milestone | Risk if missed |
 |------|-----------|----------------|
 | Mar 30 | SRG310/315/320 column definitions confirmed | Stage 1–3 built on unconfirmed specs |
-| Apr 6 | DEV AWS environment provisioned | No implementation sprint start possible |
+| ~~Apr 6~~ | ~~DEV AWS environment provisioned~~ | ✅ **Done** — ECS, Aurora, ALB, ECR all live in account 307871782435 |
 | Apr 7 | APL compute ownership decided (Open Item #11) | APL misses Apr 27 target |
 | Apr 13 | Stages 1–3 complete | Stage 4+ compress |
 | Apr 14 | Kendra: WATS form + Risk Config Form + XTRACT unblocked | SCP program not activated; UAT blocked |

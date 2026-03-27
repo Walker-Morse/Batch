@@ -1,98 +1,28 @@
-# Smoke Test — Option B: Integration Against Live Dependencies
+# Smoke Test Option B — Integration against live DEV environment
 
-**Status:** Blocked — awaiting DEV environment confirmation (John Stevens)  
-**Prerequisite:** `docker-compose.yml` with Postgres + S3 stub  
-**Owner:** Kyle Walker / John Stevens  
+**Status:** Not yet implemented  
+**Owner:** Kyle Walker  
 
----
+## What this is
 
-## What Option B covers that Option A does not
+Option B exercises the full pipeline against the live DEV Aurora instance and S3 buckets,
+using real AWS credentials. It complements Option A (in-process, zero infrastructure) by
+catching real SQL behaviour, real S3 I/O, and real PGP decrypt/encrypt.
 
-Option A (in-process wiring test) proves the binary wires correctly with fake dependencies.  
-Option B proves the binary works against **real SQL** and **real S3 I/O**:
+## Prerequisites
 
-| Concern | Option A | Option B |
-|---|---|---|
-| Interface wiring correct | ✅ | ✅ |
-| No nil pointer panics | ✅ | ✅ |
-| Stage sequencing correct | ✅ | ✅ |
-| Real SQL constraint violations | ❌ | ✅ |
-| Real transaction semantics | ❌ | ✅ |
-| Real S3 multipart / SSE | ❌ | ✅ |
-| Schema migrations applied correctly | ❌ | ✅ |
-| PGP round-trip (decrypt + encrypt) | ❌ | ✅ |
-| FIS record byte offsets on real data | ❌ | ✅ |
+- AWS credentials with access to account 307871782435 (available — cdk-deployer)
+- Aurora DEV instance running (running — onefintech-dev-proxy.proxy-cehsk0igwsbz.us-east-1.rds.amazonaws.com)
+- S3 buckets provisioned (provisioned — onefintech-dev-inbound-raw-placeholder etc.)
 
-## Required `docker-compose.yml` services
+## Why it hasn't been implemented yet
 
-```yaml
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: onefintech_dev
-      POSTGRES_USER: ingest_task
-      POSTGRES_PASSWORD: dev_password_not_secret
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./_schema:/docker-entrypoint-initdb.d:ro
+Option A smoke test covers wiring regressions. Integration tests against real infra
+require a dedicated test harness that seeds known-good data, runs the pipeline, and
+asserts DB state — that work hasn't been prioritised yet.
 
-  # Option 1: localstack (full AWS emulation — heavier)
-  localstack:
-    image: localstack/localstack:3
-    environment:
-      SERVICES: s3,secretsmanager,kms
-    ports:
-      - "4566:4566"
+## Implementation notes
 
-  # Option 2: httptest S3 stub (lighter — only needs GetObject/PutObject/HeadObject/DeleteObject)
-  # Implemented as a Go httptest.Server in the test file itself — no docker service needed.
-  # See _cmd/ingest-task/smoke_integration_test.go (to be written).
-```
-
-## Questions to answer before implementing
-
-1. **Which S3 approach?**  
-   Localstack is full-featured but adds Docker pull time to CI.  
-   An `httptest.NewServer` implementing the S3 subset we use (~80 lines) needs no Docker and runs in the same process. Recommended unless Secrets Manager emulation is also needed.
-
-2. **Schema migration runner?**  
-   `_schema/` contains SQL files. Does Postgres container init pick them up via volume mount, or do we need a `migrate` tool call in test setup?  
-   Recommended: `testcontainers-go` with `MigrateWithDir("../../_schema")` — handles ordering automatically.
-
-3. **PGP test keys?**  
-   Option B can use throwaway RSA keys generated at test time (same pattern as `_adapters/pgp/pgp_test.go`).  
-   Keys never touch Secrets Manager in Option B — injected directly into config.
-
-4. **Is there a `testcontainers-go` policy?**  
-   This adds a test dependency. Confirm with John Stevens before adding.
-
-## Proposed test structure once unblocked
-
-```
-_cmd/ingest-task/
-  main.go              ← existing (refactored with PipelineDeps/runWithDeps)
-  smoke_test.go        ← Option A (this PR, build tag: smoke)
-  smoke_integration_test.go  ← Option B (build tag: smoke_integration)
-```
-
-Run Option B:
-```bash
-# Requires docker compose up
-go test -tags smoke_integration ./... -v -run TestSmokeIntegration
-# or:
-make smoke-integration
-```
-
-## Makefile targets to add
-
-```makefile
-smoke:
-	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -tags smoke -v -run TestSmoke ./_cmd/ingest-task/
-
-smoke-integration:
-	docker compose up -d postgres
-	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go test -tags smoke_integration -v -run TestSmokeIntegration ./_cmd/ingest-task/
-	docker compose down
-```
+When implementing, use the RDS Data API (boto3) for DB inspection — it avoids VPC
+connectivity requirements from the test runner. The cdk-deployer credentials have the
+necessary permissions.

@@ -33,8 +33,8 @@ export interface ApiServerProps {
  * Health check: GET /healthz → 200 {"status":"ok"}
  *
  * FIS mode:
- *   DEV: -fis-mock=true (in-memory mock, no FIS credentials required)
- *   TST/PRD: -fis-mock=false (real FIS adapter — pending John Stevens credentials)
+ *   DEV: -fis-mock=true (FIS Code Connect credentials not yet provisioned, OI #31)
+ *   TST/PRD: -fis-mock=false (real FIS adapter)
  *
  * Cost (DEV):
  *   Fargate: 0.25 vCPU / 512MB = ~$6/month

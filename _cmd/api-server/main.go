@@ -33,7 +33,7 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	if !*fisMock {
-		log.Error("real FIS adapter not yet implemented — run with -fis-mock until John Stevens credentials ready")
+		log.Error("real FIS adapter not yet implemented — run with -fis-mock until FIS Code Connect credentials are provisioned (John Stevens, OI #31)")
 		os.Exit(1)
 	}
 
