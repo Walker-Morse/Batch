@@ -33,7 +33,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\",\n  d.batch_file_id                             AS \"Batch File ID\"\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 200",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\ud83d\udc80  Dead Letters \u2014 All Records",
@@ -74,10 +78,14 @@
         {
           "format": "table",
           "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "\ud83d\udcc1  Files Received \u2014 Last 7 Days",
+      "title": "\ud83d\udcc1  Files Received",
       "type": "table",
       "links": [
         {
@@ -115,7 +123,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nORDER BY r.staged_at DESC NULLS LAST\nLIMIT 500",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\ud83d\udc65  All Members \u2014 batch_records_common",
@@ -156,7 +168,11 @@
         {
           "format": "table",
           "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.status != 'COMPLETE'\nORDER BY f.arrived_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\u26a0\ufe0f  Incomplete Files",
@@ -197,7 +213,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.status                                    AS \"Status\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.status = 'active'\nORDER BY p.activated_at DESC NULLS LAST\nLIMIT 500",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\ud83d\udcb3  Active Purses",
@@ -231,7 +251,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  pg.client_name                              AS \"Client\",\n  pg.subprogram_name                          AS \"Subprogram Name\",\n  pg.benefit_type                             AS \"Benefit Type\",\n  pg.state                                    AS \"State\",\n  pg.is_active                                AS \"Active\",\n  pg.program_start_date                       AS \"Start Date\",\n  pg.fis_pack_id                              AS \"Pack ID\",\n  pg.fis_subprogram_id                        AS \"FIS Subprogram ID\",\n  pg.fis_program_id                           AS \"FIS Program ID\",\n  pg.fis_client_id                            AS \"FIS Client ID\",\n  pg.created_at    AT TIME ZONE 'UTC'         AS \"Created At\",\n  pg.id                                       AS \"Program ID\"\nFROM programs pg\nORDER BY pg.created_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\ud83c\udfd7\ufe0f  Seeded Programs",
@@ -265,7 +289,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Enrolled At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.batch_file_id                             AS \"Batch File ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.status = 'enrolled'\nORDER BY r.completed_at DESC NULLS LAST\nLIMIT 500",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "\u2705  Successfully Enrolled Members",
@@ -299,10 +327,14 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE $__timeFilter(d.created_at)\nORDER BY d.created_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "\ud83d\udc80  Dead Letters \u2014 Last 7 Days",
+      "title": "\ud83d\udc80  Dead Letters",
       "type": "table"
     },
     {
@@ -340,10 +372,14 @@
         {
           "format": "table",
           "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "\ud83d\udd04  Pipeline Runs \u2014 Last 7 Days",
+      "title": "\ud83d\udd04  Pipeline Runs",
       "type": "table",
       "links": [
         {
@@ -388,10 +424,14 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"File Arrived\",\n  f.record_count                              AS \"Total Rows in File\",\n  COUNT(r.id)                                 AS \"Rows Enrolled\",\n  f.id                                        AS \"File ID\"\nFROM batch_files f\nLEFT JOIN batch_records_common r\n  ON r.batch_file_id = f.id\n  AND r.status = 'enrolled'\nWHERE $__timeFilter(f.arrived_at)\nGROUP BY f.id, f.client_id, f.file_type, f.record_count, f.arrived_at\nORDER BY f.arrived_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "\ud83d\udcc8  Row Enrollment Detail \u2014 Last 7 Days",
+      "title": "\ud83d\udcc8  Row Enrollment Detail",
       "type": "table",
       "links": [
         {
@@ -436,10 +476,14 @@
         {
           "format": "table",
           "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"File Status\",\n  f.record_count                              AS \"Submitted Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.id                                        AS \"File ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "\ud83d\udcca  Rows Submitted \u2014 Last 7 Days (per file)",
+      "title": "\ud83d\udcca  Rows Submitted (per file)",
       "type": "table",
       "links": [
         {
@@ -467,5 +511,5 @@
   "timezone": "browser",
   "title": "Detail View",
   "uid": "onefintech-detail",
-  "version": 4
+  "version": 5
 }

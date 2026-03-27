@@ -46,11 +46,15 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
-          "refId": "A"
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE $__timeFilter(arrived_at)",
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "Files Received (7d)",
+      "title": "Files Received",
       "type": "stat"
     },
     {
@@ -98,11 +102,15 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE arrived_at >= NOW() - INTERVAL '7 days'",
-          "refId": "A"
+          "rawSql": "SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)",
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
-      "title": "Total Rows Submitted (7d)",
+      "title": "Total Rows Submitted",
       "type": "stat"
     },
     {
@@ -185,7 +193,11 @@
         {
           "format": "table",
           "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE $__timeFilter(f.arrived_at)\nORDER BY f.arrived_at DESC\nLIMIT 200",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "File Inventory",
@@ -223,8 +235,12 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.arrived_at >= NOW() - INTERVAL '7 days'\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
-          "refId": "A"
+          "rawSql": "SELECT\n  bf.correlation_id,\n  brc.record_type,\n  brc.status,\n  COUNT(*) as count\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE $__timeFilter(bf.arrived_at)\nGROUP BY bf.correlation_id, brc.record_type, brc.status\nORDER BY bf.correlation_id, brc.record_type, brc.status",
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ],
       "title": "Rows by Record Type and Status",
@@ -658,5 +674,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 4
+  "version": 5
 }
