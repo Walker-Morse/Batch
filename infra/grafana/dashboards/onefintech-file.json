@@ -8,7 +8,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "panels": [
     {
@@ -58,7 +58,11 @@
         {
           "format": "table",
           "rawSql": "SELECT f.client_id FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -109,7 +113,11 @@
         {
           "format": "table",
           "rawSql": "SELECT f.file_type FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -160,7 +168,11 @@
         {
           "format": "table",
           "rawSql": "SELECT f.status FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -210,7 +222,11 @@
         {
           "format": "table",
           "rawSql": "SELECT f.record_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -260,7 +276,11 @@
         {
           "format": "table",
           "rawSql": "SELECT f.malformed_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -311,7 +331,11 @@
         {
           "format": "table",
           "rawSql": "SELECT TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -362,7 +386,11 @@
         {
           "format": "table",
           "rawSql": "SELECT TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -396,7 +424,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  r.client_member_id                          AS \"Member ID\",\n  r.record_type                               AS \"Record Type\",\n  r.status                                    AS \"Status\",\n  r.staged_at      AT TIME ZONE 'UTC'         AS \"Staged At\",\n  r.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  r.completed_at   AT TIME ZONE 'UTC'         AS \"Completed At\",\n  r.sequence_in_file                          AS \"Seq #\",\n  r.fis_result_code                           AS \"FIS Result Code\",\n  r.fis_result_message                        AS \"FIS Result Message\",\n  r.id                                        AS \"Record ID\",\n  r.correlation_id                            AS \"Correlation ID\"\nFROM batch_records_common r\nWHERE r.batch_file_id = '${fileId}'::uuid\nORDER BY r.sequence_in_file",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -430,7 +462,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  d.client_member_id                          AS \"Member ID\",\n  d.failure_stage                             AS \"Failed Stage\",\n  d.failure_reason                            AS \"Failure Reason\",\n  d.created_at     AT TIME ZONE 'UTC'         AS \"Dead-Lettered At\",\n  d.retry_count                               AS \"Retry Count\",\n  d.last_retry_at  AT TIME ZONE 'UTC'         AS \"Last Retry At\",\n  d.resolved_at    AT TIME ZONE 'UTC'         AS \"Resolved At\",\n  d.resolution_notes                          AS \"Resolution Notes\",\n  LEFT(d.message_body::text, 300)             AS \"Payload Preview\",\n  d.id                                        AS \"Record ID\",\n  d.correlation_id                            AS \"Correlation ID\"\nFROM dead_letter_store d\nWHERE d.batch_file_id = '${fileId}'::bigint\nORDER BY d.created_at DESC",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     },
@@ -464,7 +500,11 @@
         {
           "format": "table",
           "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.status                                    AS \"Status\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.source_batch_file_id = '${fileId}'::uuid\nORDER BY p.activated_at DESC NULLS LAST",
-          "refId": "A"
+          "refId": "A",
+          "datasource": {
+            "uid": "cfglj9j8ghwqob",
+            "type": "grafana-postgresql-datasource"
+          }
         }
       ]
     }
