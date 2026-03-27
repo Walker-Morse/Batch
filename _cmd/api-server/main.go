@@ -85,6 +85,7 @@ func main() {
 
 type noopCommandRepo struct{}
 func (r *noopCommandRepo) Insert(_ context.Context, _ *sharedports.DomainCommand) error { return nil }
+func (r *noopCommandRepo) FindByIdempotencyKey(_ context.Context, _ uuid.UUID) (*sharedports.DomainCommand, error) { return nil, nil }
 func (r *noopCommandRepo) FindDuplicate(_ context.Context, _, _, _, _ string) (*sharedports.DomainCommand, error) { return nil, nil }
 func (r *noopCommandRepo) UpdateStatus(_ context.Context, _ uuid.UUID, _ string, _ *string) error { return nil }
 
