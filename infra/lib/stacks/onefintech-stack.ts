@@ -45,15 +45,17 @@ export class OneFintechStack extends cdk.Stack {
 
     const networking = new NetworkingConstruct(this, "Networking", { env, natGateways });
     const storage = new StorageConstruct(this, "Storage", { env });
-    const aurora = new AuroraConstruct(this, "Aurora", {
-      env, vpc: networking.vpc, minAcu: auroraMinAcu, maxAcu: auroraMaxAcu,
-    });
 
     // Import the pre-created ingest_task credential (created by db-roles migration Lambda).
     // Secret name: onefintech/{env}/db/ingest-task — not managed by CDK, imported by name.
     const ingestTaskSecret = secretsmanager.Secret.fromSecretNameV2(
       this, "IngestTaskSecret", `onefintech/${env}/db/ingest-task`
     );
+
+    const aurora = new AuroraConstruct(this, "Aurora", {
+      env, vpc: networking.vpc, minAcu: auroraMinAcu, maxAcu: auroraMaxAcu,
+      ingestTaskSecret,
+    });
 
     const iam = new IamConstruct(this, "Iam", {
       env,

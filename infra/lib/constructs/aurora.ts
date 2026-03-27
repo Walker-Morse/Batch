@@ -9,6 +9,7 @@ export interface AuroraProps {
   vpc: ec2.Vpc;
   minAcu: number;
   maxAcu: number;
+  ingestTaskSecret: secretsmanager.ISecret;
 }
 
 /**
@@ -81,7 +82,7 @@ export class AuroraConstruct extends Construct {
 
     this.proxy = new rds.DatabaseProxy(this, "Proxy", {
       proxyTarget: rds.ProxyTarget.fromCluster(this.cluster),
-      secrets: [this.dbSecret, this.grafanaAppSecret],
+      secrets: [this.dbSecret, this.grafanaAppSecret, props.ingestTaskSecret],
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups: [proxySg],
