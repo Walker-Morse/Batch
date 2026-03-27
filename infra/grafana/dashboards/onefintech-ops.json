@@ -1,4 +1,5 @@
 {
+  "id": 3,
   "panels": [
     {
       "datasource": {
@@ -13,9 +14,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udd04 See pipeline runs",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=9&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=9&${__url_time_range}"
             }
           ]
         },
@@ -64,9 +65,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "\ud83d\udcc8 See row detail",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=10&${__url_time_range}",
-              "targetBlank": false
+              "url": "/d/onefintech-detail/detail-view?viewPanel=10&${__url_time_range}"
             }
           ]
         },
@@ -112,6 +113,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "\ud83d\udc80 See dead letters (7d)",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=8&${__url_time_range}"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -124,14 +132,7 @@
                 "value": 1
               }
             ]
-          },
-          "links": [
-            {
-              "title": "\ud83d\udc80 See dead letters (7d)",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=8&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         },
         "overrides": []
       },
@@ -218,13 +219,7 @@
           "custom": {
             "align": "left"
           },
-          "links": [
-            {
-              "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
-              "targetBlank": false
-            }
-          ]
+          "links": []
         }
       },
       "gridPos": {
@@ -257,7 +252,8 @@
           "options": {}
         }
       ],
-      "type": "table"
+      "type": "table",
+      "links": []
     },
     {
       "datasource": {
@@ -271,7 +267,7 @@
           "links": [
             {
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
               "targetBlank": false
             }
           ]
@@ -287,7 +283,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC\n",
+          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  CASE WHEN f.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (f.submitted_at - f.arrived_at))/60.0::numeric, 1)\n  END                                         AS \"Duration (min)\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.arrived_at >= NOW() - INTERVAL '7 days'\nORDER BY f.arrived_at DESC",
           "refId": "A"
         }
       ],
@@ -295,7 +291,14 @@
       "type": "table",
       "options": {
         "filterable": true
-      }
+      },
+      "links": [
+        {
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
+          "targetBlank": false
+        }
+      ]
     }
   ],
   "refresh": "30s",
@@ -310,5 +313,5 @@
   "timezone": "browser",
   "title": "Pipeline Operations",
   "uid": "onefintech-ops",
-  "version": 5
+  "version": 3
 }

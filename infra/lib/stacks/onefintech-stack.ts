@@ -113,11 +113,14 @@ export class OneFintechStack extends cdk.Stack {
       vpc: networking.vpc,
     });
 
-    // Grafana: self-hosted on ECS Fargate, read-only CloudWatch access for UAT team
+    // Grafana: self-hosted on ECS Fargate, Aurora PostgreSQL as internal DB (eliminates SQLite/EFS corruption)
     new GrafanaConstruct(this, "Grafana", {
       env,
       vpc: networking.vpc,
       cluster: ecs.cluster,
+      dbProxyEndpoint: aurora.proxyEndpoint,
+      grafanaAppSecret: aurora.grafanaAppSecret,
+      proxySg: aurora.proxySg,
     });
 
     // S3 lister: Lambda + HTTP API for Grafana Dashboard 3 file browser panel

@@ -21,7 +21,9 @@ export interface AuroraProps {
 export class AuroraConstruct extends Construct {
   public readonly cluster: rds.DatabaseCluster;
   public readonly proxy: rds.DatabaseProxy;
+  public readonly proxySg: ec2.SecurityGroup;
   public readonly dbSecret: secretsmanager.ISecret;
+  public readonly grafanaAppSecret: secretsmanager.Secret;
   public readonly proxyEndpoint: string;
 
   constructor(scope: Construct, id: string, props: AuroraProps) {
@@ -39,6 +41,7 @@ export class AuroraConstruct extends Construct {
       description: "RDS Proxy - allow ECS task SG",
       allowAllOutbound: false,
     });
+    this.proxySg = proxySg;
     dbSg.addIngressRule(proxySg, ec2.Port.tcp(5432), "RDS Proxy to Aurora");
 
     this.cluster = new rds.DatabaseCluster(this, "Cluster", {
@@ -62,9 +65,23 @@ export class AuroraConstruct extends Construct {
 
     this.dbSecret = this.cluster.secret!;
 
+    // Grafana internal DB credentials — CDK-managed so CloudFormation registers
+    // them with the RDS Proxy atomically (manual secrets bypass proxy auth cache).
+    this.grafanaAppSecret = new secretsmanager.Secret(this, "GrafanaAppSecret", {
+      secretName: `onefintech/${props.env}/db/grafana-app`,
+      description: "Grafana internal DB user (grafana_app) — RDS Proxy registered",
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: "grafana_app" }),
+        generateStringKey: "password",
+        excludePunctuation: true,
+        includeSpace: false,
+        passwordLength: 32,
+      },
+    });
+
     this.proxy = new rds.DatabaseProxy(this, "Proxy", {
       proxyTarget: rds.ProxyTarget.fromCluster(this.cluster),
-      secrets: [this.dbSecret],
+      secrets: [this.dbSecret, this.grafanaAppSecret],
       vpc: props.vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroups: [proxySg],

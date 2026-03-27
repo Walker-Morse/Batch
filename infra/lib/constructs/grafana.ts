@@ -15,6 +15,9 @@ export interface GrafanaProps {
   env: string;
   vpc: ec2.IVpc;
   cluster: ecs.ICluster;
+  dbProxyEndpoint: string;
+  grafanaAppSecret: secretsmanager.ISecret;
+  proxySg: ec2.ISecurityGroup;
 }
 
 /**
@@ -50,7 +53,7 @@ export class GrafanaConstruct extends Construct {
   constructor(scope: Construct, id: string, props: GrafanaProps) {
     super(scope, id);
 
-    const { env, vpc, cluster } = props;
+    const { env, vpc, cluster, dbProxyEndpoint, grafanaAppSecret, proxySg } = props;
 
     // ── Admin password in Secrets Manager ────────────────────────────────
     const adminPassword = new secretsmanager.Secret(this, "AdminPassword", {
@@ -134,8 +137,9 @@ export class GrafanaConstruct extends Construct {
     // EFS mount access
     fileSystem.grantRootAccess(grafanaTaskRole);
 
-    // Secrets Manager — read admin password only (Grafana needs it at startup)
+    // Secrets Manager — read admin password and grafana DB credentials at startup
     adminPassword.grantRead(grafanaTaskRole);
+    grafanaAppSecret.grantRead(grafanaTaskRole);
 
     // ── Execution role ────────────────────────────────────────────────────
     const grafanaExecutionRole = new iam.Role(this, "GrafanaExecutionRole", {
@@ -146,6 +150,7 @@ export class GrafanaConstruct extends Construct {
       ],
     });
     adminPassword.grantRead(grafanaExecutionRole);
+    grafanaAppSecret.grantRead(grafanaExecutionRole);
 
     // ── Log group ─────────────────────────────────────────────────────────
     const logGroup = new logs.LogGroup(this, "GrafanaLogGroup", {
@@ -186,20 +191,22 @@ export class GrafanaConstruct extends Construct {
         GF_SERVER_ROOT_URL:          `http://onefintech-${env}-grafana.internal`,
         GF_AUTH_ANONYMOUS_ENABLED:   "false",
         GF_SECURITY_ADMIN_USER:      "admin",
-        // Infinity datasource: enables HTTP/JSON endpoint queries for Dashboard 3 S3 file browser.
-        // CloudWatch intentionally excluded — it is bundled in Grafana v10+ (external install = 404 crash).
         GF_INSTALL_PLUGINS:          "yesoreyeram-infinity-datasource",
         GF_PATHS_DATA:               "/var/lib/grafana",
         GF_PATHS_PROVISIONING:       "/etc/grafana/provisioning",
         GF_LOG_MODE:                 "console",
         GF_LOG_LEVEL:                "info",
-        // WAL mode prevents "database is locked" errors on internal SQLite under concurrent
-        // tester load. Upgrade to GF_DATABASE_TYPE=postgres if contention persists at UAT.
-        GF_DATABASE_WAL:             "true",
+        // Aurora PostgreSQL as Grafana internal DB — eliminates SQLite/EFS corruption on restart.
+        GF_DATABASE_TYPE:            "postgres",
+        GF_DATABASE_HOST:            `${dbProxyEndpoint}:5432`,
+        GF_DATABASE_NAME:            "grafana",
+        GF_DATABASE_USER:            "grafana_app",
+        GF_DATABASE_SSL_MODE:        "require",
         AWS_DEFAULT_REGION:          cdk.Stack.of(this).region,
       },
       secrets: {
         GF_SECURITY_ADMIN_PASSWORD: ecs.Secret.fromSecretsManager(adminPassword),
+        GF_DATABASE_PASSWORD:       ecs.Secret.fromSecretsManager(grafanaAppSecret, "password"),
       },
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "grafana",
@@ -236,6 +243,8 @@ export class GrafanaConstruct extends Construct {
     });
     grafanaSg.addIngressRule(albSg, ec2.Port.tcp(3000), "ALB to Grafana");
     grafanaSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), "HTTPS to AWS APIs");
+    grafanaSg.addEgressRule(proxySg, ec2.Port.tcp(5432), "Grafana to RDS Proxy");
+    proxySg.addIngressRule(grafanaSg, ec2.Port.tcp(5432), "Grafana internal DB");
 
     // Allow Grafana task to reach EFS
     efsSg.addIngressRule(grafanaSg, ec2.Port.tcp(2049), "EFS from Grafana task");

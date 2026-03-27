@@ -1,4 +1,5 @@
 {
+  "id": 1,
   "panels": [
     {
       "datasource": {
@@ -9,6 +10,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "\ud83d\udcc1 See files",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}"
+            }
+          ],
           "thresholds": {
             "steps": [
               {
@@ -16,14 +24,7 @@
                 "value": null
               }
             ]
-          },
-          "links": [
-            {
-              "title": "\ud83d\udcc1 See files",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=2&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         }
       },
       "gridPos": {
@@ -61,6 +62,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "\ud83d\udcca See row detail",
+              "url": "/d/onefintech-detail/detail-view?viewPanel=12&${__url_time_range}"
+            }
+          ],
           "thresholds": {
             "steps": [
               {
@@ -68,14 +76,7 @@
                 "value": null
               }
             ]
-          },
-          "links": [
-            {
-              "title": "\ud83d\udcca See row detail",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=12&${__url_time_range}",
-              "targetBlank": false
-            }
-          ]
+          }
         }
       },
       "gridPos": {
@@ -116,7 +117,7 @@
           "links": [
             {
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
               "targetBlank": false
             }
           ]
@@ -191,7 +192,14 @@
       "type": "table",
       "options": {
         "filterable": true
-      }
+      },
+      "links": [
+        {
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
+          "targetBlank": false
+        }
+      ]
     },
     {
       "datasource": {
@@ -202,13 +210,7 @@
           "custom": {
             "align": "left"
           },
-          "links": [
-            {
-              "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
-              "targetBlank": false
-            }
-          ]
+          "links": []
         }
       },
       "gridPos": {
@@ -229,7 +231,8 @@
       "type": "table",
       "options": {
         "filterable": true
-      }
+      },
+      "links": []
     },
     {
       "datasource": {
@@ -439,7 +442,7 @@
           "links": [
             {
               "title": "\ud83d\udcc4 View File Detail",
-              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}",
+              "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
               "targetBlank": false
             }
           ]
@@ -610,12 +613,19 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.submitted_at   AT TIME ZONE 'UTC'         AS \"Submitted At\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.status NOT IN ('COMPLETE','SUBMITTED')\nORDER BY f.arrived_at DESC\nLIMIT 100",
+          "rawSql": "SELECT\n  f.tenant_id || ' \u00b7 ' || f.file_type || ' \u00b7 ' || TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI') AS \"File\",\n  f.client_id                                 AS \"Client\",\n  f.file_type                                 AS \"File Type\",\n  f.arrived_at     AT TIME ZONE 'UTC'         AS \"Arrived At\",\n  f.status                                    AS \"Status\",\n  f.record_count                              AS \"Declared Rows\",\n  f.malformed_count                           AS \"Malformed Rows\",\n  f.updated_at     AT TIME ZONE 'UTC'         AS \"Last Updated\",\n  f.id                                        AS \"File ID\",\n  f.correlation_id                            AS \"Correlation ID\"\nFROM batch_files f\nWHERE f.status NOT IN ('COMPLETE', 'SUBMITTED')\nORDER BY f.arrived_at DESC\nLIMIT 100",
           "refId": "A"
         }
       ],
       "title": "\u26a0\ufe0f  Unprocessed / Incomplete Files",
-      "type": "table"
+      "type": "table",
+      "links": [
+        {
+          "title": "\ud83d\udcc4 View File Detail",
+          "url": "/d/onefintech-file/file-detail?var-fileId=${__data.fields[\"File ID\"]}&${__url_time_range}",
+          "targetBlank": false
+        }
+      ]
     }
   ],
   "refresh": "1m",
@@ -648,5 +658,5 @@
   "timezone": "browser",
   "title": "File Manifest",
   "uid": "onefintech-files",
-  "version": 5
+  "version": 3
 }
