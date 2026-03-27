@@ -8,414 +8,78 @@
   ],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 6,
+  "version": 7,
   "refresh": "30s",
   "panels": [
     {
       "id": 1,
-      "title": "Client",
-      "type": "stat",
+      "title": "File Metadata",
+      "type": "table",
       "datasource": {
-        "uid": "cfglj9j8ghwqob"
+        "uid": "cfglj9j8ghwqob",
+        "type": "grafana-postgresql-datasource"
       },
       "gridPos": {
-        "h": 4,
-        "w": 3,
+        "h": 5,
+        "w": 24,
         "x": 0,
         "y": 0
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "custom": {
+            "align": "left",
+            "width": 200,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Declared Rows"
+            },
+            "properties": [
               {
-                "color": "blue",
-                "value": null
+                "id": "custom.width",
+                "value": 130
               }
             ]
           },
-          "noValue": "",
-          "unit": "string"
-        },
-        "overrides": []
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Malformed Rows"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
+        "filterable": false,
+        "sortBy": []
       },
       "targets": [
         {
-          "format": "table",
-          "rawSql": "SELECT f.client_id FROM batch_files f WHERE f.id = '${fileId}'::uuid",
           "refId": "A",
           "datasource": {
             "uid": "cfglj9j8ghwqob",
             "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "title": "File Type",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 3,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "",
-          "unit": "string"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
           "format": "table",
-          "rawSql": "SELECT f.file_type FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 3,
-      "title": "Status",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 6,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "",
-          "unit": "string"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT f.status FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "title": "Declared Rows",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 9,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "background"
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT f.record_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "title": "Malformed Rows",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 12,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "orange"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "orange",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "background"
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT f.malformed_count FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 6,
-      "title": "Arrived At",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 15,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "",
-          "unit": "string"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT TO_CHAR(f.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
-        }
-      ]
-    },
-    {
-      "id": 7,
-      "title": "Submitted At",
-      "type": "stat",
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 19,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "blue"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "noValue": "",
-          "unit": "string"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "auto",
-        "textMode": "value",
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI') FROM batch_files f WHERE f.id = '${fileId}'::uuid",
-          "refId": "A",
-          "datasource": {
-            "uid": "cfglj9j8ghwqob",
-            "type": "grafana-postgresql-datasource"
-          }
+          "rawSql": "SELECT\n  f.client_id                                         AS \"Client\",\n  f.file_type                                         AS \"File Type\",\n  f.status                                            AS \"Status\",\n  f.record_count                                      AS \"Declared Rows\",\n  f.malformed_count                                   AS \"Malformed Rows\",\n  TO_CHAR(f.arrived_at  AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Arrived At\",\n  TO_CHAR(f.submitted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS') AS \"Submitted At\"\nFROM batch_files f\nWHERE f.id = '${fileId}'::uuid"
         }
       ]
     },
@@ -430,7 +94,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 9
       },
       "fieldConfig": {
         "defaults": {
@@ -468,7 +132,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -506,7 +170,7 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 29
       },
       "fieldConfig": {
         "defaults": {
