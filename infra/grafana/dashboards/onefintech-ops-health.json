@@ -288,7 +288,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-ops-health/ops-health",
+              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -356,7 +356,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
+              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -424,7 +424,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
+              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -500,7 +500,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
+              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -576,7 +576,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-ops-health/ops-health",
+              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -652,7 +652,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
+              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ],
@@ -1159,5 +1159,5 @@
   "timezone": "browser",
   "title": "Ops Health",
   "uid": "onefintech-ops-health",
-  "version": 44
+  "version": 51
 }
