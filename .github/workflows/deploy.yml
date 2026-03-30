@@ -8,8 +8,9 @@ on:
 env:
   AWS_REGION: us-east-1
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  ECR_INGEST_TASK: onefintech-dev/ingest-task
-  ECR_API_SERVER:  onefintech-dev/api-server
+  ECR_INGEST_TASK:    onefintech-dev/ingest-task
+  ECR_API_SERVER:     onefintech-dev/api-server
+  ECR_XTRACT_LOADER:  onefintech-dev/xtract-loader
 
 jobs:
   test:
@@ -91,10 +92,44 @@ jobs:
           docker push $REGISTRY/$ECR_API_SERVER:latest
           echo "image=$REGISTRY/$ECR_API_SERVER:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+  build-xtract-loader:
+    name: Build xtract-loader image
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-onefintech-dev
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, tag, and push xtract-loader
+        id: push
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -f Dockerfile.xtract-loader \
+            -t $REGISTRY/$ECR_XTRACT_LOADER:$IMAGE_TAG \
+            -t $REGISTRY/$ECR_XTRACT_LOADER:latest \
+            .
+          docker push $REGISTRY/$ECR_XTRACT_LOADER:$IMAGE_TAG
+          docker push $REGISTRY/$ECR_XTRACT_LOADER:latest
+          echo "image=$REGISTRY/$ECR_XTRACT_LOADER:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
   cdk-deploy:
     name: CDK Deploy DEV
     runs-on: ubuntu-latest
-    needs: [build-ingest-task, build-api-server]
+    needs: [build-ingest-task, build-api-server, build-xtract-loader]
     permissions:
       id-token: write
       contents: read

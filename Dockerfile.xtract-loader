@@ -1,0 +1,22 @@
+# One Fintech xtract-loader — FIS Data XTRACT ETL task
+# Same multi-stage scratch pattern as ingest-task.
+FROM golang:1.25.8-alpine AS builder
+
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /build
+COPY go.mod go.sum ./
+ENV GONOSUMDB="*" GOFLAGS="-mod=mod"
+RUN go mod download
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GONOSUMDB="*" GOFLAGS="-mod=mod" \
+    go build -ldflags="-s -w" -o /xtract-loader ./_cmd/xtract-loader
+
+# ── Runtime — minimal scratch image ──────────────────────────────────────────
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /xtract-loader /xtract-loader
+
+ENTRYPOINT ["/xtract-loader"]
