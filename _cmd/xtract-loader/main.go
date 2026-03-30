@@ -34,6 +34,7 @@ import (
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/walker-morse/batch/xtract_loader/feeds/ccx"
 	"github.com/walker-morse/batch/xtract_loader/feeds/stdacctbal"
 	"github.com/walker-morse/batch/xtract_loader/feeds/stdauth"
 	"github.com/walker-morse/batch/xtract_loader/feeds/stdfsid"
@@ -147,7 +148,6 @@ func run(ctx context.Context, log *slog.Logger) error {
 		return fmt.Errorf("dispatch %s: %w", meta.XtractType, loadErr)
 	}
 
-	// Update header dates now that we've parsed
 	hfd := result.Header.FileDate
 	wod := result.Header.WorkOfDate
 	_ = fl.SetProcessing(ctx, sk, &hfd, &wod, result.DetailCount)
@@ -172,23 +172,13 @@ func dispatch(ctx context.Context, log *slog.Logger, pool *pgxpool.Pool,
 	switch xtractType {
 	case "STDMON":
 		loader := stdmon.NewLoader(pool, tenantID, s3Key)
-		result, err := parser.Parse(ctx, r, s3Key, stdmon.FeedName, func(ctx context.Context, lineNum int, fields []string) error {
-			// Stamp work_of_date from header after first row — header already parsed
+		return parser.Parse(ctx, r, s3Key, stdmon.FeedName, func(ctx context.Context, lineNum int, fields []string) error {
 			return loader.ProcessRow(ctx, lineNum, fields)
 		})
-		if err == nil && result != nil {
-			// Pass work_of_date via a second parse pass would be expensive.
-			// The loader uses workOfDate from header; we set it via a wrapper approach.
-			// For now stdmon.ProcessRow reads workOfDate from file header fields embedded
-			// in the loader struct — wired correctly in NewLoader call above.
-			_ = result
-		}
-		return result, err
 
 	case "STDAUTH":
 		loader := stdauth.NewLoader(pool, tenantID, s3Key)
 		return parser.Parse(ctx, r, s3Key, stdauth.FeedName, func(ctx context.Context, lineNum int, fields []string) error {
-			loader.SetWorkOfDate(nil) // set by header; loader reads from its own workOfDate field
 			return loader.ProcessRow(ctx, lineNum, fields)
 		})
 
@@ -206,24 +196,34 @@ func dispatch(ctx context.Context, log *slog.Logger, pool *pgxpool.Pool,
 		})
 
 	case "STDFSID":
-		result, err := parser.Parse(ctx, r, s3Key, stdfsid.FeedName, func(ctx context.Context, lineNum int, fields []string) error {
-			// STDFSID loader needs workOfDate from header — parse header first then create loader
-			// We use a closure to capture workOfDate from the first row parse
-			return nil // handled via wrapper below
-		})
+		// STDFSID needs workOfDate from the H record to initialize the loader.
+		// The parser provides this in ParseResult.Header after the full parse.
+		// We use a two-phase approach: first pass captures header and counts rows
+		// (cheap — all rows are nooped), second pass runs the real loader.
+		// The temp file is seekable so both passes read from the same buffer.
+		seeker, canSeek := r.(io.ReadSeeker)
+		if !canSeek {
+			log.Warn("STDFSID source not seekable — using zero workOfDate", "key", s3Key)
+			loader := stdfsid.NewLoader(pool, tenantID, s3Key, time.Time{})
+			return parser.Parse(ctx, r, s3Key, stdfsid.FeedName, loader.ProcessRow)
+		}
+		// Phase 1: parse header only (noop rows)
+		firstResult, err := parser.Parse(ctx, seeker, s3Key, stdfsid.FeedName, noopRow)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stdfsid header pass: %w", err)
 		}
-		// Re-parse with real loader now that we have work_of_date from header
-		if _, seekErr := r.(io.Seeker).Seek(0, io.SeekStart); seekErr != nil {
-			log.Warn("STDFSID cannot re-seek — work_of_date may be zero", "key", s3Key)
+		// Phase 2: seek back, parse with real loader
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return nil, fmt.Errorf("stdfsid seek: %w", err)
 		}
-		loader := stdfsid.NewLoader(pool, tenantID, s3Key, result.Header.WorkOfDate)
-		return parser.Parse(ctx, r, s3Key, stdfsid.FeedName, loader.ProcessRow)
+		loader := stdfsid.NewLoader(pool, tenantID, s3Key, firstResult.Header.WorkOfDate)
+		return parser.Parse(ctx, seeker, s3Key, stdfsid.FeedName, loader.ProcessRow)
 
 	case "CCX":
-		log.Info("CCX loader not yet implemented — file logged for non-repudiation", "key", s3Key)
-		return parser.Parse(ctx, r, s3Key, "", noopRow)
+		loader := ccx.NewLoader(pool, tenantID, s3Key)
+		return parser.Parse(ctx, r, s3Key, ccx.FeedName, func(ctx context.Context, lineNum int, fields []string) error {
+			return loader.ProcessRow(ctx, lineNum, fields)
+		})
 
 	case "CLIENTHIERARCHY":
 		log.Info("CLIENTHIERARCHY loader not yet implemented — file logged for non-repudiation", "key", s3Key)
