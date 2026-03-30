@@ -102,10 +102,10 @@
         "overrides": []
       },
       "gridPos": {
-        "y": 4,
-        "x": 0,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 4
       },
       "id": 20,
       "options": {
@@ -130,11 +130,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT DATE_TRUNC('hour', arrived_at) AS time, COUNT(*) AS \"Files processed\"\nFROM batch_files WHERE $__timeFilter(arrived_at) GROUP BY 1 ORDER BY 1\n",
+          "rawSql": "SELECT DATE_TRUNC('day', arrived_at) AS time, COUNT(*) AS \"Files processed\"\nFROM batch_files WHERE $__timeFilter(arrived_at) GROUP BY 1 ORDER BY 1",
           "refId": "A"
         }
       ],
-      "title": "Files processed per hour",
+      "title": "Files processed per day",
       "type": "timeseries"
     },
     {
@@ -175,10 +175,10 @@
         "overrides": []
       },
       "gridPos": {
-        "y": 4,
-        "x": 12,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 12,
+        "y": 4
       },
       "id": 21,
       "options": {
@@ -203,11 +203,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT DATE_TRUNC('hour', created_at) AS time, COUNT(*) AS \"Dead letters\"\nFROM dead_letter_store WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1\n",
+          "rawSql": "SELECT DATE_TRUNC('day', created_at) AS time, COUNT(*) AS \"Dead letters\"\nFROM dead_letter_store WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1",
           "refId": "A"
         }
       ],
-      "title": "Dead letters per hour",
+      "title": "Dead letters per day",
       "type": "timeseries"
     },
     {
@@ -240,10 +240,10 @@
         "overrides": []
       },
       "gridPos": {
-        "y": 12,
-        "x": 0,
+        "h": 7,
         "w": 24,
-        "h": 7
+        "x": 0,
+        "y": 12
       },
       "id": 22,
       "options": {
@@ -285,6 +285,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -295,22 +302,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 0,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 0,
+        "y": 0
       },
       "id": 23,
       "options": {
@@ -353,6 +353,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -363,22 +370,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 4,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 4,
+        "y": 0
       },
       "id": 24,
       "options": {
@@ -421,6 +421,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -439,22 +446,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 8,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 8,
+        "y": 0
       },
       "id": 25,
       "options": {
@@ -497,6 +497,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -515,22 +522,15 @@
               }
             ]
           },
-          "unit": "percent",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 12,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 12,
+        "y": 0
       },
       "id": 26,
       "options": {
@@ -573,6 +573,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -591,22 +598,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-ops-health/ops-health",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 16,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 16,
+        "y": 0
       },
       "id": 27,
       "options": {
@@ -649,6 +649,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -667,22 +674,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 20,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 20,
+        "y": 0
       },
       "id": 28,
       "options": {
@@ -935,10 +935,10 @@
         ]
       },
       "gridPos": {
-        "y": 19,
-        "x": 0,
+        "h": 10,
         "w": 24,
-        "h": 10
+        "x": 0,
+        "y": 19
       },
       "id": 29,
       "options": {
@@ -1023,10 +1023,10 @@
         ]
       },
       "gridPos": {
-        "y": 29,
-        "x": 0,
+        "h": 8,
         "w": 14,
-        "h": 8
+        "x": 0,
+        "y": 29
       },
       "id": 30,
       "options": {
@@ -1113,10 +1113,10 @@
         ]
       },
       "gridPos": {
-        "y": 29,
-        "x": 14,
+        "h": 8,
         "w": 10,
-        "h": 8
+        "x": 14,
+        "y": 29
       },
       "id": 31,
       "options": {
@@ -1159,5 +1159,5 @@
   "timezone": "browser",
   "title": "Ops Health",
   "uid": "onefintech-ops-health",
-  "version": 9
+  "version": 16
 }

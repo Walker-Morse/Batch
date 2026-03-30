@@ -1,34 +1,123 @@
 {
-  "uid": "onefintech-member-lifecycle",
-  "title": "Member Lifecycle",
-  "tags": [
-    "onefintech",
-    "members"
-  ],
-  "timezone": "browser",
-  "time": {
-    "from": "now-90d",
-    "to": "now"
+  "annotations": {
+    "list": []
   },
-  "timepicker": {},
-  "refresh": "1m",
-  "schemaVersion": 39,
-  "version": 1,
+  "id": 48,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Ops Health",
+      "type": "link",
+      "url": "/d/onefintech-ops-health/ops-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "File Detail",
+      "type": "link",
+      "url": "/d/onefintech-file-detail/file-detail"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Member Lifecycle",
+      "type": "link",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "UAT Validation",
+      "type": "link",
+      "url": "/d/onefintech-uat-v2/uat-validation"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Platform Config",
+      "type": "link",
+      "url": "/d/onefintech-platform-config/platform-config"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Tests",
+      "type": "link",
+      "url": "/d/onefintech-tests/test-runs"
+    }
+  ],
   "panels": [
     {
-      "id": 60,
-      "type": "stat",
-      "title": "Members",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 4,
         "w": 6,
         "x": 0,
         "y": 0
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "id": 60,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -41,6 +130,40 @@
           "refId": "A"
         }
       ],
+      "title": "Members",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 61,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -55,41 +178,7 @@
         },
         "textMode": "auto"
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 61,
-      "type": "stat",
-      "title": "Active Purses",
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 0
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -102,6 +191,40 @@
           "refId": "A"
         }
       ],
+      "title": "Active Purses",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 62,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -116,41 +239,7 @@
         },
         "textMode": "auto"
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 62,
-      "type": "stat",
-      "title": "Active Balance ($)",
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 0
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -163,6 +252,40 @@
           "refId": "A"
         }
       ],
+      "title": "Active Balance ($)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 63,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -177,41 +300,7 @@
         },
         "textMode": "auto"
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 63,
-      "type": "stat",
-      "title": "Benefit Periods",
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 0
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -224,72 +313,13 @@
           "refId": "A"
         }
       ],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
+      "title": "Benefit Periods",
+      "type": "stat"
     },
     {
-      "id": 64,
-      "type": "table",
-      "title": "Member lifecycle \u2014 all files, all periods",
-      "gridPos": {
-        "h": 16,
-        "w": 24,
-        "x": 0,
-        "y": 4
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT\n  c.client_member_id                                            AS \"Member ID\",\n  c.last_name || ', ' || c.first_name                           AS \"Name\",\n  c.status                                                      AS \"Consumer Status\",\n  ca.pan_masked                                                 AS \"Card (masked)\",\n  ca.card_status                                                AS \"Card Status\",\n  p.benefit_period                                              AS \"Period\",\n  p.benefit_type                                                AS \"Benefit Type\",\n  p.purse_type                                                  AS \"Purse Type\",\n  p.status                                                      AS \"Purse Status\",\n  ROUND(p.available_balance_cents / 100.0, 2)                   AS \"Balance ($)\",\n  p.effective_date                                              AS \"Effective\",\n  p.expiry_date                                                 AS \"Expires\",\n  -- ENROLL command outcome\n  CASE\n    WHEN dc_enroll.status = 'Completed' THEN '\u2705 enrolled'\n    WHEN dc_enroll.status = 'Failed'    THEN '\u274c failed'\n    WHEN dc_enroll.status = 'Duplicate' THEN '\u26a0\ufe0f duplicate'\n    WHEN dc_enroll.status IS NOT NULL   THEN '\u23f3 ' || dc_enroll.status\n    ELSE '\u2014'\n  END                                                           AS \"Enroll Cmd\",\n  -- RT30 card issuance\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     THEN '\u2705 issued'\n    WHEN rt30.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt30.fis_result_code,'err')\n    WHEN rt30.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt30.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Card Issued\",\n  -- RT60 purse load for this period\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n     THEN '\u2705 loaded'\n    WHEN rt60.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt60.fis_result_code,'err')\n    WHEN rt60.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt60.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Benefit Loaded\",\n  -- Source file for this period's load\n  TO_CHAR(bf_load.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI')\n    || ' \u00b7 ' || bf_load.file_type                               AS \"Source File\",\n  bf_load.correlation_id                                        AS \"Correlation ID\"\nFROM consumers c\nJOIN cards ca\n  ON ca.consumer_id = c.id\nLEFT JOIN purses p\n  ON p.consumer_id = c.id\nLEFT JOIN batch_files bf_load\n  ON bf_load.id = p.source_batch_file_id\nLEFT JOIN domain_commands dc_enroll\n  ON dc_enroll.tenant_id = c.tenant_id\n AND dc_enroll.client_member_id = c.client_member_id\n AND dc_enroll.command_type = 'ENROLL'\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.client_member_id = c.client_member_id\n AND rt30.tenant_id = c.tenant_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.client_member_id = c.client_member_id\n AND rt60.tenant_id = c.tenant_id\n AND rt60.effective_date = p.effective_date\nWHERE c.client_member_id LIKE CASE WHEN '${medicaid_id}' = '' THEN '%' ELSE '${medicaid_id}' END\nORDER BY c.client_member_id, p.benefit_period DESC, p.benefit_type\nLIMIT 1000\n",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "sortBy": [],
-        "footer": {
-          "show": false
-        }
       },
       "fieldConfig": {
         "defaults": {
@@ -337,52 +367,101 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "COMPLETE": {
+                      "ACTIVE": {
                         "color": "green",
-                        "index": 0,
-                        "text": "COMPLETE"
-                      },
-                      "PROCESSING": {
-                        "color": "blue",
-                        "index": 1,
-                        "text": "PROCESSING"
-                      },
-                      "SUBMITTED": {
-                        "color": "blue",
-                        "index": 2,
-                        "text": "SUBMITTED"
+                        "index": 18,
+                        "text": "ACTIVE"
                       },
                       "ASSEMBLED": {
                         "color": "blue",
                         "index": 3,
                         "text": "ASSEMBLED"
                       },
-                      "VALIDATING": {
-                        "color": "yellow",
-                        "index": 4,
-                        "text": "VALIDATING"
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
                       },
-                      "RECEIVED": {
-                        "color": "yellow",
-                        "index": 5,
-                        "text": "RECEIVED"
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
                       },
-                      "STALLED": {
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Duplicate": {
                         "color": "orange",
-                        "index": 6,
-                        "text": "STALLED"
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
                       },
                       "HALTED": {
                         "color": "red",
                         "index": 7,
                         "text": "HALTED"
                       },
-                      "FAILED": {
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
                         "color": "red",
-                        "index": 8,
-                        "text": "FAILED"
+                        "index": 21,
+                        "text": "TERMINATED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
                       },
                       "enrolled": {
                         "color": "green",
@@ -398,58 +477,9 @@
                         "color": "yellow",
                         "index": 11,
                         "text": "staged"
-                      },
-                      "STAGED": {
-                        "color": "yellow",
-                        "index": 12,
-                        "text": "STAGED"
-                      },
-                      "COMPLETED": {
-                        "color": "green",
-                        "index": 13,
-                        "text": "COMPLETED"
-                      },
-                      "Completed": {
-                        "color": "green",
-                        "index": 14,
-                        "text": "Completed"
-                      },
-                      "Failed": {
-                        "color": "red",
-                        "index": 15,
-                        "text": "Failed"
-                      },
-                      "Accepted": {
-                        "color": "blue",
-                        "index": 16,
-                        "text": "Accepted"
-                      },
-                      "Duplicate": {
-                        "color": "orange",
-                        "index": 17,
-                        "text": "Duplicate"
-                      },
-                      "ACTIVE": {
-                        "color": "green",
-                        "index": 18,
-                        "text": "ACTIVE"
-                      },
-                      "PENDING": {
-                        "color": "yellow",
-                        "index": 19,
-                        "text": "PENDING"
-                      },
-                      "SUSPENDED": {
-                        "color": "orange",
-                        "index": 20,
-                        "text": "SUSPENDED"
-                      },
-                      "TERMINATED": {
-                        "color": "red",
-                        "index": 21,
-                        "text": "TERMINATED"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -481,52 +511,101 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "COMPLETE": {
+                      "ACTIVE": {
                         "color": "green",
-                        "index": 0,
-                        "text": "COMPLETE"
-                      },
-                      "PROCESSING": {
-                        "color": "blue",
-                        "index": 1,
-                        "text": "PROCESSING"
-                      },
-                      "SUBMITTED": {
-                        "color": "blue",
-                        "index": 2,
-                        "text": "SUBMITTED"
+                        "index": 18,
+                        "text": "ACTIVE"
                       },
                       "ASSEMBLED": {
                         "color": "blue",
                         "index": 3,
                         "text": "ASSEMBLED"
                       },
-                      "VALIDATING": {
-                        "color": "yellow",
-                        "index": 4,
-                        "text": "VALIDATING"
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
                       },
-                      "RECEIVED": {
-                        "color": "yellow",
-                        "index": 5,
-                        "text": "RECEIVED"
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
                       },
-                      "STALLED": {
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Duplicate": {
                         "color": "orange",
-                        "index": 6,
-                        "text": "STALLED"
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
                       },
                       "HALTED": {
                         "color": "red",
                         "index": 7,
                         "text": "HALTED"
                       },
-                      "FAILED": {
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
                         "color": "red",
-                        "index": 8,
-                        "text": "FAILED"
+                        "index": 21,
+                        "text": "TERMINATED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
                       },
                       "enrolled": {
                         "color": "green",
@@ -542,58 +621,9 @@
                         "color": "yellow",
                         "index": 11,
                         "text": "staged"
-                      },
-                      "STAGED": {
-                        "color": "yellow",
-                        "index": 12,
-                        "text": "STAGED"
-                      },
-                      "COMPLETED": {
-                        "color": "green",
-                        "index": 13,
-                        "text": "COMPLETED"
-                      },
-                      "Completed": {
-                        "color": "green",
-                        "index": 14,
-                        "text": "Completed"
-                      },
-                      "Failed": {
-                        "color": "red",
-                        "index": 15,
-                        "text": "Failed"
-                      },
-                      "Accepted": {
-                        "color": "blue",
-                        "index": 16,
-                        "text": "Accepted"
-                      },
-                      "Duplicate": {
-                        "color": "orange",
-                        "index": 17,
-                        "text": "Duplicate"
-                      },
-                      "ACTIVE": {
-                        "color": "green",
-                        "index": 18,
-                        "text": "ACTIVE"
-                      },
-                      "PENDING": {
-                        "color": "yellow",
-                        "index": 19,
-                        "text": "PENDING"
-                      },
-                      "SUSPENDED": {
-                        "color": "orange",
-                        "index": 20,
-                        "text": "SUSPENDED"
-                      },
-                      "TERMINATED": {
-                        "color": "red",
-                        "index": 21,
-                        "text": "TERMINATED"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -625,52 +655,101 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "COMPLETE": {
+                      "ACTIVE": {
                         "color": "green",
-                        "index": 0,
-                        "text": "COMPLETE"
-                      },
-                      "PROCESSING": {
-                        "color": "blue",
-                        "index": 1,
-                        "text": "PROCESSING"
-                      },
-                      "SUBMITTED": {
-                        "color": "blue",
-                        "index": 2,
-                        "text": "SUBMITTED"
+                        "index": 18,
+                        "text": "ACTIVE"
                       },
                       "ASSEMBLED": {
                         "color": "blue",
                         "index": 3,
                         "text": "ASSEMBLED"
                       },
-                      "VALIDATING": {
-                        "color": "yellow",
-                        "index": 4,
-                        "text": "VALIDATING"
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
                       },
-                      "RECEIVED": {
-                        "color": "yellow",
-                        "index": 5,
-                        "text": "RECEIVED"
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
                       },
-                      "STALLED": {
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Duplicate": {
                         "color": "orange",
-                        "index": 6,
-                        "text": "STALLED"
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
                       },
                       "HALTED": {
                         "color": "red",
                         "index": 7,
                         "text": "HALTED"
                       },
-                      "FAILED": {
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
                         "color": "red",
-                        "index": 8,
-                        "text": "FAILED"
+                        "index": 21,
+                        "text": "TERMINATED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
                       },
                       "enrolled": {
                         "color": "green",
@@ -686,58 +765,9 @@
                         "color": "yellow",
                         "index": 11,
                         "text": "staged"
-                      },
-                      "STAGED": {
-                        "color": "yellow",
-                        "index": 12,
-                        "text": "STAGED"
-                      },
-                      "COMPLETED": {
-                        "color": "green",
-                        "index": 13,
-                        "text": "COMPLETED"
-                      },
-                      "Completed": {
-                        "color": "green",
-                        "index": 14,
-                        "text": "Completed"
-                      },
-                      "Failed": {
-                        "color": "red",
-                        "index": 15,
-                        "text": "Failed"
-                      },
-                      "Accepted": {
-                        "color": "blue",
-                        "index": 16,
-                        "text": "Accepted"
-                      },
-                      "Duplicate": {
-                        "color": "orange",
-                        "index": 17,
-                        "text": "Duplicate"
-                      },
-                      "ACTIVE": {
-                        "color": "green",
-                        "index": 18,
-                        "text": "ACTIVE"
-                      },
-                      "PENDING": {
-                        "color": "yellow",
-                        "index": 19,
-                        "text": "PENDING"
-                      },
-                      "SUSPENDED": {
-                        "color": "orange",
-                        "index": 20,
-                        "text": "SUSPENDED"
-                      },
-                      "TERMINATED": {
-                        "color": "red",
-                        "index": 21,
-                        "text": "TERMINATED"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -757,8 +787,11 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
+                      "\u26a0\ufe0f duplicate": {
+                        "color": "orange",
+                        "index": 2
+                      },
                       "\u2705 enrolled": {
                         "color": "green",
                         "index": 0
@@ -766,12 +799,9 @@
                       "\u274c failed": {
                         "color": "red",
                         "index": 1
-                      },
-                      "\u26a0\ufe0f duplicate": {
-                        "color": "orange",
-                        "index": 2
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -791,25 +821,25 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "\u2705 issued": {
-                        "color": "green",
-                        "index": 0
-                      },
-                      "\u23f3 submitted": {
-                        "color": "blue",
-                        "index": 1
+                      "\u2014": {
+                        "color": "super-light-gray",
+                        "index": 3
                       },
                       "\u23f3 staged": {
                         "color": "yellow",
                         "index": 2
                       },
-                      "\u2014": {
-                        "color": "super-light-gray",
-                        "index": 3
+                      "\u23f3 submitted": {
+                        "color": "blue",
+                        "index": 1
+                      },
+                      "\u2705 issued": {
+                        "color": "green",
+                        "index": 0
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -829,25 +859,25 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "\u2705 loaded": {
-                        "color": "green",
-                        "index": 0
-                      },
-                      "\u23f3 submitted": {
-                        "color": "blue",
-                        "index": 1
+                      "\u2014": {
+                        "color": "super-light-gray",
+                        "index": 3
                       },
                       "\u23f3 staged": {
                         "color": "yellow",
                         "index": 2
                       },
-                      "\u2014": {
-                        "color": "super-light-gray",
-                        "index": 3
+                      "\u23f3 submitted": {
+                        "color": "blue",
+                        "index": 1
+                      },
+                      "\u2705 loaded": {
+                        "color": "green",
+                        "index": 0
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -863,9 +893,9 @@
                 "id": "links",
                 "value": [
                   {
+                    "targetBlank": false,
                     "title": "Open file detail",
-                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__data.fields['Correlation ID']}",
-                    "targetBlank": false
+                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__data.fields['Correlation ID']}"
                   }
                 ]
               }
@@ -885,93 +915,64 @@
           }
         ]
       },
-      "pluginVersion": "10.4.3"
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 64,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  c.client_member_id                                            AS \"Member ID\",\n  c.last_name || ', ' || c.first_name                           AS \"Name\",\n  c.status                                                      AS \"Consumer Status\",\n  ca.pan_masked                                                 AS \"Card (masked)\",\n  ca.card_status                                                AS \"Card Status\",\n  p.benefit_period                                              AS \"Period\",\n  p.benefit_type                                                AS \"Benefit Type\",\n  p.purse_type                                                  AS \"Purse Type\",\n  p.status                                                      AS \"Purse Status\",\n  ROUND(p.available_balance_cents / 100.0, 2)                   AS \"Balance ($)\",\n  p.effective_date                                              AS \"Effective\",\n  p.expiry_date                                                 AS \"Expires\",\n  -- ENROLL command outcome\n  CASE\n    WHEN dc_enroll.status = 'Completed' THEN '\u2705 enrolled'\n    WHEN dc_enroll.status = 'Failed'    THEN '\u274c failed'\n    WHEN dc_enroll.status = 'Duplicate' THEN '\u26a0\ufe0f duplicate'\n    WHEN dc_enroll.status IS NOT NULL   THEN '\u23f3 ' || dc_enroll.status\n    ELSE '\u2014'\n  END                                                           AS \"Enroll Cmd\",\n  -- RT30 card issuance\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     THEN '\u2705 issued'\n    WHEN rt30.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt30.fis_result_code,'err')\n    WHEN rt30.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt30.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Card Issued\",\n  -- RT60 purse load for this period\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n     THEN '\u2705 loaded'\n    WHEN rt60.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt60.fis_result_code,'err')\n    WHEN rt60.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt60.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Benefit Loaded\",\n  -- Source file for this period's load\n  TO_CHAR(bf_load.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI')\n    || ' \u00b7 ' || bf_load.file_type                               AS \"Source File\",\n  bf_load.correlation_id                                        AS \"Correlation ID\"\nFROM consumers c\nLEFT JOIN cards ca\n  ON ca.consumer_id = c.id AND ca.card_status = 'active'\nLEFT JOIN purses p\n  ON p.consumer_id = c.id\nLEFT JOIN batch_files bf_load\n  ON bf_load.id = p.source_batch_file_id\nLEFT JOIN domain_commands dc_enroll\n  ON dc_enroll.tenant_id = c.tenant_id\n AND dc_enroll.client_member_id = c.client_member_id\n AND dc_enroll.command_type = 'ENROLL'\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.client_member_id = c.client_member_id\n AND rt30.tenant_id = c.tenant_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.client_member_id = c.client_member_id\n AND rt60.tenant_id = c.tenant_id\n AND rt60.effective_date = p.effective_date\nWHERE c.client_member_id LIKE CASE WHEN '${medicaid_id}' = '' THEN '%' ELSE '${medicaid_id}' END\nORDER BY c.client_member_id, p.benefit_period DESC, p.benefit_type\nLIMIT 1000\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Member lifecycle \u2014 all files, all periods",
+      "type": "table"
     }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "onefintech",
+    "members"
   ],
   "templating": {
     "list": [
       {
+        "current": {
+          "value": ""
+        },
         "hide": 0,
         "label": "Medicaid ID",
         "name": "medicaid_id",
         "query": "",
         "skipUrlSync": false,
-        "type": "textbox",
-        "current": {
-          "value": ""
-        }
+        "type": "textbox"
       }
     ]
   },
-  "annotations": {
-    "list": []
+  "time": {
+    "from": "now-90d",
+    "to": "now"
   },
-  "links": [
-    {
-      "title": "Ops Health",
-      "url": "/d/onefintech-ops-health/ops-health",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "File Detail",
-      "url": "/d/onefintech-file-detail/file-detail",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Member Lifecycle",
-      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "UAT Validation",
-      "url": "/d/onefintech-uat-v2/uat-validation",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Platform Config",
-      "url": "/d/onefintech-platform-config/platform-config",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Tests",
-      "url": "/d/onefintech-tests/test-runs",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    }
-  ]
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Member Lifecycle",
+  "uid": "onefintech-member-lifecycle",
+  "version": 2
 }

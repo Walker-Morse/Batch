@@ -92,7 +92,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -153,7 +160,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -222,7 +236,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -291,7 +312,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -360,7 +388,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -439,7 +474,14 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -1529,5 +1571,5 @@
   "timezone": "browser",
   "title": "File Detail",
   "uid": "onefintech-file-detail",
-  "version": 1
+  "version": 25
 }
