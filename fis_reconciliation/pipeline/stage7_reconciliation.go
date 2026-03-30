@@ -176,9 +176,22 @@ func (s *ReconciliationStage) reconcileRecord(ctx context.Context, batchFile *po
 	}
 
 	_ = s.Mart.WriteReconciliationFact(ctx, &ports.ReconciliationFact{
+		TenantID:          batchFile.TenantID,
+		CorrelationID:     batchFile.CorrelationID,
 		BatchFileID:       batchFile.ID,
 		RowSequenceNumber: rec.SequenceInFile,
 		FISResultCode:     rec.FISResultCode,
+		FISResultMessage:  rec.FISResultMsg,
+		ReconciliationStatus: func() string {
+			if rec.FISResultCode == "000" {
+				return "MATCHED"
+			}
+			return "UNMATCHED"
+		}(),
+		DateSK: func() int {
+			t := time.Now().UTC()
+			return t.Year()*10000 + int(t.Month())*100 + t.Day()
+		}(),
 	})
 
 	return nil

@@ -58,6 +58,7 @@ type RowProcessingStage struct {
 	Programs       ports.ProgramLookup
 	Audit          ports.AuditLogWriter
 	Obs            ports.IObservabilityPort
+	Mart           ports.MartWriter // §4.3.12 — nil-safe: skipped when not wired
 	programCache   map[string]uuid.UUID
 }
 
@@ -403,6 +404,97 @@ func (s *RowProcessingStage) processSRG310Row(ctx context.Context, in *RowProces
 		ClientMemberID: &row.ClientMemberID,
 	})
 
+	// ── MartWriter: populate reporting schema (§4.3.12) ──────────────────────
+	// Nil-safe: Mart is optional during migration — pipeline proceeds without it.
+	// Failures are non-fatal: a mart write error must never dead-letter a valid row.
+	if s.Mart != nil {
+		effectiveDate := time.Now().UTC()
+		memberSK, martErr := s.Mart.UpsertMember(ctx, &ports.MemberRecord{
+			ConsumerID:    consumer.ID,
+			TenantID:      in.BatchFile.TenantID,
+			PlanMemberID:  row.ClientMemberID,
+			FirstName:     row.FirstName,
+			LastName:      row.LastName,
+			DOB:           row.DOB,
+			Address1:      row.Address1,
+			Address2:      row.Address2,
+			City:          row.City,
+			State:         row.State,
+			ZIP:           row.ZIP,
+			Email:         row.Email,
+			SubprogramID:  func() int64 { if subprogramID != nil { return *subprogramID }; return 0 }(),
+			ContractPBP:   row.ContractPBP,
+			CustomCardID:  row.CustomCardID,
+			EffectiveDate: effectiveDate,
+		})
+		if martErr != nil {
+			_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+				EventType: "mart.upsert_member.error", Level: "WARN",
+				CorrelationID: in.BatchFile.CorrelationID,
+				TenantID:      in.BatchFile.TenantID,
+				BatchFileID:   in.BatchFile.ID,
+				RowSequenceNumber: &row.SequenceInFile,
+				Error:   strPtr(martErr.Error()),
+				Message: "mart UpsertMember failed — reporting schema not updated for this row",
+			})
+		} else {
+			cardSK, martErr := s.Mart.UpsertCard(ctx, &ports.CardRecord{
+				CardID:        card.ID,
+				MemberSK:      memberSK,
+				TenantID:      in.BatchFile.TenantID,
+				PackageID:     row.PackageID,
+				CardStatus:    1, // Ready — FIS assigns Active after RT30 response
+				IssueDate:     effectiveDate,
+				EffectiveDate: effectiveDate,
+			})
+			if martErr != nil {
+				_ = s.Obs.LogEvent(ctx, &ports.LogEvent{
+					EventType: "mart.upsert_card.error", Level: "WARN",
+					CorrelationID: in.BatchFile.CorrelationID,
+					TenantID:      in.BatchFile.TenantID,
+					BatchFileID:   in.BatchFile.ID,
+					RowSequenceNumber: &row.SequenceInFile,
+					Error:   strPtr(martErr.Error()),
+					Message: "mart UpsertCard failed — dim_card not updated",
+				})
+				cardSK = 0
+			}
+
+			dateSK := int(effectiveDate.Year())*10000 +
+				int(effectiveDate.Month())*100 +
+				int(effectiveDate.Day())
+
+			// Resolve dim_program_sk: zero if program not yet in dim_program
+			// (populated by CCX ETL — safe to be 0 until CCX loader is built)
+			var programSK int64
+
+			_ = s.Mart.WriteEnrollmentFact(ctx, &ports.EnrollmentFact{
+				MemberSK:          memberSK,
+				ProgramSK:         programSK,
+				DateSK:            dateSK,
+				TenantID:          in.BatchFile.TenantID,
+				CorrelationID:     in.BatchFile.CorrelationID,
+				RowSequenceNumber: row.SequenceInFile,
+				SRGFileType:       "SRG310",
+				EventType:         "NEW_ENROLLMENT",
+				FISRecordType:     "RT30",
+				ProcessingStatus:  "STAGED",
+			})
+
+			// Write purse lifecycle fact if card SK resolved
+			if cardSK != 0 {
+				_ = s.Mart.WritePurseLifecycleFact(ctx, &ports.PurseLifecycleFact{
+					MemberSK:          memberSK,
+					DateSK:            dateSK,
+					TenantID:          in.BatchFile.TenantID,
+					CorrelationID:     in.BatchFile.CorrelationID,
+					RowSequenceNumber: row.SequenceInFile,
+					EventType:         "NEW_PERIOD",
+				})
+			}
+		}
+	}
+
 	return outcomeStagedOK
 }
 
@@ -471,6 +563,30 @@ func (s *RowProcessingStage) processSRG315Row(ctx context.Context, in *RowProces
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("rt37_insert_failed: %v", err), "PROCESSING_ERROR", row.Raw)
+	}
+
+	// ── MartWriter: enrollment fact for SRG315 (§4.3.12) ─────────────────────
+	if s.Mart != nil {
+		effectiveDate := time.Now().UTC()
+		dateSK := int(effectiveDate.Year())*10000 + int(effectiveDate.Month())*100 + int(effectiveDate.Day())
+		// Resolve member_sk from dim_member — non-fatal if not found yet
+		memberSK, _ := s.Mart.UpsertMember(ctx, &ports.MemberRecord{
+			ConsumerID:    consumer.ID,
+			TenantID:      in.BatchFile.TenantID,
+			PlanMemberID:  row.ClientMemberID,
+			EffectiveDate: effectiveDate,
+		})
+		_ = s.Mart.WriteEnrollmentFact(ctx, &ports.EnrollmentFact{
+			MemberSK:          memberSK,
+			DateSK:            dateSK,
+			TenantID:          in.BatchFile.TenantID,
+			CorrelationID:     in.BatchFile.CorrelationID,
+			RowSequenceNumber: row.SequenceInFile,
+			SRGFileType:       "SRG315",
+			EventType:         srgEventToEnrollmentEventType(row.EventType),
+			FISRecordType:     "RT37",
+			ProcessingStatus:  "STAGED",
+		})
 	}
 
 	return outcomeStagedOK
@@ -568,6 +684,42 @@ func (s *RowProcessingStage) processSRG320Row(ctx context.Context, in *RowProces
 		return s.deadLetter(ctx, in, row.SequenceInFile, row.ClientMemberID,
 			string(domain.FailureRowProcessing),
 			fmt.Sprintf("purse_balance_update_failed: %v", err), "SYSTEM_ERROR", row.Raw)
+	}
+
+	// ── MartWriter: enrollment + purse lifecycle facts for SRG320 (§4.3.12) ──
+	if s.Mart != nil {
+		effectiveDate := time.Now().UTC()
+		dateSK := int(effectiveDate.Year())*10000 + int(effectiveDate.Month())*100 + int(effectiveDate.Day())
+		memberSK, _ := s.Mart.UpsertMember(ctx, &ports.MemberRecord{
+			ConsumerID:    consumer.ID,
+			TenantID:      in.BatchFile.TenantID,
+			PlanMemberID:  row.ClientMemberID,
+			EffectiveDate: effectiveDate,
+		})
+		_ = s.Mart.WriteEnrollmentFact(ctx, &ports.EnrollmentFact{
+			MemberSK:          memberSK,
+			DateSK:            dateSK,
+			TenantID:          in.BatchFile.TenantID,
+			CorrelationID:     in.BatchFile.CorrelationID,
+			RowSequenceNumber: row.SequenceInFile,
+			SRGFileType:       "SRG320",
+			EventType:         "RELOAD",
+			FISRecordType:     "RT60",
+			ProcessingStatus:  "STAGED",
+		})
+		loadAmt := row.AmountCents
+		balBefore := purse.AvailableBalanceCents
+		_ = s.Mart.WritePurseLifecycleFact(ctx, &ports.PurseLifecycleFact{
+			MemberSK:           memberSK,
+			DateSK:             dateSK,
+			TenantID:           in.BatchFile.TenantID,
+			CorrelationID:      in.BatchFile.CorrelationID,
+			RowSequenceNumber:  row.SequenceInFile,
+			EventType:          srgLoadEventType(commandType),
+			AmountCents:        &loadAmt,
+			BalanceBeforeCents: &balBefore,
+			BalanceAfterCents:  &newBalance,
+		})
 	}
 
 	return outcomeStagedOK
@@ -677,16 +829,46 @@ func fisCardIDOrEmpty(c *domain.Card) string {
 	return *c.FISCardID
 }
 
-func strPtrIfNotEmpty(s string) *string {
-	if s == "" {
-		return nil
+func srgEventToEnrollmentEventType(eventType string) string {
+	switch eventType {
+	case "ACTIVATE":
+		return "CHANGE"
+	case "SUSPEND":
+		return "CHANGE"
+	case "TERMINATE":
+		return "TERMINATION"
+	case "EXPIRE_PURSE":
+		return "TERMINATION"
+	case "WALLET_TRANSFER":
+		return "CHANGE"
+	default:
+		return "CHANGE"
 	}
-	return &s
 }
+
+func srgLoadEventType(commandType string) string {
+	switch commandType {
+	case string(domain.CommandLoad):
+		return "LOAD"
+	case string(domain.CommandSweep):
+		return "EXPIRE"
+	default:
+		return "RELOAD"
+	}
+}
+
+
 
 func timePtrIfNotZero(t time.Time) *time.Time {
 	if t.IsZero() {
 		return nil
 	}
 	return &t
+}
+
+func strPtrIfNotEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

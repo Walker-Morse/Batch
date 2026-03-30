@@ -328,13 +328,7 @@ type AssembledFile struct {
 	Body        io.ReadCloser
 }
 
-// MartWriter record types (populated by Stage 3 and Stage 7)
-type MemberRecord        struct{ ConsumerID uuid.UUID }
-type CardRecord          struct{ CardID uuid.UUID }
-type PurseRecord         struct{ PurseID uuid.UUID }
-type EnrollmentFact      struct{ CorrelationID uuid.UUID; RowSequenceNumber int }
-type PurseLifecycleFact  struct{ PurseID uuid.UUID; EventType string }
-type ReconciliationFact  struct{ BatchFileID uuid.UUID; RowSequenceNumber int; FISResultCode string }
+// MartWriter record types — see mart_types.go
 
 // ─── Program Lookup (Stage 3) ────────────────────────────────────────────────
 

@@ -242,7 +242,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 		ReturnFilePrefix:  returnPrefix,
 	}
 
-	var martWriter ports.MartWriter = &noopMartWriter{}
+	var martWriter ports.MartWriter = aurora.NewMartWriterRepo(pool)
 
 	return &PipelineDeps{
 		Stage1: &stage1.FileArrivalStage{
@@ -268,6 +268,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Programs:       domainStateRepo,
 			Audit:          auditRepo,
 			Obs:            obs,
+			Mart:           martWriter,
 		},
 		Stage4: &stage4.BatchAssemblyStage{
 			Assembler:         assembler,
