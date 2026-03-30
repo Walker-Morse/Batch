@@ -99,15 +99,15 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 0,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 0,
+        "y": 0
       },
       "id": 40,
       "options": {
@@ -167,15 +167,15 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 4,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 4,
+        "y": 0
       },
       "id": 41,
       "options": {
@@ -243,15 +243,15 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 8,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 8,
+        "y": 0
       },
       "id": 42,
       "options": {
@@ -319,15 +319,15 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 12,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 12,
+        "y": 0
       },
       "id": 43,
       "options": {
@@ -395,15 +395,15 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 16,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 16,
+        "y": 0
       },
       "id": 44,
       "options": {
@@ -1483,10 +1483,10 @@
         "overrides": []
       },
       "gridPos": {
-        "y": 0,
-        "x": 20,
+        "h": 4,
         "w": 4,
-        "h": 4
+        "x": 20,
+        "y": 0
       },
       "id": 50,
       "options": {
@@ -1556,5 +1556,5 @@
   "timezone": "browser",
   "title": "File Detail",
   "uid": "onefintech-file-detail",
-  "version": 46
+  "version": 53
 }

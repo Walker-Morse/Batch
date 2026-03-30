@@ -17,9 +17,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}",
-              "targetBlank": false
+              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -32,7 +32,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -85,9 +85,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
+              "url": "/d/onefintech-file-detail/file-detail"
             }
           ],
           "mappings": [],
@@ -100,7 +100,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -153,9 +153,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
+              "url": "/d/onefintech-file-detail/file-detail"
             }
           ],
           "mappings": [],
@@ -176,7 +176,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -229,9 +229,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
+              "url": "/d/onefintech-file-detail/file-detail"
             }
           ],
           "mappings": [],
@@ -305,9 +305,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
+              "url": "/d/onefintech-file-detail/file-detail"
             }
           ],
           "mappings": [],
@@ -328,7 +328,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -381,9 +381,9 @@
           },
           "links": [
             {
+              "targetBlank": false,
               "title": "",
-              "url": "/d/onefintech-member-lifecycle/member-lifecycle?orgId=1&from=${__from}&to=${__to}",
-              "targetBlank": false
+              "url": "/d/onefintech-member-lifecycle/member-lifecycle?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -396,7 +396,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -550,5 +550,5 @@
   "timezone": "browser",
   "title": "One Fintech Platform",
   "uid": "onefintech-home",
-  "version": 39
+  "version": 46
 }

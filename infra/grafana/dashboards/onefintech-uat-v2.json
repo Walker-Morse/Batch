@@ -92,7 +92,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -153,7 +153,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -291,7 +291,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -352,7 +352,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -1481,5 +1481,5 @@
   "timezone": "browser",
   "title": "UAT Validation",
   "uid": "onefintech-uat-v2",
-  "version": 16
+  "version": 23
 }
