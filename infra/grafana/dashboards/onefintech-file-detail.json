@@ -104,10 +104,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 0,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 40,
       "options": {
@@ -172,10 +172,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 4,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 41,
       "options": {
@@ -248,10 +248,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 8,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 42,
       "options": {
@@ -324,10 +324,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 12,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 43,
       "options": {
@@ -400,10 +400,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 16,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 44,
       "options": {
@@ -429,97 +429,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(EXTRACT(EPOCH FROM (\n  COALESCE(submitted_at, updated_at) - arrived_at\n))/60.0::numeric, 1)\nFROM batch_files\nWHERE id = split_part('${fileId}',' | ',2)::uuid",
+          "rawSql": "SELECT\n  CASE\n    WHEN EXTRACT(EPOCH FROM (COALESCE(submitted_at, updated_at) - arrived_at))/60.0 > 120\n    THEN NULL\n    ELSE ROUND(EXTRACT(EPOCH FROM (COALESCE(submitted_at, updated_at) - arrived_at))/60.0::numeric, 1)\n  END\nFROM batch_files\nWHERE id = split_part('${fileId}',' | ',2)::uuid",
           "refId": "A"
         }
       ],
       "title": "Duration (min)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail"
-            }
-          ],
-          "mappings": [
-            {
-              "options": {
-                "COMPLETE": {
-                  "color": "green",
-                  "index": 0
-                },
-                "HALTED": {
-                  "color": "red",
-                  "index": 1
-                },
-                "STALLED": {
-                  "color": "orange",
-                  "index": 2
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "y": 0,
-        "x": 16,
-        "w": 4,
-        "h": 4
-      },
-      "id": 45,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT status FROM batch_files WHERE id = split_part('${fileId}',' | ',2)::uuid",
-          "refId": "A"
-        }
-      ],
-      "title": "File Status",
       "type": "stat"
     },
     {
@@ -1535,50 +1449,18 @@
       "type": "table"
     },
     {
-      "id": 50,
-      "type": "gauge",
-      "title": "Enrollment progress",
-      "gridPos": {
-        "y": 0,
-        "x": 20,
-        "w": 4,
-        "h": 4
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  CASE WHEN f.record_count > 0\n    THEN ROUND(100.0 * COUNT(r.id) FILTER (WHERE r.status IN ('COMPLETED','enrolled'))\n         / f.record_count, 1)\n    ELSE 0\n  END AS \"Enrollment progress %\"\nFROM batch_files f\nLEFT JOIN batch_records_common r ON r.batch_file_id = f.id\nWHERE f.id = split_part('${fileId}',' | ',2)::uuid\nGROUP BY f.record_count",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "minVizWidth": 75,
-        "minVizHeight": 75
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "max": 100,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1596,14 +1478,46 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
+          "unit": "percent"
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
+      "gridPos": {
+        "y": 0,
+        "x": 20,
+        "w": 4,
+        "h": 4
+      },
+      "id": 50,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  CASE WHEN f.record_count > 0\n    THEN ROUND(100.0 * COUNT(r.id) FILTER (WHERE r.status IN ('COMPLETED','enrolled'))\n         / f.record_count, 1)\n    ELSE 0\n  END AS \"Enrollment progress %\"\nFROM batch_files f\nLEFT JOIN batch_records_common r ON r.batch_file_id = f.id\nWHERE f.id = split_part('${fileId}',' | ',2)::uuid\nGROUP BY f.record_count",
+          "refId": "A"
+        }
+      ],
+      "title": "Enrollment progress",
+      "type": "gauge"
     }
   ],
   "refresh": "1m",
@@ -1642,5 +1556,5 @@
   "timezone": "browser",
   "title": "File Detail",
   "uid": "onefintech-file-detail",
-  "version": 39
+  "version": 46
 }

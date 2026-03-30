@@ -86,7 +86,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
+              "url": "/d/onefintech-file-detail/file-detail",
               "targetBlank": false
             }
           ],
@@ -154,7 +154,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
+              "url": "/d/onefintech-file-detail/file-detail",
               "targetBlank": false
             }
           ],
@@ -230,7 +230,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
+              "url": "/d/onefintech-file-detail/file-detail",
               "targetBlank": false
             }
           ],
@@ -306,7 +306,7 @@
           "links": [
             {
               "title": "",
-              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}",
+              "url": "/d/onefintech-file-detail/file-detail",
               "targetBlank": false
             }
           ],
@@ -550,5 +550,5 @@
   "timezone": "browser",
   "title": "One Fintech Platform",
   "uid": "onefintech-home",
-  "version": 32
+  "version": 39
 }
