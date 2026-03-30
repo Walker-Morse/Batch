@@ -116,7 +116,7 @@ export class SftpConstruct extends Construct {
     const userRole = new iam.Role(this, "TransferUserRoleFisXtract", {
       roleName: `onefintech-${env}-sftp-user-fis-xtract`,
       assumedBy: new iam.ServicePrincipal("transfer.amazonaws.com"),
-      description: "SFTP user role for FIS XTRACT feed delivery — write-only to xtract bucket",
+      description: "SFTP user role for FIS XTRACT feed delivery, write-only to xtract bucket",
     });
 
     userRole.addToPolicy(new iam.PolicyStatement({
