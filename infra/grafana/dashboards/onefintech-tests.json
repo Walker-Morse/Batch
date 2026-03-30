@@ -1,5 +1,18 @@
 {
   "id": 2,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Ops Health",
+      "type": "link",
+      "url": "/d/onefintech-ops-health/ops-health"
+    }
+  ],
   "panels": [
     {
       "datasource": {
@@ -160,10 +173,10 @@
         ]
       },
       "gridPos": {
-        "h": 6,
-        "w": 24,
+        "y": 0,
         "x": 0,
-        "y": 0
+        "w": 24,
+        "h": 8
       },
       "id": 1,
       "options": {
@@ -188,17 +201,17 @@
       "type": "table"
     },
     {
-      "id": 90,
-      "type": "row",
-      "title": "Reference \u2014 canonical test inventory",
       "collapsed": true,
       "gridPos": {
-        "h": 1,
-        "w": 24,
+        "y": 42,
         "x": 0,
-        "y": 6
+        "w": 24,
+        "h": 1
       },
-      "panels": []
+      "id": 90,
+      "panels": [],
+      "title": "Reference \u2014 canonical test inventory",
+      "type": "row"
     },
     {
       "datasource": {
@@ -283,10 +296,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "y": 43,
         "x": 0,
-        "y": 6
+        "w": 24,
+        "h": 8
       },
       "id": 2,
       "options": {
@@ -325,10 +338,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 6
+        "y": 51,
+        "x": 0,
+        "w": 24,
+        "h": 8
       },
       "id": 3,
       "options": {
@@ -475,10 +488,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
+        "y": 8,
         "x": 0,
-        "y": 14
+        "w": 24,
+        "h": 8
       },
       "id": 4,
       "options": {
@@ -625,10 +638,10 @@
         ]
       },
       "gridPos": {
-        "h": 12,
-        "w": 24,
+        "y": 16,
         "x": 0,
-        "y": 22
+        "w": 24,
+        "h": 10
       },
       "id": 5,
       "options": {
@@ -659,9 +672,13 @@
       },
       "fieldConfig": {
         "defaults": {
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
           "max": 100,
           "min": 0,
-          "unit": "percent",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -679,21 +696,27 @@
               }
             ]
           },
-          "custom": {
-            "thresholdsStyle": {
-              "mode": "line"
-            }
-          }
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
+        "y": 26,
         "x": 0,
-        "y": 34
+        "w": 24,
+        "h": 8
       },
       "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "min"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
       "targets": [
         {
           "datasource": {
@@ -706,17 +729,7 @@
         }
       ],
       "title": "Pass Rate Over Time (by Package)",
-      "type": "timeseries",
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "min"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        }
-      }
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -805,10 +818,10 @@
         ]
       },
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "y": 34,
         "x": 0,
-        "y": 42
+        "w": 12,
+        "h": 8
       },
       "id": 7,
       "options": {
@@ -847,10 +860,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "y": 34,
         "x": 12,
-        "y": 42
+        "w": 12,
+        "h": 8
       },
       "id": 8,
       "options": {
@@ -908,18 +921,5 @@
   },
   "title": "Test Runs",
   "uid": "onefintech-tests",
-  "version": 15,
-  "links": [
-    {
-      "title": "Ops Health",
-      "url": "/d/onefintech-ops-health/ops-health",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    }
-  ]
+  "version": 23
 }

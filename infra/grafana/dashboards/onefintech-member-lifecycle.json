@@ -97,10 +97,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
+        "y": 0,
         "x": 0,
-        "y": 0
+        "w": 6,
+        "h": 4
       },
       "id": 60,
       "options": {
@@ -158,10 +158,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
+        "y": 0,
         "x": 6,
-        "y": 0
+        "w": 6,
+        "h": 4
       },
       "id": 61,
       "options": {
@@ -219,10 +219,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
+        "y": 0,
         "x": 12,
-        "y": 0
+        "w": 6,
+        "h": 4
       },
       "id": 62,
       "options": {
@@ -280,10 +280,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
+        "y": 0,
         "x": 18,
-        "y": 0
+        "w": 6,
+        "h": 4
       },
       "id": 63,
       "options": {
@@ -916,10 +916,10 @@
         ]
       },
       "gridPos": {
-        "h": 16,
-        "w": 24,
+        "y": 4,
         "x": 0,
-        "y": 4
+        "w": 24,
+        "h": 16
       },
       "id": 64,
       "options": {
@@ -937,7 +937,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n  c.client_member_id                                            AS \"Member ID\",\n  c.last_name || ', ' || c.first_name                           AS \"Name\",\n  c.status                                                      AS \"Consumer Status\",\n  ca.pan_masked                                                 AS \"Card (masked)\",\n  ca.card_status                                                AS \"Card Status\",\n  p.benefit_period                                              AS \"Period\",\n  p.benefit_type                                                AS \"Benefit Type\",\n  p.purse_type                                                  AS \"Purse Type\",\n  p.status                                                      AS \"Purse Status\",\n  ROUND(p.available_balance_cents / 100.0, 2)                   AS \"Balance ($)\",\n  p.effective_date                                              AS \"Effective\",\n  p.expiry_date                                                 AS \"Expires\",\n  -- ENROLL command outcome\n  CASE\n    WHEN dc_enroll.status = 'Completed' THEN '\u2705 enrolled'\n    WHEN dc_enroll.status = 'Failed'    THEN '\u274c failed'\n    WHEN dc_enroll.status = 'Duplicate' THEN '\u26a0\ufe0f duplicate'\n    WHEN dc_enroll.status IS NOT NULL   THEN '\u23f3 ' || dc_enroll.status\n    ELSE '\u2014'\n  END                                                           AS \"Enroll Cmd\",\n  -- RT30 card issuance\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     THEN '\u2705 issued'\n    WHEN rt30.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt30.fis_result_code,'err')\n    WHEN rt30.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt30.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Card Issued\",\n  -- RT60 purse load for this period\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n     THEN '\u2705 loaded'\n    WHEN rt60.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt60.fis_result_code,'err')\n    WHEN rt60.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt60.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Benefit Loaded\",\n  -- Source file for this period's load\n  TO_CHAR(bf_load.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI')\n    || ' \u00b7 ' || bf_load.file_type                               AS \"Source File\",\n  bf_load.correlation_id                                        AS \"Correlation ID\"\nFROM consumers c\nLEFT JOIN cards ca\n  ON ca.consumer_id = c.id AND ca.card_status = 'active'\nLEFT JOIN purses p\n  ON p.consumer_id = c.id\nLEFT JOIN batch_files bf_load\n  ON bf_load.id = p.source_batch_file_id\nLEFT JOIN domain_commands dc_enroll\n  ON dc_enroll.tenant_id = c.tenant_id\n AND dc_enroll.client_member_id = c.client_member_id\n AND dc_enroll.command_type = 'ENROLL'\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.client_member_id = c.client_member_id\n AND rt30.tenant_id = c.tenant_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.client_member_id = c.client_member_id\n AND rt60.tenant_id = c.tenant_id\n AND rt60.effective_date = p.effective_date\nWHERE c.client_member_id LIKE CASE WHEN '${medicaid_id}' = '' THEN '%' ELSE '${medicaid_id}' END\nORDER BY c.client_member_id, p.benefit_period DESC, p.benefit_type\nLIMIT 1000\n",
+          "rawSql": "\nSELECT\n  c.client_member_id                                            AS \"Member ID\",\n  c.last_name || ', ' || c.first_name                           AS \"Name\",\n  c.status                                                      AS \"Consumer Status\",\n  ca.pan_masked                                                 AS \"Card (masked)\",\n  ca.card_status                                                AS \"Card Status\",\n  p.benefit_period                                              AS \"Period\",\n  p.benefit_type                                                AS \"Benefit Type\",\n  p.purse_type                                                  AS \"Purse Type\",\n  p.status                                                      AS \"Purse Status\",\n  ROUND(p.available_balance_cents / 100.0, 2)                   AS \"Balance ($)\",\n  p.effective_date                                              AS \"Effective\",\n  p.expiry_date                                                 AS \"Expires\",\n  -- ENROLL command outcome\n  CASE\n    WHEN dc_enroll.status = 'Completed' THEN '\u2705 enrolled'\n    WHEN dc_enroll.status = 'Failed'    THEN '\u274c failed'\n    WHEN dc_enroll.status = 'Duplicate' THEN '\u26a0\ufe0f duplicate'\n    WHEN dc_enroll.status IS NOT NULL   THEN '\u23f3 ' || dc_enroll.status\n    ELSE '\u2014'\n  END                                                           AS \"Enroll Cmd\",\n  -- RT30 card issuance\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     THEN '\u2705 issued'\n    WHEN rt30.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt30.fis_result_code,'err')\n    WHEN rt30.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt30.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Card Issued\",\n  -- RT60 purse load for this period\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n     THEN '\u2705 loaded'\n    WHEN rt60.completed_at IS NOT NULL\n     THEN '\u274c ' || COALESCE(rt60.fis_result_code,'err')\n    WHEN rt60.submitted_at IS NOT NULL THEN '\u23f3 submitted'\n    WHEN rt60.id IS NOT NULL           THEN '\u23f3 staged'\n    ELSE '\u2014'\n  END                                                           AS \"Benefit Loaded\",\n  -- Source file for this period's load\n  TO_CHAR(bf_load.arrived_at AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI')\n    || ' \u00b7 ' || bf_load.file_type                               AS \"Source File\",\n  bf_load.correlation_id                                        AS \"Correlation ID\"\nFROM consumers c\nLEFT JOIN cards ca\n  ON ca.consumer_id = c.id AND ca.card_status = 1\nLEFT JOIN purses p\n  ON p.consumer_id = c.id\nLEFT JOIN batch_files bf_load\n  ON bf_load.id = p.source_batch_file_id\nLEFT JOIN domain_commands dc_enroll\n  ON dc_enroll.tenant_id = c.tenant_id\n AND dc_enroll.client_member_id = c.client_member_id\n AND dc_enroll.command_type = 'ENROLL'\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.client_member_id = c.client_member_id\n AND rt30.tenant_id = c.tenant_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.client_member_id = c.client_member_id\n AND rt60.tenant_id = c.tenant_id\n AND rt60.effective_date = p.effective_date\nWHERE c.client_member_id LIKE CASE WHEN '${medicaid_id}' = '' THEN '%' ELSE '${medicaid_id}' END\nORDER BY c.client_member_id, p.benefit_period DESC, p.benefit_type\nLIMIT 1000\n",
           "refId": "A"
         }
       ],
@@ -974,5 +974,5 @@
   "timezone": "browser",
   "title": "Member Lifecycle",
   "uid": "onefintech-member-lifecycle",
-  "version": 2
+  "version": 9
 }

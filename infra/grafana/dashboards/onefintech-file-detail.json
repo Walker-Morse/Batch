@@ -82,6 +82,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -92,22 +99,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 0,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 40,
       "options": {
@@ -150,6 +150,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -160,22 +167,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 4,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 41,
       "options": {
@@ -218,6 +218,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -236,22 +243,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 8,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 42,
       "options": {
@@ -294,6 +294,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -312,22 +319,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 12,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 43,
       "options": {
@@ -370,6 +370,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -388,22 +395,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 16,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 44,
       "options": {
@@ -429,7 +429,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT ROUND(EXTRACT(EPOCH FROM (submitted_at - arrived_at))/60.0::numeric, 1)\nFROM batch_files WHERE id = split_part('${fileId}',' | ',2)::uuid AND submitted_at IS NOT NULL\n",
+          "rawSql": "SELECT ROUND(EXTRACT(EPOCH FROM (updated_at - arrived_at))/60.0::numeric,1)\nFROM batch_files WHERE id = split_part('${fileId}',' | ',2)::uuid",
           "refId": "A"
         }
       ],
@@ -446,6 +446,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail"
+            }
+          ],
           "mappings": [
             {
               "options": {
@@ -474,22 +481,15 @@
               }
             ]
           },
-          "unit": "short",
-          "links": [
-            {
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail",
-              "targetBlank": false
-            }
-          ]
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "y": 0,
         "x": 20,
-        "y": 0
+        "w": 4,
+        "h": 4
       },
       "id": 45,
       "options": {
@@ -847,10 +847,10 @@
         ]
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "y": 4,
         "x": 0,
-        "y": 4
+        "w": 24,
+        "h": 10
       },
       "id": 46,
       "options": {
@@ -1192,10 +1192,10 @@
         ]
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "y": 14,
         "x": 0,
-        "y": 14
+        "w": 24,
+        "h": 10
       },
       "id": 47,
       "options": {
@@ -1322,10 +1322,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
+        "y": 24,
         "x": 0,
-        "y": 24
+        "w": 24,
+        "h": 8
       },
       "id": 48,
       "options": {
@@ -1510,10 +1510,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
+        "y": 32,
         "x": 0,
-        "y": 32
+        "w": 24,
+        "h": 8
       },
       "id": 49,
       "options": {
@@ -1571,5 +1571,5 @@
   "timezone": "browser",
   "title": "File Detail",
   "uid": "onefintech-file-detail",
-  "version": 25
+  "version": 32
 }
