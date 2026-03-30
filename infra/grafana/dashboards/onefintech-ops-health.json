@@ -1,34 +1,127 @@
 {
-  "uid": "onefintech-ops-health",
-  "title": "Ops Health",
-  "tags": [
-    "onefintech",
-    "ops"
-  ],
-  "timezone": "browser",
-  "time": {
-    "from": "now-7d",
-    "to": "now"
+  "annotations": {
+    "list": []
   },
-  "timepicker": {},
-  "refresh": "1m",
-  "schemaVersion": 39,
-  "version": 1,
+  "id": 49,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Ops Health",
+      "type": "link",
+      "url": "/d/onefintech-ops-health/ops-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "File Detail",
+      "type": "link",
+      "url": "/d/onefintech-file-detail/file-detail"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Member Lifecycle",
+      "type": "link",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "UAT Validation",
+      "type": "link",
+      "url": "/d/onefintech-uat-v2/uat-validation"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Platform Config",
+      "type": "link",
+      "url": "/d/onefintech-platform-config/platform-config"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Tests",
+      "type": "link",
+      "url": "/d/onefintech-tests/test-runs"
+    }
+  ],
   "panels": [
     {
-      "id": 20,
-      "type": "timeseries",
-      "title": "Files processed per hour",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "y": 4,
+        "x": 0,
+        "w": 12,
+        "h": 8
+      },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -41,92 +134,26 @@
           "refId": "A"
         }
       ],
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "max"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "spanNulls": false
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
+      "title": "Files processed per hour",
+      "type": "timeseries"
     },
     {
-      "id": 21,
-      "type": "timeseries",
-      "title": "Dead letters per hour",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT DATE_TRUNC('hour', created_at) AS time, COUNT(*) AS \"Dead letters\"\nFROM dead_letter_store WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1\n",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "legend": {
-          "calcs": [
-            "last",
-            "max"
-          ],
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
-            "lineWidth": 2,
             "fillOpacity": 10,
             "gradientMode": "none",
+            "lineWidth": 2,
             "spanNulls": false
           },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -143,30 +170,31 @@
                 "value": 5
               }
             ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": []
+          }
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 22,
-      "type": "timeseries",
-      "title": "Pipeline duration per file (minutes)",
       "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 8
+        "y": 4,
+        "x": 12,
+        "w": 12,
+        "h": 8
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "max"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -175,10 +203,49 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n  bf.arrived_at AT TIME ZONE 'UTC'  AS time,\n  ROUND(EXTRACT(EPOCH FROM (bf.submitted_at - bf.arrived_at))/60.0::numeric, 1) AS duration_min,\n  bf.tenant_id || ' \u00b7 ' || bf.file_type AS file_label\nFROM batch_files bf\nWHERE bf.status = 'COMPLETE'\n  AND bf.submitted_at IS NOT NULL\n  AND $__timeFilter(bf.arrived_at)\nORDER BY bf.arrived_at\n",
+          "rawSql": "\nSELECT DATE_TRUNC('hour', created_at) AS time, COUNT(*) AS \"Dead letters\"\nFROM dead_letter_store WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1\n",
           "refId": "A"
         }
       ],
+      "title": "Dead letters per hour",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "y": 12,
+        "x": 0,
+        "w": 24,
+        "h": 7
+      },
+      "id": 22,
       "options": {
         "legend": {
           "calcs": [
@@ -192,46 +259,75 @@
           "mode": "single"
         }
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "spanNulls": false
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  bf.arrived_at AT TIME ZONE 'UTC' AS time,\n  ROUND(EXTRACT(EPOCH FROM (bf.submitted_at - bf.arrived_at))/60.0::numeric, 1) AS duration_min\nFROM batch_files bf\nWHERE bf.submitted_at IS NOT NULL\n  AND $__timeFilter(bf.arrived_at)\nORDER BY bf.arrived_at",
+          "refId": "A"
+        }
+      ],
+      "title": "Pipeline duration per file (minutes)",
+      "type": "timeseries"
     },
     {
-      "id": 23,
-      "type": "stat",
-      "title": "Files Processed",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 15
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "y": 0,
+        "x": 0,
+        "w": 4,
+        "h": 4
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -244,6 +340,47 @@
           "refId": "A"
         }
       ],
+      "title": "Files Processed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "y": 0,
+        "x": 4,
+        "w": 4,
+        "h": 4
+      },
+      "id": 24,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -258,41 +395,7 @@
         },
         "textMode": "auto"
       },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 24,
-      "type": "stat",
-      "title": "Records Enrolled",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 15
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -305,84 +408,20 @@
           "refId": "A"
         }
       ],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.4.3"
+      "title": "Records Enrolled",
+      "type": "stat"
     },
     {
-      "id": 25,
-      "type": "stat",
-      "title": "Dead Letters",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 15
-      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at)",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -400,41 +439,24 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 26,
-      "type": "stat",
-      "title": "Dead Letter Rate %",
       "gridPos": {
-        "h": 4,
+        "y": 0,
+        "x": 8,
         "w": 4,
-        "x": 12,
-        "y": 15
+        "h": 4
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT ROUND(\n  100.0 * COUNT(*) FILTER (WHERE dl.id IS NOT NULL)\n  / NULLIF(SUM(bf.record_count), 0), 2\n)\nFROM batch_files bf\nLEFT JOIN dead_letter_store dl ON dl.batch_file_id = bf.id\nWHERE $__timeFilter(bf.arrived_at)\n",
-          "refId": "A"
-        }
-      ],
+      "id": 25,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -449,9 +471,33 @@
         },
         "textMode": "auto"
       },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Dead Letters",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -469,41 +515,24 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
+          "unit": "percent",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 27,
-      "type": "stat",
-      "title": "Avg Duration (min)",
       "gridPos": {
-        "h": 4,
+        "y": 0,
+        "x": 12,
         "w": 4,
-        "x": 16,
-        "y": 15
+        "h": 4
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT ROUND(\n  AVG(EXTRACT(EPOCH FROM (submitted_at - arrived_at)) / 60.0)::numeric, 1\n)\nFROM batch_files\nWHERE status = 'COMPLETE'\n  AND submitted_at IS NOT NULL\n  AND $__timeFilter(arrived_at)\n",
-          "refId": "A"
-        }
-      ],
+      "id": 26,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -518,9 +547,33 @@
         },
         "textMode": "auto"
       },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(\n  100.0 * (SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at))\n  / NULLIF((SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)), 0)\n, 2)",
+          "refId": "A"
+        }
+      ],
+      "title": "Dead Letter Rate %",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -538,41 +591,24 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 28,
-      "type": "stat",
-      "title": "Incomplete Files",
       "gridPos": {
-        "h": 4,
+        "y": 0,
+        "x": 16,
         "w": 4,
-        "x": 20,
-        "y": 15
+        "h": 4
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE status NOT IN ('COMPLETE','HALTED') AND $__timeFilter(arrived_at)",
-          "refId": "A"
-        }
-      ],
+      "id": 27,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
@@ -587,9 +623,33 @@
         },
         "textMode": "auto"
       },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(\n  AVG(EXTRACT(EPOCH FROM (submitted_at - arrived_at)) / 60.0)::numeric, 1\n)\nFROM batch_files\nWHERE submitted_at IS NOT NULL\n  AND $__timeFilter(arrived_at)",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Duration (min)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -607,29 +667,39 @@
               }
             ]
           },
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": []
+          "unit": "short",
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 29,
-      "type": "table",
-      "title": "Recent pipeline runs",
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 19
+        "y": 0,
+        "x": 20,
+        "w": 4,
+        "h": 4
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "id": 28,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -638,15 +708,17 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n  bf.tenant_id || ' \u00b7 ' || bf.file_type || ' \u00b7 '\n    || TO_CHAR(bf.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI')  AS \"File\",\n  bf.client_id                                                       AS \"Client\",\n  bf.file_type                                                       AS \"Type\",\n  bf.status                                                          AS \"Status\",\n  bf.record_count                                                    AS \"Rows\",\n  bf.malformed_count                                                 AS \"Malformed\",\n  CASE WHEN bf.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (bf.submitted_at - bf.arrived_at))/60.0::numeric,1)\n  END                                                                AS \"Duration (min)\",\n  bf.arrived_at AT TIME ZONE 'UTC'                                   AS \"Arrived\",\n  bf.id                                                              AS \"File ID\"\nFROM batch_files bf\nWHERE $__timeFilter(bf.arrived_at)\nORDER BY bf.arrived_at DESC\nLIMIT 50\n",
+          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE status NOT IN ('COMPLETE','HALTED') AND $__timeFilter(arrived_at)",
           "refId": "A"
         }
       ],
-      "options": {
-        "sortBy": [],
-        "footer": {
-          "show": false
-        }
+      "title": "Incomplete Files",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
@@ -694,52 +766,101 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
-                      "COMPLETE": {
+                      "ACTIVE": {
                         "color": "green",
-                        "index": 0,
-                        "text": "COMPLETE"
-                      },
-                      "PROCESSING": {
-                        "color": "blue",
-                        "index": 1,
-                        "text": "PROCESSING"
-                      },
-                      "SUBMITTED": {
-                        "color": "blue",
-                        "index": 2,
-                        "text": "SUBMITTED"
+                        "index": 18,
+                        "text": "ACTIVE"
                       },
                       "ASSEMBLED": {
                         "color": "blue",
                         "index": 3,
                         "text": "ASSEMBLED"
                       },
-                      "VALIDATING": {
-                        "color": "yellow",
-                        "index": 4,
-                        "text": "VALIDATING"
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
                       },
-                      "RECEIVED": {
-                        "color": "yellow",
-                        "index": 5,
-                        "text": "RECEIVED"
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
                       },
-                      "STALLED": {
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Duplicate": {
                         "color": "orange",
-                        "index": 6,
-                        "text": "STALLED"
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
                       },
                       "HALTED": {
                         "color": "red",
                         "index": 7,
                         "text": "HALTED"
                       },
-                      "FAILED": {
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
                         "color": "red",
-                        "index": 8,
-                        "text": "FAILED"
+                        "index": 21,
+                        "text": "TERMINATED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
                       },
                       "enrolled": {
                         "color": "green",
@@ -755,58 +876,9 @@
                         "color": "yellow",
                         "index": 11,
                         "text": "staged"
-                      },
-                      "STAGED": {
-                        "color": "yellow",
-                        "index": 12,
-                        "text": "STAGED"
-                      },
-                      "COMPLETED": {
-                        "color": "green",
-                        "index": 13,
-                        "text": "COMPLETED"
-                      },
-                      "Completed": {
-                        "color": "green",
-                        "index": 14,
-                        "text": "Completed"
-                      },
-                      "Failed": {
-                        "color": "red",
-                        "index": 15,
-                        "text": "Failed"
-                      },
-                      "Accepted": {
-                        "color": "blue",
-                        "index": 16,
-                        "text": "Accepted"
-                      },
-                      "Duplicate": {
-                        "color": "orange",
-                        "index": 17,
-                        "text": "Duplicate"
-                      },
-                      "ACTIVE": {
-                        "color": "green",
-                        "index": 18,
-                        "text": "ACTIVE"
-                      },
-                      "PENDING": {
-                        "color": "yellow",
-                        "index": 19,
-                        "text": "PENDING"
-                      },
-                      "SUSPENDED": {
-                        "color": "orange",
-                        "index": 20,
-                        "text": "SUSPENDED"
-                      },
-                      "TERMINATED": {
-                        "color": "red",
-                        "index": 21,
-                        "text": "TERMINATED"
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -822,9 +894,9 @@
                 "id": "links",
                 "value": [
                   {
+                    "targetBlank": false,
                     "title": "Open file detail",
-                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__value.raw}",
-                    "targetBlank": false
+                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__value.raw}"
                   }
                 ]
               }
@@ -852,9 +924,9 @@
                 "id": "links",
                 "value": [
                   {
+                    "targetBlank": false,
                     "title": "Open file detail",
-                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__data.fields['File ID']}",
-                    "targetBlank": false
+                    "url": "/d/onefintech-file-detail/file-detail?var-fileId=${__data.fields['File ID']}"
                   }
                 ]
               }
@@ -862,22 +934,20 @@
           }
         ]
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 30,
-      "type": "table",
-      "title": "Dead letters by failure reason",
       "gridPos": {
-        "h": 8,
-        "w": 14,
+        "y": 19,
         "x": 0,
-        "y": 29
+        "w": 24,
+        "h": 10
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "id": 29,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -886,15 +956,17 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n  failure_stage    AS \"Stage\",\n  failure_reason   AS \"Reason\",\n  COUNT(*)         AS \"Count\",\n  MAX(created_at)  AS \"Last Seen\"\nFROM dead_letter_store\nWHERE $__timeFilter(created_at)\nGROUP BY failure_stage, failure_reason\nORDER BY COUNT(*) DESC\nLIMIT 20\n",
+          "rawSql": "\nSELECT\n  bf.tenant_id || ' \u00b7 ' || bf.file_type || ' \u00b7 '\n    || TO_CHAR(bf.arrived_at AT TIME ZONE 'UTC', 'MM-DD HH24:MI')  AS \"File\",\n  bf.client_id                                                       AS \"Client\",\n  bf.file_type                                                       AS \"Type\",\n  bf.status                                                          AS \"Status\",\n  bf.record_count                                                    AS \"Rows\",\n  bf.malformed_count                                                 AS \"Malformed\",\n  CASE WHEN bf.submitted_at IS NOT NULL THEN\n    ROUND(EXTRACT(EPOCH FROM (bf.submitted_at - bf.arrived_at))/60.0::numeric,1)\n  END                                                                AS \"Duration (min)\",\n  bf.arrived_at AT TIME ZONE 'UTC'                                   AS \"Arrived\",\n  bf.id                                                              AS \"File ID\"\nFROM batch_files bf\nWHERE $__timeFilter(bf.arrived_at)\nORDER BY bf.arrived_at DESC\nLIMIT 50\n",
           "refId": "A"
         }
       ],
-      "options": {
-        "sortBy": [],
-        "footer": {
-          "show": false
-        }
+      "title": "Recent pipeline runs",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
@@ -950,22 +1022,20 @@
           }
         ]
       },
-      "pluginVersion": "10.4.3"
-    },
-    {
-      "id": 31,
-      "type": "table",
-      "title": "APL version ack status",
       "gridPos": {
-        "h": 8,
-        "w": 10,
-        "x": 14,
-        "y": 29
+        "y": 29,
+        "x": 0,
+        "w": 14,
+        "h": 8
       },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "id": 30,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -974,15 +1044,17 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n  av.benefit_type                                         AS \"Benefit Type\",\n  av.version_number                                       AS \"Version\",\n  av.rule_count                                           AS \"Rules\",\n  av.uploaded_at  AT TIME ZONE 'UTC'                      AS \"Uploaded\",\n  av.fis_ack_received_at AT TIME ZONE 'UTC'               AS \"FIS Ack\",\n  CASE\n    WHEN av.fis_ack_received_at IS NOT NULL THEN 'ACK received'\n    WHEN NOW() - av.uploaded_at > INTERVAL '24 hours'    THEN 'ACK overdue'\n    ELSE 'pending'\n  END                                                     AS \"Ack Status\",\n  ROUND(EXTRACT(EPOCH FROM (COALESCE(av.fis_ack_received_at, NOW()) - av.uploaded_at))/3600.0::numeric,1) AS \"Hours to Ack\"\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 10\n",
+          "rawSql": "\nSELECT\n  failure_stage    AS \"Stage\",\n  failure_reason   AS \"Reason\",\n  COUNT(*)         AS \"Count\",\n  MAX(created_at)  AS \"Last Seen\"\nFROM dead_letter_store\nWHERE $__timeFilter(created_at)\nGROUP BY failure_stage, failure_reason\nORDER BY COUNT(*) DESC\nLIMIT 20\n",
           "refId": "A"
         }
       ],
-      "options": {
-        "sortBy": [],
-        "footer": {
-          "show": false
-        }
+      "title": "Dead letters by failure reason",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
@@ -1018,8 +1090,11 @@
                 "id": "mappings",
                 "value": [
                   {
-                    "type": "value",
                     "options": {
+                      "ACK overdue": {
+                        "color": "red",
+                        "index": 2
+                      },
                       "ACK received": {
                         "color": "green",
                         "index": 0
@@ -1027,12 +1102,9 @@
                       "pending": {
                         "color": "yellow",
                         "index": 1
-                      },
-                      "ACK overdue": {
-                        "color": "red",
-                        "index": 2
                       }
-                    }
+                    },
+                    "type": "value"
                   }
                 ]
               }
@@ -1040,81 +1112,52 @@
           }
         ]
       },
-      "pluginVersion": "10.4.3"
+      "gridPos": {
+        "y": 29,
+        "x": 14,
+        "w": 10,
+        "h": 8
+      },
+      "id": 31,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "sortBy": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  av.benefit_type                                         AS \"Benefit Type\",\n  av.version_number                                       AS \"Version\",\n  av.rule_count                                           AS \"Rules\",\n  av.uploaded_at  AT TIME ZONE 'UTC'                      AS \"Uploaded\",\n  av.fis_ack_received_at AT TIME ZONE 'UTC'               AS \"FIS Ack\",\n  CASE\n    WHEN av.fis_ack_received_at IS NOT NULL THEN 'ACK received'\n    WHEN NOW() - av.uploaded_at > INTERVAL '24 hours'    THEN 'ACK overdue'\n    ELSE 'pending'\n  END                                                     AS \"Ack Status\",\n  ROUND(EXTRACT(EPOCH FROM (COALESCE(av.fis_ack_received_at, NOW()) - av.uploaded_at))/3600.0::numeric,1) AS \"Hours to Ack\"\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 10\n",
+          "refId": "A"
+        }
+      ],
+      "title": "APL version ack status",
+      "type": "table"
     }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "onefintech",
+    "ops"
   ],
   "templating": {
     "list": []
   },
-  "annotations": {
-    "list": []
+  "time": {
+    "from": "now-7d",
+    "to": "now"
   },
-  "links": [
-    {
-      "title": "Ops Health",
-      "url": "/d/onefintech-ops-health/ops-health",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "File Detail",
-      "url": "/d/onefintech-file-detail/file-detail",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Member Lifecycle",
-      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "UAT Validation",
-      "url": "/d/onefintech-uat-v2/uat-validation",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Platform Config",
-      "url": "/d/onefintech-platform-config/platform-config",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    },
-    {
-      "title": "Tests",
-      "url": "/d/onefintech-tests/test-runs",
-      "type": "link",
-      "icon": "external link",
-      "tags": [],
-      "asDropdown": false,
-      "includeVars": false,
-      "keepTime": true,
-      "targetBlank": false
-    }
-  ]
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Ops Health",
+  "uid": "onefintech-ops-health",
+  "version": 9
 }
