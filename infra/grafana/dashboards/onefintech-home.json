@@ -227,7 +227,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(100.0*COUNT(*) FILTER(WHERE dl.id IS NOT NULL)/NULLIF(SUM(bf.record_count),0),2)\nFROM batch_files bf LEFT JOIN dead_letter_store dl ON dl.batch_file_id=bf.id\nWHERE $__timeFilter(bf.arrived_at)",
+          "rawSql": "\nSELECT ROUND(\n  100.0 * (SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at))\n  / NULLIF((SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)), 0)\n, 2)\n",
           "refId": "A"
         }
       ],
@@ -415,7 +415,7 @@
         "y": 4
       },
       "options": {
-        "content": "## [Ops Health](Is the pipeline healthy right now? Rate, errors, and duration over time. Start here.)\n\n**For:** /d/onefintech-ops-health/ops-health\n\n**Answers:** Matt Barsness, Kyle",
+        "content": "## [Ops Health](/d/onefintech-ops-health/ops-health)\n\n**For:** Matt Barsness, Kyle\n\n**Answers:** Is the pipeline healthy right now? Rate, errors, and duration over time. Start here.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
@@ -431,7 +431,7 @@
         "y": 4
       },
       "options": {
-        "content": "## [File Detail](Did this file process? How many members enrolled vs failed? Stage-by-stage outcome for every record.)\n\n**For:** /d/onefintech-file-detail/file-detail\n\n**Answers:** Kendra Williams",
+        "content": "## [File Detail](/d/onefintech-file-detail/file-detail)\n\n**For:** Kendra Williams\n\n**Answers:** Did this file process? How many members enrolled vs failed? Stage-by-stage outcome for every record.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
@@ -447,7 +447,7 @@
         "y": 4
       },
       "options": {
-        "content": "## [Member Lifecycle](What is the full history of a member across all files and benefit periods?)\n\n**For:** /d/onefintech-member-lifecycle/member-lifecycle\n\n**Answers:** Kyle, Matt Barsness",
+        "content": "## [Member Lifecycle](/d/onefintech-member-lifecycle/member-lifecycle)\n\n**For:** Kyle, Matt Barsness\n\n**Answers:** What is the full history of a member across all files and benefit periods?",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
@@ -463,7 +463,7 @@
         "y": 9
       },
       "options": {
-        "content": "## [UAT Validation](Did all members in this UAT run enroll successfully? Trace any member through every pipeline stage.)\n\n**For:** /d/onefintech-uat-v2/uat-validation\n\n**Answers:** John Dennis",
+        "content": "## [UAT Validation](/d/onefintech-uat-v2/uat-validation)\n\n**For:** John Dennis\n\n**Answers:** Did all members in this UAT run enroll successfully? Trace any member through every pipeline stage.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
@@ -479,7 +479,7 @@
         "y": 9
       },
       "options": {
-        "content": "## [Platform Config](What programs are seeded? Have APL versions been acknowledged by FIS?)\n\n**For:** /d/onefintech-platform-config/platform-config\n\n**Answers:** Selvi Marappan",
+        "content": "## [Platform Config](/d/onefintech-platform-config/platform-config)\n\n**For:** Selvi Marappan\n\n**Answers:** What programs are seeded? Have APL versions been acknowledged by FIS?",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
@@ -495,7 +495,7 @@
         "y": 9
       },
       "options": {
-        "content": "## [Test Runs](Did the latest CI run pass? Which tests are flaky or slow?)\n\n**For:** /d/onefintech-tests/test-runs\n\n**Answers:** Engineering",
+        "content": "## [Test Runs](/d/onefintech-tests/test-runs)\n\n**For:** Engineering\n\n**Answers:** Did the latest CI run pass? Which tests are flaky or slow?",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
