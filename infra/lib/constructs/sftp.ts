@@ -10,6 +10,7 @@ import { Construct } from "constructs";
 export interface SftpProps {
   env: string;
   inboundBucket: s3.IBucket;
+  xtractBucket: s3.IBucket;
   kmsKey: kms.IKey;
   vpc: ec2.IVpc;
 }
@@ -40,7 +41,7 @@ export class SftpConstruct extends Construct {
   constructor(scope: Construct, id: string, props: SftpProps) {
     super(scope, id);
 
-    const { env, inboundBucket, kmsKey } = props;
+    const { env, inboundBucket, xtractBucket, kmsKey } = props;
 
     // ── Logging role for Transfer Family → CloudWatch ─────────────────────
     const loggingRole = new iam.Role(this, "TransferLoggingRole", {
@@ -81,6 +82,13 @@ export class SftpConstruct extends Construct {
     // Additional tenants: copy this block with a different tenantId.
     this.addTenantUser("rfu-oregon", inboundBucket, kmsKey, env);
 
+    // ── FIS XTRACT delivery user ───────────────────────────────────────────
+    // FIS pushes daily XTRACT feeds to this user's home directory.
+    // Scoped exclusively to the xtract bucket — no access to inbound-raw.
+    // Username convention: fis-xtract (one user for all 6 feeds; FIS delivers
+    // files by name to the same SFTP root; xtract_file_log.s3_key disambiguates).
+    this.addXtractUser(xtractBucket, kmsKey, env);
+
     cdk.Tags.of(this).add("Project", "OneFintechFIS");
     cdk.Tags.of(this).add("Environment", env);
 
@@ -92,6 +100,62 @@ export class SftpConstruct extends Construct {
     new cdk.CfnOutput(scope, "SftpServerId", {
       value: this.server.attrServerId,
       description: "Transfer Family server ID",
+    });
+  }
+
+  /**
+   * addXtractUser creates the FIS XTRACT delivery SFTP user.
+   * Home directory is the xtract bucket root — FIS drops all 6 feeds here.
+   * Write-only for FIS (PutObject). The XTRACT ETL task reads via its own IAM role.
+   */
+  private addXtractUser(
+    xtractBucket: s3.IBucket,
+    kmsKey: kms.IKey,
+    env: string,
+  ): void {
+    const userRole = new iam.Role(this, "TransferUserRoleFisXtract", {
+      roleName: `onefintech-${env}-sftp-user-fis-xtract`,
+      assumedBy: new iam.ServicePrincipal("transfer.amazonaws.com"),
+      description: "SFTP user role for FIS XTRACT feed delivery — write-only to xtract bucket",
+    });
+
+    userRole.addToPolicy(new iam.PolicyStatement({
+      sid: "XtractBucketWrite",
+      actions: ["s3:PutObject", "s3:HeadObject"],
+      resources: [xtractBucket.arnForObjects("*")],
+    }));
+
+    userRole.addToPolicy(new iam.PolicyStatement({
+      sid: "XtractBucketList",
+      actions: ["s3:ListBucket"],
+      resources: [xtractBucket.bucketArn],
+    }));
+
+    userRole.addToPolicy(new iam.PolicyStatement({
+      sid: "KmsForXtract",
+      actions: ["kms:GenerateDataKey", "kms:Decrypt", "kms:DescribeKey"],
+      resources: [kmsKey.keyArn],
+    }));
+
+    // Placeholder SSH public key — replace with FIS-provided public key
+    // when FIS provisions the SFTP credentials (requires DM-03 confirmation).
+    const placeholderPubKey =
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCxm3ee4MVKrks+0sn0CM4ybs3JKUCx2/FPPsatUZ76B67renSC4UwNFNqyN2BgXWMDRBGmmXBII8Gbl96pMs4aPaJFNNReVKOKO+fXhT1jUFyyM5KBahz0td7wVTmK40B4VAANZwuxnyywN5POLTx+DTEUg9a0+lC/rlVv0kh63PrcgrxvgHgtxCXBYhlc8ki6r03Tpo+MSq3UNJbrfcw11w9o2DZ0s5dgX1BxSaIScqsp0F3GM+ionIvRe+IcxiXOw+KL8GfnWghe3KBFjc+w1S/Br+Bdo/LloMG+s7/KGkLS85NSnQNyhHa+vccCcg5LPdKY7hTf/nk9ua/xTUTd onefintech-dev-fis-xtract";
+
+    new transfer.CfnUser(this, "SftpUserFisXtract", {
+      serverId: this.server.attrServerId,
+      userName: "fis-xtract",
+      role: userRole.roleArn,
+      homeDirectoryType: "LOGICAL",
+      homeDirectoryMappings: [{
+        entry: "/",
+        target: `/${xtractBucket.bucketName}`,
+      }],
+      sshPublicKeys: [placeholderPubKey],
+      tags: [
+        { key: "Purpose", value: "FIS XTRACT feed delivery" },
+        { key: "Environment", value: env },
+      ],
     });
   }
 

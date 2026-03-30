@@ -8,6 +8,7 @@ import { Construct } from "constructs";
 export interface IamProps {
   env: string;
   inboundBucket: s3.IBucket;
+  xtractBucket: s3.IBucket;
   stagedBucket: s3.IBucket;
   fisExchangeBucket: s3.IBucket;
   dbSecret: secretsmanager.ISecret;
@@ -56,6 +57,12 @@ export class IamConstruct extends Construct {
       actions: ["s3:GetObject", "s3:HeadObject"],
       resources: [props.inboundBucket.arnForObjects("*")],
     }));
+    // xtract — read-only for XTRACT ETL loader (§4.3.13). GetObject + HeadObject only.
+    this.taskRole.addToPolicy(new iam.PolicyStatement({
+      sid: "XtractRead",
+      actions: ["s3:GetObject", "s3:HeadObject"],
+      resources: [props.xtractBucket.arnForObjects("*")],
+    }));
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "StagedReadWrite",
       actions: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:HeadObject"],
@@ -78,7 +85,7 @@ export class IamConstruct extends Construct {
     this.taskRole.addToPolicy(new iam.PolicyStatement({
       sid: "S3BucketList",
       actions: ["s3:ListBucket"],
-      resources: [props.inboundBucket.bucketArn, props.stagedBucket.bucketArn, props.egressBucket.bucketArn],
+      resources: [props.inboundBucket.bucketArn, props.xtractBucket.bucketArn, props.stagedBucket.bucketArn, props.egressBucket.bucketArn],
     }));
     // Build PGP secret ARN list — filter empty strings (passphrase is optional)
     const pgpSecretArns = [

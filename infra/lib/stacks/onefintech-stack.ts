@@ -60,6 +60,7 @@ export class OneFintechStack extends cdk.Stack {
     const iam = new IamConstruct(this, "Iam", {
       env,
       inboundBucket: storage.inboundBucket,
+      xtractBucket: storage.xtractBucket,
       stagedBucket: storage.stagedBucket,
       fisExchangeBucket: storage.fisExchangeBucket,
       egressBucket: storage.egressBucket,
@@ -108,9 +109,11 @@ export class OneFintechStack extends cdk.Stack {
     });
 
     // SFTP ingress: MCO clients upload SRG files via Transfer Family → inbound-raw
+    // FIS XTRACT feeds delivered via fis-xtract user → xtract bucket
     new SftpConstruct(this, "Sftp", {
       env,
       inboundBucket: storage.inboundBucket,
+      xtractBucket: storage.xtractBucket,
       kmsKey: storage.kmsKey,
       vpc: networking.vpc,
     });
@@ -146,6 +149,7 @@ export class OneFintechStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, "InboundBucketName",    { value: storage.inboundBucket.bucketName });
+    new cdk.CfnOutput(this, "XtractBucketName",     { value: storage.xtractBucket.bucketName });
     new cdk.CfnOutput(this, "StagedBucketName",     { value: storage.stagedBucket.bucketName });
     new cdk.CfnOutput(this, "FisExchangeBucketName",{ value: storage.fisExchangeBucket.bucketName });
     new cdk.CfnOutput(this, "EgressBucketName",        { value: storage.egressBucket.bucketName });

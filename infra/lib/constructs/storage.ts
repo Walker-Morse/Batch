@@ -8,6 +8,7 @@ export interface StorageProps { env: string; }
 export class StorageConstruct extends Construct {
   public readonly kmsKey: kms.Key;
   public readonly inboundBucket: s3.Bucket;
+  public readonly xtractBucket: s3.Bucket;
   public readonly stagedBucket: s3.Bucket;
   public readonly fisExchangeBucket: s3.Bucket;
   public readonly egressBucket: s3.Bucket;
@@ -48,6 +49,29 @@ export class StorageConstruct extends Construct {
       removalPolicy,
       autoDeleteObjects,
       eventBridgeEnabled: true, // S3 ObjectCreated → EventBridge → ECS RunTask (ADR-006b)
+    });
+
+    // xtract — FIS Data XTRACT feeds delivered daily via SFTP (§4.3.13).
+    // Separate from inbound-raw: different IAM policy, different trigger,
+    // different retention. XTRACT files contain PHI — same KMS key, SSE-KMS.
+    // 7-year retention: §6.4a billing retention requirement.
+    // EventBridge enabled: S3 ObjectCreated → XTRACT ETL loader task (to be wired).
+    this.xtractBucket = new s3.Bucket(this, "XtractBucket", {
+      bucketName: `onefintech-${props.env}-xtract`,
+      encryptionKey: this.kmsKey,
+      encryption: s3.BucketEncryption.KMS,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      versioned: true,
+      serverAccessLogsBucket: this.logsBucket,
+      serverAccessLogsPrefix: "xtract/",
+      removalPolicy,
+      autoDeleteObjects,
+      eventBridgeEnabled: true,
+      lifecycleRules: [{
+        id: "xtract-7yr-retention",
+        expiration: cdk.Duration.days(2555),
+      }],
     });
 
     // staged — 24h lifecycle on staged/ prefix is PHI safety backstop (§5.4.3)
