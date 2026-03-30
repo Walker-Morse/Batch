@@ -2,54 +2,23 @@
   "annotations": {
     "list": []
   },
+  "id": 57,
   "links": [],
   "panels": [
     {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
+      "id": 1,
+      "type": "table",
+      "title": "Files processed",
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 0,
         "y": 0
       },
-      "id": 1,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -58,24 +27,21 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE $__timeFilter(arrived_at)",
+          "rawSql": "SELECT (SELECT COUNT(*) FROM batch_files WHERE $__timeFilter(arrived_at)) AS \"Files processed\"",
           "refId": "A"
         }
       ],
-      "title": "Files processed",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -85,32 +51,44 @@
               }
             ]
           },
-          "unit": "short"
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
         },
         "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Records enrolled",
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 4,
         "y": 0
       },
-      "id": 2,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -119,24 +97,91 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM batch_records_common WHERE status IN ('COMPLETED','enrolled') AND $__timeFilter(staged_at)",
+          "rawSql": "SELECT (SELECT COUNT(*) FROM batch_records_common WHERE status IN ('COMPLETED','enrolled') AND $__timeFilter(staged_at)) AS \"Records enrolled\"",
           "refId": "A"
         }
       ],
-      "title": "Records enrolled",
-      "type": "stat"
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
     },
     {
+      "id": 3,
+      "type": "table",
+      "title": "Dead letters",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at)) AS \"Dead letters\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -154,32 +199,44 @@
               }
             ]
           },
-          "unit": "short"
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
         },
         "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Dead letter rate",
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 8,
+        "x": 12,
         "y": 0
       },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -188,24 +245,21 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at)",
+          "rawSql": "SELECT (SELECT ROUND(100.0*(SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at))/NULLIF((SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)),0),2)) AS \"Dead letter rate\"",
           "refId": "A"
         }
       ],
-      "title": "Dead letters",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "percent",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -223,32 +277,44 @@
               }
             ]
           },
-          "unit": "percent"
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-ops-health/ops-health",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
         },
         "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Incomplete files",
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 12,
+        "x": 16,
         "y": 0
       },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -257,24 +323,21 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT ROUND(\n  100.0 * (SELECT COUNT(*) FROM dead_letter_store WHERE $__timeFilter(created_at))\n  / NULLIF((SELECT COALESCE(SUM(record_count),0) FROM batch_files WHERE $__timeFilter(arrived_at)), 0)\n, 2)\n",
+          "rawSql": "SELECT (SELECT COUNT(*) FROM batch_files WHERE status NOT IN ('COMPLETE','HALTED') AND $__timeFilter(arrived_at)) AS \"Incomplete files\"",
           "refId": "A"
         }
       ],
-      "title": "Dead letter rate",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -292,32 +355,44 @@
               }
             ]
           },
-          "unit": "short"
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-file-detail/file-detail",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
         },
         "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Active purses",
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 16,
+        "x": 20,
         "y": 0
       },
-      "id": 5,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -326,24 +401,21 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM batch_files WHERE status NOT IN ('COMPLETE','HALTED') AND $__timeFilter(arrived_at)",
+          "rawSql": "SELECT (SELECT COUNT(*) FROM purses WHERE status='ACTIVE') AS \"Active purses\"",
           "refId": "A"
         }
       ],
-      "title": "Incomplete files",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": false
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
+          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -353,46 +425,29 @@
               }
             ]
           },
-          "unit": "short"
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "color-background",
+            "filterable": false,
+            "inspect": false,
+            "minWidth": 50,
+            "fontSize": "var(--default-font-size)"
+          },
+          "links": [
+            {
+              "title": "",
+              "url": "/d/onefintech-member-lifecycle/member-lifecycle",
+              "targetBlank": false
+            }
+          ],
+          "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM purses WHERE status='ACTIVE'",
-          "refId": "A"
-        }
-      ],
-      "title": "Active purses",
-      "type": "stat"
+      "pluginVersion": "10.4.3"
     },
     {
       "gridPos": {
@@ -506,5 +561,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "One Fintech Platform",
-  "uid": "onefintech-home"
+  "uid": "onefintech-home",
+  "version": 11
 }
