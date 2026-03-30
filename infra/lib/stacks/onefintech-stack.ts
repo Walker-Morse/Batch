@@ -8,6 +8,8 @@ import { IamConstruct } from "../constructs/iam";
 import { EcsConstruct } from "../constructs/ecs";
 import { SchedulerConstruct } from "../constructs/scheduler";
 import { TriggerConstruct } from "../constructs/trigger";
+import { XtractEcsConstruct } from "../constructs/xtract-ecs";
+import { XtractTriggerConstruct } from "../constructs/xtract-trigger";
 import { SftpConstruct } from "../constructs/sftp";
 import { GrafanaConstruct } from "../constructs/grafana";
 import { S3ListerConstruct } from "../constructs/s3-lister";
@@ -116,6 +118,29 @@ export class OneFintechStack extends cdk.Stack {
       xtractBucket: storage.xtractBucket,
       kmsKey: storage.kmsKey,
       vpc: networking.vpc,
+    });
+
+    // XTRACT ETL: separate ECS task + EventBridge trigger for FIS Data XTRACT feeds (§4.3.13)
+    const xtractEcs = new XtractEcsConstruct(this, "XtractEcs", {
+      env,
+      cluster: ecs.cluster,
+      taskRole: iam.taskRole,
+      executionRole: iam.executionRole,
+      ingestTaskSecret,
+      dbProxyEndpoint: aurora.proxyEndpoint,
+      xtractBucket: storage.xtractBucket,
+      kmsKeyArn: storage.kmsKey.keyArn,
+    });
+
+    new XtractTriggerConstruct(this, "XtractTrigger", {
+      env,
+      xtractBucket: storage.xtractBucket,
+      cluster: ecs.cluster,
+      taskDefinition: xtractEcs.taskDefinition,
+      taskSecurityGroup: xtractEcs.taskSecurityGroup,
+      subnetIds: networking.vpc.privateSubnets.map((s) => s.subnetId),
+      taskRole: iam.taskRole,
+      executionRole: iam.executionRole,
     });
 
     // Grafana: self-hosted on ECS Fargate, Aurora PostgreSQL as internal DB (eliminates SQLite/EFS corruption)
