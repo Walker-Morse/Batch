@@ -1,0 +1,271 @@
+{
+  "uid": "onefintech-platform-config",
+  "title": "Platform Config",
+  "tags": [
+    "onefintech",
+    "config"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "id": 80,
+      "type": "table",
+      "title": "Seeded programs",
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  pg.client_name       AS \"Client\",\n  pg.subprogram_name   AS \"Subprogram\",\n  pg.benefit_type      AS \"Benefit Type\",\n  pg.state             AS \"State\",\n  pg.is_active         AS \"Active\",\n  pg.program_start_date AS \"Start Date\",\n  pg.fis_pack_id       AS \"Pack ID\",\n  pg.fis_subprogram_id AS \"FIS Subprogram ID\"\nFROM programs pg\nORDER BY pg.client_name, pg.benefit_type\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Active"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "active"
+                      },
+                      "false": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "inactive"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 81,
+      "type": "table",
+      "title": "APL versions",
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  av.benefit_type                                          AS \"Benefit Type\",\n  av.version_number                                        AS \"Version\",\n  av.rule_count                                            AS \"Rules\",\n  av.s3_key                                                AS \"S3 Key\",\n  av.uploaded_at AT TIME ZONE 'UTC'                        AS \"Uploaded\",\n  av.uploaded_by                                           AS \"Uploaded By\",\n  av.fis_ack_received_at AT TIME ZONE 'UTC'                AS \"FIS Ack Received\",\n  CASE\n    WHEN av.fis_ack_received_at IS NOT NULL THEN 'ACK received'\n    WHEN NOW() - av.uploaded_at > INTERVAL '24 hours'     THEN 'ACK overdue'\n    ELSE 'pending'\n  END                                                      AS \"Ack Status\",\n  av.notes                                                 AS \"Notes\"\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 50\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ack Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ACK received": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "pending": {
+                        "color": "yellow",
+                        "index": 1
+                      },
+                      "ACK overdue": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3"
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "File Detail",
+      "url": "/d/onefintech-file-detail/file-detail",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Member Lifecycle",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "UAT Validation",
+      "url": "/d/onefintech-uat-v2/uat-validation",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Platform Config",
+      "url": "/d/onefintech-platform-config/platform-config",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Tests",
+      "url": "/d/onefintech-tests/test-runs",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
+}

@@ -1,47 +1,33 @@
 {
-  "id": 3,
+  "uid": "onefintech-uat-v2",
+  "title": "UAT Validation",
+  "tags": [
+    "onefintech",
+    "uat"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
   "panels": [
     {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "\ud83d\udc65 See all members",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=3&${__url_time_range}"
-            }
-          ],
-          "thresholds": {
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          }
-        }
-      },
+      "id": 70,
+      "type": "stat",
+      "title": "Members Submitted",
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 0,
         "y": 0
       },
-      "id": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "targets": [
         {
@@ -50,54 +36,59 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT COUNT(*) as total FROM batch_records_common",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\n",
           "refId": "A"
         }
       ],
-      "title": "Total Members Submitted",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "\u2705 See enrolled members",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=7&${__url_time_range}"
-            }
-          ],
+          "unit": "short",
           "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               }
             ]
-          }
-        }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 71,
+      "type": "stat",
+      "title": "Enrolled",
       "gridPos": {
         "h": 4,
         "w": 4,
         "x": 4,
         "y": 0
       },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "targets": [
         {
@@ -106,37 +97,167 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT COUNT(*) as enrolled FROM batch_records_common WHERE status = 'enrolled'",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE brc.status IN ('COMPLETED','enrolled')\n  AND bf.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\n",
           "refId": "A"
         }
       ],
-      "title": "Successfully Enrolled",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
           "color": {
             "mode": "thresholds"
           },
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "\ud83d\udc80 See dead letters",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=1&${__url_time_range}"
-            }
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 72,
+      "type": "stat",
+      "title": "Enrollment %",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT ROUND(\n  100.0 * COUNT(*) FILTER (WHERE brc.status IN ('COMPLETED','enrolled'))\n  / NULLIF(COUNT(*), 0), 1\n)\nFROM batch_records_common brc\nJOIN batch_files bf ON bf.id = brc.batch_file_id\nWHERE bf.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
           ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
           "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 100
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 73,
+      "type": "stat",
+      "title": "Dead Lettered",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM dead_letter_store dl\nWHERE dl.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "orange",
                 "value": 1
               },
               {
@@ -144,23 +265,29 @@
                 "value": 5
               }
             ]
-          }
-        }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
       },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 74,
+      "type": "stat",
+      "title": "Active Purses",
       "gridPos": {
         "h": 4,
         "w": 4,
-        "x": 8,
+        "x": 16,
         "y": 0
       },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
       },
       "targets": [
         {
@@ -169,68 +296,45 @@
             "uid": "cfglj9j8ghwqob"
           },
           "format": "table",
-          "rawSql": "SELECT COUNT(*) FROM dead_letter_store",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM purses p\nJOIN consumers c ON c.id = p.consumer_id\nJOIN batch_records_rt30 rt30 ON rt30.client_member_id = c.client_member_id\nJOIN batch_files bf ON bf.id = rt30.batch_file_id\nWHERE p.status = 'ACTIVE'\n  AND bf.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\n",
           "refId": "A"
         }
       ],
-      "title": "Dead Lettered",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "links": [
-            {
-              "targetBlank": false,
-              "title": "\ud83d\udcb3 See active purses",
-              "url": "/d/onefintech-detail/detail-view?viewPanel=5&${__url_time_range}"
-            }
-          ],
+          "unit": "short",
           "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
                 "color": "blue",
                 "value": null
               }
             ]
-          }
-        }
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 0
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
           },
-          "format": "table",
-          "rawSql": "SELECT COUNT(*) FROM purses WHERE status = 'active'",
-          "refId": "A"
-        }
-      ],
-      "title": "Active Purses",
-      "type": "stat"
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
     },
     {
       "datasource": {
@@ -282,12 +386,12 @@
         ]
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 8,
+        "w": 24,
         "x": 0,
         "y": 4
       },
-      "id": 5,
+      "id": 75,
       "options": {
         "filterable": true,
         "noValue": "No records"
@@ -308,190 +412,6 @@
     },
     {
       "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "description": "Enter a Medicaid ID in the variable box above",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "filterable": true
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "available_balance_cents"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "currencyUSD"
-              },
-              {
-                "id": "custom.width",
-                "value": 150
-              },
-              {
-                "id": "mappings",
-                "value": []
-              },
-              {
-                "id": "decimals",
-                "value": 2
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 4
-      },
-      "id": 6,
-      "options": {
-        "filterable": true,
-        "noValue": "No members found"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawSql": "SELECT\n  c.client_member_id,\n  c.first_name,\n  c.last_name,\n  c.date_of_birth,\n  c.status as consumer_status,\n  p.purse_type,\n  p.status as purse_status,\n  p.available_balance_cents,\n  p.effective_date as benefit_start,\n  p.expiry_date as benefit_end,\n  ca.pan_masked,\n  ca.card_status,\n  c.created_at as enrolled_at\nFROM consumers c\nLEFT JOIN purses p ON p.consumer_id = c.id\nLEFT JOIN cards ca ON ca.consumer_id = c.id\nWHERE c.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY c.created_at DESC\nLIMIT 200",
-          "refId": "A"
-        }
-      ],
-      "title": "Member Lookup by Medicaid ID",
-      "transformations": [
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "fieldName": "available_balance_cents"
-              }
-            ]
-          }
-        }
-      ],
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "align": "left",
-            "width": 160,
-            "filterable": true
-          }
-        }
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 13
-      },
-      "id": 7,
-      "options": {
-        "filterable": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawSql": "SELECT\n  d.client_member_id,\n  d.failure_stage,\n  d.failure_reason,\n  d.retry_count,\n  d.created_at,\n  LEFT(d.message_body::text, 200) as payload_preview\nFROM dead_letter_store d\nORDER BY d.created_at DESC\nLIMIT 50",
-          "refId": "A"
-        }
-      ],
-      "title": "Dead Letter Detail",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 20
-      },
-      "id": 8,
-      "options": {
-        "filterable": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawSql": "SELECT\n  av.id,\n  av.program_id,\n  av.benefit_type,\n  av.version_number,\n  av.rule_count,\n  av.s3_key,\n  av.uploaded_at,\n  av.uploaded_by,\n  av.fis_ack_received_at,\n  av.notes\nFROM apl_versions av\nORDER BY av.uploaded_at DESC\nLIMIT 20",
-          "refId": "A"
-        }
-      ],
-      "title": "APL Version Status",
-      "type": "table",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "filterable": true
-          }
-        }
-      }
-    },
-    {
-      "datasource": {
-        "uid": "cfglj9j8ghwqob"
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "id": 9,
-      "options": {
-        "filterable": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawSql": "SELECT\n  id,\n  tenant_id,\n  client_name,\n  fis_subprogram_id,\n  fis_pack_id,\n  benefit_type,\n  state,\n  is_active,\n  program_start_date\nFROM programs\nORDER BY tenant_id, benefit_type",
-          "refId": "A"
-        }
-      ],
-      "title": "Seeded Programs",
-      "type": "table",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "filterable": true
-          }
-        }
-      }
-    },
-    {
-      "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
@@ -499,8 +419,8 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "minWidth": 50,
-            "filterable": true
+            "filterable": true,
+            "minWidth": 50
           }
         },
         "overrides": [
@@ -815,12 +735,12 @@
         ]
       },
       "gridPos": {
-        "h": 12,
+        "h": 10,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 12
       },
-      "id": 10,
+      "id": 76,
       "options": {
         "filterable": true,
         "footer": {
@@ -1162,9 +1082,9 @@
         "h": 10,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 22
       },
-      "id": 11,
+      "id": 77,
       "options": {
         "filterable": true,
         "footer": {
@@ -1185,39 +1105,380 @@
       ],
       "title": "\u26a0\ufe0f  Alternate Path \u2014 Where It Stopped",
       "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Enter a Medicaid ID in the variable box above",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "available_balance_cents"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 78,
+      "options": {
+        "filterable": true,
+        "noValue": "No members found"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "SELECT\n  c.client_member_id,\n  c.first_name,\n  c.last_name,\n  c.date_of_birth,\n  c.status as consumer_status,\n  p.purse_type,\n  p.status as purse_status,\n  p.available_balance_cents,\n  p.effective_date as benefit_start,\n  p.expiry_date as benefit_end,\n  ca.pan_masked,\n  ca.card_status,\n  c.created_at as enrolled_at\nFROM consumers c\nLEFT JOIN purses p ON p.consumer_id = c.id\nLEFT JOIN cards ca ON ca.consumer_id = c.id\nWHERE c.client_member_id LIKE CASE WHEN '$medicaid_id' = '' THEN '%' ELSE '$medicaid_id' END\nORDER BY c.created_at DESC\nLIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "Member Lookup by Medicaid ID",
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "fieldName": "available_balance_cents"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "id": 79,
+      "type": "table",
+      "title": "Dead letter detail",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  d.client_member_id   AS \"Member ID\",\n  d.failure_stage      AS \"Stage\",\n  d.failure_reason     AS \"Reason\",\n  d.retry_count        AS \"Retries\",\n  d.created_at AT TIME ZONE 'UTC'  AS \"Dead-Lettered At\",\n  LEFT(d.message_body::text, 200)  AS \"Payload Preview\"\nFROM dead_letter_store d\nWHERE d.correlation_id::text LIKE CASE WHEN '${correlation_id}' = '' THEN '%' ELSE '${correlation_id}' END\nORDER BY d.created_at DESC\nLIMIT 100\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Stage"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "ASSEMBLED": {
+                        "color": "blue",
+                        "index": 3,
+                        "text": "ASSEMBLED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "HALTED": {
+                        "color": "red",
+                        "index": 7,
+                        "text": "HALTED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "enrolled": {
+                        "color": "green",
+                        "index": 9,
+                        "text": "enrolled"
+                      },
+                      "failed": {
+                        "color": "red",
+                        "index": 10,
+                        "text": "failed"
+                      },
+                      "staged": {
+                        "color": "yellow",
+                        "index": 11,
+                        "text": "staged"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
+                      },
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
+                      },
+                      "Duplicate": {
+                        "color": "orange",
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "ACTIVE": {
+                        "color": "green",
+                        "index": 18,
+                        "text": "ACTIVE"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
+                        "color": "red",
+                        "index": 21,
+                        "text": "TERMINATED"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3"
     }
-  ],
-  "refresh": "1m",
-  "tags": [
-    "onefintech",
-    "uat"
   ],
   "templating": {
     "list": [
       {
-        "current": {
-          "value": ""
-        },
+        "hide": 0,
         "label": "Correlation ID",
         "name": "correlation_id",
-        "type": "textbox"
-      },
-      {
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
         "current": {
           "value": ""
-        },
+        }
+      },
+      {
+        "hide": 0,
         "label": "Medicaid ID",
         "name": "medicaid_id",
-        "type": "textbox"
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "current": {
+          "value": ""
+        }
       }
     ]
   },
-  "time": {
-    "from": "now-7d",
-    "to": "now"
+  "annotations": {
+    "list": []
   },
-  "timezone": "browser",
-  "title": "UAT Test Validation",
-  "uid": "onefintech-uat",
-  "version": 25
+  "links": [
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "File Detail",
+      "url": "/d/onefintech-file-detail/file-detail",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Member Lifecycle",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "UAT Validation",
+      "url": "/d/onefintech-uat-v2/uat-validation",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Platform Config",
+      "url": "/d/onefintech-platform-config/platform-config",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Tests",
+      "url": "/d/onefintech-tests/test-runs",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
 }

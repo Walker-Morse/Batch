@@ -1,0 +1,1532 @@
+{
+  "uid": "onefintech-file-detail",
+  "title": "File Detail",
+  "tags": [
+    "onefintech",
+    "files"
+  ],
+  "timezone": "browser",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "id": 40,
+      "type": "stat",
+      "title": "Declared rows",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT record_count FROM batch_files WHERE id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "title": "Enrolled",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM batch_records_common\nWHERE batch_file_id = '${fileId}'::uuid\n  AND status IN ('COMPLETED','enrolled')\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 42,
+      "type": "stat",
+      "title": "Failed",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM batch_records_common\nWHERE batch_file_id = '${fileId}'::uuid\n  AND status IN ('FAILED','failed')\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 43,
+      "type": "stat",
+      "title": "Dead Letters",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT COUNT(*) FROM dead_letter_store\nWHERE correlation_id = (SELECT correlation_id FROM batch_files WHERE id = '${fileId}'::uuid)\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 44,
+      "type": "stat",
+      "title": "Duration (min)",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT ROUND(EXTRACT(EPOCH FROM (submitted_at - arrived_at))/60.0::numeric, 1)\nFROM batch_files WHERE id = '${fileId}'::uuid AND submitted_at IS NOT NULL\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 15
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 45,
+      "type": "stat",
+      "title": "File Status",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT status FROM batch_files WHERE id = '${fileId}'::uuid",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "COMPLETE": {
+                  "color": "green",
+                  "index": 0
+                },
+                "HALTED": {
+                  "color": "red",
+                  "index": 1
+                },
+                "STALLED": {
+                  "color": "orange",
+                  "index": 2
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "One row per member. Each column is a pipeline stage: \u2705 complete, \u23f3 pending, \u274c failed.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "minWidth": 50
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1_received"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2_validated"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3_staged"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4_5_submitted"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6a_card_issued"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6b_benefit_loaded"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "7_reconciled"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 46,
+      "options": {
+        "filterable": true,
+        "footer": {
+          "show": false
+        },
+        "noValue": "No records"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n  CASE\n    WHEN rt30.id IS NULL                                    THEN NULL\n    WHEN rt30.first_name IS NULL OR rt30.last_name IS NULL  THEN 'MISSING NAME'\n    ELSE rt30.last_name || ', ' || rt30.first_name\n  END                                                                    AS member_name,\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n  CASE WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n       WHEN rt30.id IS NOT NULL THEN '\u23f3'\n       ELSE '\u23f3' END                                                     AS \"4_5_submitted\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6a_card_issued\",\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6b_benefit_loaded\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL AND rt60.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n    THEN '\u2705' ELSE '\u23f3' END                                              AS \"7_reconciled\",\n  rt60.purse_name,\n  rt60.amount_cents\nFROM domain_commands dc\nJOIN batch_files bf ON bf.id = dc.batch_file_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.batch_file_id = dc.batch_file_id AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.batch_file_id = dc.batch_file_id AND rt60.client_member_id = dc.client_member_id\nWHERE NOT EXISTS (\n  SELECT 1 FROM dead_letter_store dl\n  WHERE dl.correlation_id = bf.correlation_id AND dl.client_member_id = dc.client_member_id\n)\n  AND (dc.failure_reason IS NULL OR dc.failure_reason = '')\n  AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00'))\n  AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00'))\n  AND dc.batch_file_id = '${fileId}'::uuid\nORDER BY dc.sequence_in_file ASC\nLIMIT 500\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Happy path \u2014 all stages complete",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "description": "Members with dead letters, failed commands, bad FIS result codes, or missing required demographics.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "stopped_at"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "pattern": "^\u274c.*",
+                      "result": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    },
+                    "type": "regex"
+                  },
+                  {
+                    "options": {
+                      "pattern": "^\u26a0\ufe0f.*",
+                      "result": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    },
+                    "type": "regex"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1_received"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2_validated"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3_staged"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4_5_submitted"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6a_card_issued"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "6b_benefit_loaded"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "\u2705": {
+                        "color": "green",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u23f3": {
+                        "color": "blue",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "\u274c": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 47,
+      "options": {
+        "filterable": true,
+        "footer": {
+          "show": false
+        },
+        "noValue": "No failures \u2705"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  dc.sequence_in_file                                                    AS seq,\n  dc.client_member_id                                                    AS member_id,\n  CASE\n    WHEN rt30.id IS NOT NULL AND (rt30.first_name IS NULL OR rt30.last_name IS NULL)\n      THEN 'MISSING NAME'\n    WHEN rt30.id IS NOT NULL\n      THEN rt30.last_name || ', ' || rt30.first_name\n    ELSE NULL\n  END                                                                    AS member_name,\n  COALESCE(\n    CASE WHEN dl.id IS NOT NULL\n      THEN '\u274c dead letter: ' || dl.failure_stage END,\n    CASE WHEN dc.failure_reason IS NOT NULL AND dc.failure_reason != ''\n      THEN '\u274c command failed: ' || dc.failure_reason END,\n    CASE WHEN rt30.fis_result_code IS NOT NULL AND rt30.fis_result_code NOT IN ('','00')\n      THEN '\u274c FIS RT30: ' || rt30.fis_result_code || ' ' || COALESCE(rt30.fis_result_message,'') END,\n    CASE WHEN rt60.fis_result_code IS NOT NULL AND rt60.fis_result_code NOT IN ('','00')\n      THEN '\u274c FIS RT60: ' || rt60.fis_result_code || ' ' || COALESCE(rt60.fis_result_message,'') END,\n    CASE WHEN rt30.id IS NOT NULL AND (rt30.first_name IS NULL OR rt30.last_name IS NULL)\n      THEN '\u274c missing required demographics' END,\n    CASE WHEN rt30.id IS NULL\n      THEN '\u26a0\ufe0f staged but no RT30 record' END,\n    '\u26a0\ufe0f incomplete \u2014 no failure recorded'\n  )                                                                      AS stopped_at,\n  CASE WHEN bf.arrived_at IS NOT NULL THEN '\u2705' ELSE '\u23f3' END            AS \"1_received\",\n  CASE WHEN dl.id IS NOT NULL AND dl.failure_stage IN ('validation','row_processing')\n       THEN '\u274c'\n       WHEN bf.status IN ('COMPLETE','PROCESSING','SUBMITTED','ASSEMBLED')\n       THEN '\u2705' ELSE '\u23f3' END                                           AS \"2_validated\",\n  CASE WHEN dl.id IS NOT NULL AND dl.failure_stage = 'row_processing'\n       THEN '\u274c'\n       WHEN dc.id IS NOT NULL THEN '\u2705' ELSE '\u23f3' END                    AS \"3_staged\",\n  CASE WHEN rt30.id IS NOT NULL AND rt30.submitted_at IS NOT NULL THEN '\u2705'\n       WHEN rt30.id IS NOT NULL THEN '\u23f3'\n       ELSE '\u23f3' END                                                     AS \"4_5_submitted\",\n  CASE\n    WHEN rt30.completed_at IS NOT NULL\n     AND (rt30.fis_result_code IS NULL OR rt30.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt30.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6a_card_issued\",\n  CASE\n    WHEN rt60.completed_at IS NOT NULL\n     AND (rt60.fis_result_code IS NULL OR rt60.fis_result_code IN ('','00')) THEN '\u2705'\n    WHEN rt60.completed_at IS NOT NULL THEN '\u274c'\n    ELSE '\u23f3' END                                                        AS \"6b_benefit_loaded\",\n  dl.retry_count\nFROM domain_commands dc\nJOIN batch_files bf ON bf.id = dc.batch_file_id\nLEFT JOIN batch_records_rt30 rt30\n  ON rt30.batch_file_id = dc.batch_file_id AND rt30.client_member_id = dc.client_member_id\nLEFT JOIN batch_records_rt60 rt60\n  ON rt60.batch_file_id = dc.batch_file_id AND rt60.client_member_id = dc.client_member_id\nLEFT JOIN dead_letter_store dl\n  ON dl.correlation_id = bf.correlation_id AND dl.client_member_id = dc.client_member_id\nWHERE (\n  dl.id IS NOT NULL\n  OR (dc.failure_reason IS NOT NULL AND dc.failure_reason != '')\n  OR (rt30.fis_result_code IS NOT NULL AND rt30.fis_result_code NOT IN ('','00'))\n  OR (rt60.fis_result_code IS NOT NULL AND rt60.fis_result_code NOT IN ('','00'))\n  OR (rt30.id IS NOT NULL AND (rt30.first_name IS NULL OR rt30.last_name IS NULL))\n  OR rt30.id IS NULL\n)\n  AND dc.batch_file_id = '${fileId}'::uuid\nORDER BY dc.sequence_in_file ASC\nLIMIT 500\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Failure path \u2014 where each record stopped",
+      "type": "table"
+    },
+    {
+      "id": 48,
+      "type": "table",
+      "title": "Dead letters for this file",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  d.client_member_id    AS \"Member ID\",\n  d.failure_stage       AS \"Failed Stage\",\n  d.failure_reason      AS \"Failure Reason\",\n  d.retry_count         AS \"Retries\",\n  d.created_at AT TIME ZONE 'UTC'      AS \"Dead-Lettered At\",\n  d.last_retry_at AT TIME ZONE 'UTC'   AS \"Last Retry\",\n  d.resolved_at AT TIME ZONE 'UTC'     AS \"Resolved At\",\n  d.resolution_notes    AS \"Resolution Notes\"\nFROM dead_letter_store d\nJOIN batch_files bf ON bf.correlation_id = d.correlation_id\nWHERE bf.id = '${fileId}'::uuid\nORDER BY d.created_at DESC\n",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "sortBy": [],
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed Stage"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "validation": {
+                        "color": "orange",
+                        "index": 0
+                      },
+                      "row_processing": {
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "batch_assembly": {
+                        "color": "red",
+                        "index": 2
+                      },
+                      "fis_transfer": {
+                        "color": "red",
+                        "index": 3
+                      },
+                      "reconciliation": {
+                        "color": "red",
+                        "index": 4
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Retries"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "datasource": {
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": true,
+            "width": 180
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "COMPLETE": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "COMPLETE"
+                      },
+                      "PROCESSING": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "PROCESSING"
+                      },
+                      "SUBMITTED": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "SUBMITTED"
+                      },
+                      "ASSEMBLED": {
+                        "color": "blue",
+                        "index": 3,
+                        "text": "ASSEMBLED"
+                      },
+                      "VALIDATING": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "VALIDATING"
+                      },
+                      "RECEIVED": {
+                        "color": "yellow",
+                        "index": 5,
+                        "text": "RECEIVED"
+                      },
+                      "STALLED": {
+                        "color": "orange",
+                        "index": 6,
+                        "text": "STALLED"
+                      },
+                      "HALTED": {
+                        "color": "red",
+                        "index": 7,
+                        "text": "HALTED"
+                      },
+                      "FAILED": {
+                        "color": "red",
+                        "index": 8,
+                        "text": "FAILED"
+                      },
+                      "enrolled": {
+                        "color": "green",
+                        "index": 9,
+                        "text": "enrolled"
+                      },
+                      "failed": {
+                        "color": "red",
+                        "index": 10,
+                        "text": "failed"
+                      },
+                      "staged": {
+                        "color": "yellow",
+                        "index": 11,
+                        "text": "staged"
+                      },
+                      "STAGED": {
+                        "color": "yellow",
+                        "index": 12,
+                        "text": "STAGED"
+                      },
+                      "COMPLETED": {
+                        "color": "green",
+                        "index": 13,
+                        "text": "COMPLETED"
+                      },
+                      "Completed": {
+                        "color": "green",
+                        "index": 14,
+                        "text": "Completed"
+                      },
+                      "Failed": {
+                        "color": "red",
+                        "index": 15,
+                        "text": "Failed"
+                      },
+                      "Accepted": {
+                        "color": "blue",
+                        "index": 16,
+                        "text": "Accepted"
+                      },
+                      "Duplicate": {
+                        "color": "orange",
+                        "index": 17,
+                        "text": "Duplicate"
+                      },
+                      "ACTIVE": {
+                        "color": "green",
+                        "index": 18,
+                        "text": "ACTIVE"
+                      },
+                      "PENDING": {
+                        "color": "yellow",
+                        "index": 19,
+                        "text": "PENDING"
+                      },
+                      "SUSPENDED": {
+                        "color": "orange",
+                        "index": 20,
+                        "text": "SUSPENDED"
+                      },
+                      "TERMINATED": {
+                        "color": "red",
+                        "index": 21,
+                        "text": "TERMINATED"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 49,
+      "options": {
+        "filterable": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawSql": "\nSELECT\n  p.client_member_id                          AS \"Member ID\",\n  p.purse_type                                AS \"Purse Type\",\n  p.benefit_type                              AS \"Benefit Type\",\n  p.available_balance_cents                   AS \"Balance (cents)\",\n  p.benefit_period                            AS \"Benefit Period\",\n  p.effective_date                            AS \"Effective Date\",\n  p.expiry_date                               AS \"Expiry Date\",\n  p.status                                    AS \"Status\",\n  p.fis_purse_name                            AS \"FIS Purse Name\",\n  p.activated_at   AT TIME ZONE 'UTC'         AS \"Activated At\",\n  p.id                                        AS \"Purse ID\",\n  p.consumer_id                               AS \"Consumer ID\"\nFROM purses p\nWHERE p.source_batch_file_id = '${fileId}'::uuid\nORDER BY p.activated_at DESC NULLS LAST",
+          "refId": "A"
+        }
+      ],
+      "title": "\ud83d\udcb3  Purses Created from File",
+      "type": "table"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "hide": 0,
+        "label": "File",
+        "name": "fileId",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "cfglj9j8ghwqob"
+        },
+        "query": "SELECT TO_CHAR(arrived_at AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI') || ' \u00b7 ' || file_type || ' \u00b7 ' || client_id || ' \u00b7 ' || status AS __text, id AS __value FROM batch_files ORDER BY arrived_at DESC LIMIT 100",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allValue": "",
+        "skipUrlSync": false,
+        "current": {}
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "File Detail",
+      "url": "/d/onefintech-file-detail/file-detail",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Member Lifecycle",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "UAT Validation",
+      "url": "/d/onefintech-uat-v2/uat-validation",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Platform Config",
+      "url": "/d/onefintech-platform-config/platform-config",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Tests",
+      "url": "/d/onefintech-tests/test-runs",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
+}

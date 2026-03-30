@@ -188,6 +188,19 @@
       "type": "table"
     },
     {
+      "id": 90,
+      "type": "row",
+      "title": "Reference \u2014 canonical test inventory",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "panels": []
+    },
+    {
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
@@ -648,7 +661,29 @@
         "defaults": {
           "max": 100,
           "min": 0,
-          "unit": "percent"
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "green",
+                "value": 100
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
         },
         "overrides": []
       },
@@ -671,7 +706,17 @@
         }
       ],
       "title": "Pass Rate Over Time (by Package)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "calcs": [
+            "last",
+            "min"
+          ],
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
     },
     {
       "datasource": {
@@ -863,5 +908,18 @@
   },
   "title": "Test Runs",
   "uid": "onefintech-tests",
-  "version": 9
+  "version": 15,
+  "links": [
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "type": "link",
+      "icon": "external link",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
 }
