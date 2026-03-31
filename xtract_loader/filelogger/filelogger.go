@@ -49,8 +49,12 @@ func (f *FileLogger) CreateReceived(ctx context.Context, s3Key, xtractType, clie
 		nullStr(sha256), tenantID,
 	).Scan(&sk)
 	if err != nil {
-		// No row returned = already exists (DO NOTHING fired)
-		return 0, nil
+		// pgx.ErrNoRows means ON CONFLICT fired — file already processed
+		if err.Error() == "no rows in result set" {
+			return 0, nil
+		}
+		// Any other error is a real DB problem — surface it
+		return 0, fmt.Errorf("filelogger: CreateReceived INSERT failed for %s: %w", s3Key, err)
 	}
 	return sk, nil
 }
