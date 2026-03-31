@@ -165,7 +165,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	// PGP decrypt (Stage 2)
 	// Encryption is detected from the S3 key suffix at runtime:
 	//   .pgp suffix  → real PGP decrypt using key from Secrets Manager
-	//   all others   → PassthroughDecrypt (plaintext .csv/.srg310/.srg315/.srg320)
+	//   all others   → PassthroughDecrypt (plaintext .txt / .txt.pgp)
 	// This allows both encrypted (TST/PRD MCO files) and plaintext (DEV test files)
 	// to flow through the same pipeline without environment-level overrides.
 	var pgpDecrypt func(io.Reader) (io.Reader, error)
@@ -572,9 +572,10 @@ func parseConfig() (*PipelineConfig, error) {
 		}
 	}
 
-	// Derive FILE_TYPE from S3 key suffix when not explicitly set.
-	// Supports: .srg310 / .srg315 / .srg320 and their .pgp variants.
-	// Falls back to SRG310 if unrecognised (most common case in Phase 1).
+	// Derive FILE_TYPE from S3 key when not explicitly set.
+	// Inbound files from health plan clients use .txt extension (pipe-delimited).
+	// Encrypted variants use .txt.pgp.
+	// File type is detected by srg310/srg315/srg320 appearing in the filename.
 	if *fileType == "" && *s3Key != "" {
 		lower := strings.ToLower(*s3Key)
 		switch {
@@ -644,3 +645,4 @@ func envOrDefault(key, def string) string {
 }
 
 func strPtr(s string) *string { return &s }
+
