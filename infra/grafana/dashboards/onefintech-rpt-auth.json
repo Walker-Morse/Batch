@@ -1,0 +1,377 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Home",
+      "type": "link",
+      "url": "/d/onefintech-home/one-fintech-platform"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Reports",
+      "type": "link",
+      "url": "/d/onefintech-reports/reports"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Ops Health",
+      "type": "link",
+      "url": "/d/onefintech-ops-health/ops-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Member Lifecycle",
+      "type": "link",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle"
+    }
+  ],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "### \u2139\ufe0f About This Report\nAuthorization approvals, declines, and reversals from the FIS STDAUTH Data XTRACT feed (v2.7). Sourced from **`reporting.fact_authorization`** and pre-aggregated view **`reporting.vw_auth_decline_summary`**.\n\n| Column | Source | Meaning |\n|--------|--------|--------|\n| Response Code | `fact_authorization.response_code` | FIS auth response: 0=Approved, 51=Insufficient funds, 57=Not permitted, etc. |\n| Response Description | `fact_authorization.response_description` | Human-readable response text |\n| Is Reversed | `fact_authorization.is_reversed` | True if auth was subsequently reversed |\n| Auth Amount | `fact_authorization.authorization_amount` | Requested authorization amount in card currency |\n| Settle Balance | `fact_authorization.settle_balance` | Purse balance after settlement |\n| Purse Name | `fact_authorization.purse_name` | Which purse was charged (OTC2100, FOD2100, CMB2100) |\n| MCC | `fact_authorization.mcc` | Merchant Category Code |\n| Merchant Name | `fact_authorization.merchant_name` | Where the card was used |\n\n> \u26a0\ufe0f **This report requires FIS STDAUTH XTRACT feeds to be active.** Pending DM-03 confirmation from Kendra Williams. Data will populate automatically when FIS begins delivering daily STDAUTH files to the XTRACT SFTP endpoint.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 10
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Authorizations",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 10
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND response_code=0",
+          "refId": "A"
+        }
+      ],
+      "title": "Approvals",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "red",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 10
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND response_code != 0",
+          "refId": "A"
+        }
+      ],
+      "title": "Declines",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 10
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND is_reversed = true",
+          "refId": "A"
+        }
+      ],
+      "title": "Reversals",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 20,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    m.client_member_id          AS \"Member ID\",\n    a.purse_name                AS \"Purse\",\n    a.authorization_amount      AS \"Auth Amount\",\n    CASE WHEN a.response_code = 0 THEN 'Approved' ELSE 'Declined' END AS \"Result\",\n    a.response_code             AS \"Response Code\",\n    a.response_description      AS \"Response\",\n    a.merchant_name             AS \"Merchant\",\n    a.mcc                       AS \"MCC\",\n    a.is_reversed               AS \"Reversed\",\n    a.txn_datetime_utc::date    AS \"Date\"\nFROM reporting.fact_authorization a\nLEFT JOIN reporting.dim_member m ON m.member_sk = (\n    SELECT member_sk FROM reporting.dim_member\n    WHERE client_member_id = a.pan_masked AND tenant_id = a.tenant_id LIMIT 1\n)\nWHERE a.tenant_id = 'rfu-oregon'\nORDER BY a.txn_datetime_utc DESC\nLIMIT 500",
+          "refId": "A"
+        }
+      ],
+      "title": "Authorization Detail",
+      "type": "table"
+    }
+  ],
+  "refresh": "10m",
+  "schemaVersion": 39,
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Authorization & Declines Report",
+  "uid": "onefintech-rpt-auth"
+}

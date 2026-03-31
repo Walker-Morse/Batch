@@ -1,0 +1,165 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Home",
+      "type": "link",
+      "url": "/d/onefintech-home/one-fintech-platform"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Reports",
+      "type": "link",
+      "url": "/d/onefintech-reports/reports"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Ops Health",
+      "type": "link",
+      "url": "/d/onefintech-ops-health/ops-health"
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Member Lifecycle",
+      "type": "link",
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle"
+    }
+  ],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "# Reports\nClient-level reporting for Rogue Foods United (rfu-oregon). Mirrors Aetna Medicaid monthly report format. Each report has an **(i) info panel** explaining every field, its source table, and how to interpret it.\n\n> Reports marked \u26a0\ufe0f require FIS XTRACT feeds to be active (pending DM-03 confirmation).",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 3
+      },
+      "id": 10,
+      "options": {
+        "content": "## [\ud83d\udfe2 Card Status](/d/onefintech-rpt-card-status/card-status-report)\n\n**Audience:** Operations & Client Success\n\nWho has a card? What is its status? FIS card ID, person ID, and CUID stamped after reconciliation. One row per member.\n\n**Source tables:** `dim_card, dim_member`\n\n[\u2192 Open report](/d/onefintech-rpt-card-status/card-status-report)",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 3
+      },
+      "id": 11,
+      "options": {
+        "content": "## [\ud83d\udfe2 Activation & Enrollment](/d/onefintech-rpt-enrollment/enrollment-report)\n\n**Audience:** Operations & Client Success\n\nHow many members enrolled per batch file? Processing status by correlation ID. Funnel from STAGED \u2192 ACCEPTED.\n\n**Source tables:** `fact_enrollments, dim_member`\n\n[\u2192 Open report](/d/onefintech-rpt-enrollment/enrollment-report)",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 3
+      },
+      "id": 12,
+      "options": {
+        "content": "## [\ud83d\udfe2 Reconciliation](/d/onefintech-rpt-reconciliation/reconciliation-report)\n\n**Audience:** Operations & Client Success\n\nFIS result codes per record. MATCHED vs UNMATCHED. Which members have FIS identifiers stamped, and when.\n\n**Source tables:** `fact_reconciliation, dim_member`\n\n[\u2192 Open report](/d/onefintech-rpt-reconciliation/reconciliation-report)",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "id": 13,
+      "options": {
+        "content": "## [\ud83d\udfe2 Authorization & Declines](/d/onefintech-rpt-auth/auth-report)\n\n**Audience:** Operations & Client Success / Finance\n\nAuthorization approvals, declines, and reversals from FIS STDAUTH XTRACT. Decline rate by purse.\n\n**Source tables:** `fact_authorization, dim_member \u2014 \u26a0\ufe0f live once XTRACT feeds active`\n\n[\u2192 Open report](/d/onefintech-rpt-auth/auth-report)",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    },
+    {
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "id": 14,
+      "options": {
+        "content": "## [\ud83d\udfe2 Utilization Summary](/d/onefintech-rpt-utilization/utilization-report)\n\n**Audience:** Operations & Client Success / Finance\n\nSettled monetary transactions by member and purse. Purse-level closing balances. Spend by category from STDFSID.\n\n**Source tables:** `fact_monetary, fact_account_balance \u2014 \u26a0\ufe0f live once XTRACT feeds active`\n\n[\u2192 Open report](/d/onefintech-rpt-utilization/utilization-report)",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3",
+      "title": "",
+      "type": "text"
+    }
+  ],
+  "refresh": "10m",
+  "schemaVersion": 39,
+  "tags": [
+    "reporting",
+    "landing"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Reports",
+  "uid": "onefintech-reports"
+}
