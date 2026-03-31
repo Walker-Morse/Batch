@@ -1,156 +1,118 @@
 {
-  "annotations": {
-    "list": []
+  "uid": "onefintech-client-reports",
+  "title": "Client Reports",
+  "tags": [
+    "client",
+    "reporting",
+    "rfu"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "5m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
   },
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
       "title": "Home",
-      "type": "link",
-      "url": "/d/onefintech-home/one-fintech-platform"
-    },
-    {
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Member Lifecycle",
-      "type": "link",
-      "url": "/d/onefintech-member-lifecycle/member-lifecycle"
-    },
-    {
+      "url": "/d/onefintech-member-lifecycle/member-lifecycle",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Ops Health",
-      "type": "link",
-      "url": "/d/onefintech-ops-health/ops-health"
-    },
-    {
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
-      "title": "Client Reports",
-      "type": "link",
-      "url": "/d/onefintech-client-reports/client-reports"
+      "type": "link"
     }
   ],
   "panels": [
     {
-      "gridPos": {
-        "h": 2,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
       "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 2
+      },
       "options": {
-        "content": "## Client Reports \u2014 Rogue Foods United (rfu-oregon)\nMirroring Aetna Medicaid monthly reporting format. Data sourced from FIS XTRACT + pipeline domain state.",
+        "content": "## Client Reports \u2014 Rogue Foods United (rfu-oregon)\nMirroring Aetna Medicaid monthly reporting format. Data sourced from FIS reconciliation pipeline.",
         "mode": "markdown"
       },
-      "pluginVersion": "10.4.3",
-      "title": "",
-      "type": "text"
+      "pluginVersion": "10.4.3"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 2
-      },
       "id": 2,
-      "panels": [],
+      "type": "row",
       "title": "Summary",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 0,
-        "y": 3
+        "y": 2,
+        "w": 24,
+        "h": 1
       },
+      "collapsed": false,
+      "panels": []
+    },
+    {
       "id": 3,
+      "type": "stat",
+      "title": "Members Enrolled",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
+        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(DISTINCT member_sk) FROM reporting.dim_member WHERE tenant_id='rfu-oregon'",
-          "refId": "A"
         }
-      ],
-      "title": "Total Members Enrolled",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -160,121 +122,121 @@
                 "value": null
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 3
-      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT member_sk) AS \"n\" FROM reporting.dim_member WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(DISTINCT card_sk) FROM reporting.dim_card WHERE tenant_id='rfu-oregon'",
-          "refId": "A"
-        }
-      ],
+      "type": "stat",
       "title": "Cards Issued",
-      "type": "stat"
-    },
-    {
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 4,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 3
-      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT card_sk) AS \"n\" FROM reporting.dim_card WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "id": 5,
+      "type": "stat",
+      "title": "Cards Activated",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
+        "textMode": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM reporting.dim_card WHERE tenant_id='rfu-oregon' AND activated_at IS NOT NULL",
-          "refId": "A"
         }
-      ],
-      "title": "Cards Activated",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -284,31 +246,9 @@
                 "value": null
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 3
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -319,24 +259,108 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM reporting.fact_reconciliation WHERE tenant_id='rfu-oregon' AND reconciliation_status='MATCHED'",
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_card WHERE tenant_id='rfu-oregon' AND activated_at IS NOT NULL",
           "refId": "A"
         }
-      ],
-      "title": "Reconciled (MATCHED)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 6,
+      "type": "stat",
+      "title": "Reconciled (MATCHED)",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "red",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_reconciliation WHERE tenant_id='rfu-oregon' AND reconciliation_status='MATCHED'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Unmatched / Failed",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -346,31 +370,9 @@
                 "value": null
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 3
-      },
-      "id": 7,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -381,24 +383,46 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM reporting.fact_reconciliation WHERE tenant_id='rfu-oregon' AND reconciliation_status='UNMATCHED'",
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_reconciliation WHERE tenant_id='rfu-oregon' AND reconciliation_status='UNMATCHED'",
           "refId": "A"
         }
-      ],
-      "title": "Unmatched / Failed",
-      "type": "stat"
+      ]
     },
     {
+      "id": 8,
+      "type": "stat",
+      "title": "FIS IDs Stamped",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 20,
+        "y": 3,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "none",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -408,31 +432,9 @@
                 "value": null
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 3
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -443,215 +445,110 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) FROM reporting.dim_member WHERE tenant_id='rfu-oregon' AND fis_person_id IS NOT NULL",
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_member WHERE tenant_id='rfu-oregon' AND fis_person_id IS NOT NULL",
           "refId": "A"
         }
-      ],
-      "title": "FIS IDs Stamped",
-      "type": "stat"
+      ]
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 7
-      },
       "id": 9,
-      "panels": [],
+      "type": "row",
       "title": "Card Status",
-      "type": "row"
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
     },
     {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
       "id": 10,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": []
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT\n    m.client_member_id  AS \"Client Member ID\",\n    m.first_name        AS \"First Name\",\n    m.last_name         AS \"Last Name\",\n    m.fis_person_id     AS \"FIS Person ID\",\n    m.fis_cuid          AS \"FIS CUID\",\n    c.fis_card_id       AS \"FIS Card ID\",\n    CASE c.card_status\n        WHEN 1 THEN 'Active'\n        WHEN 2 THEN 'Suspended'\n        WHEN 3 THEN 'Closed'\n        ELSE 'New'\n    END                 AS \"Card Status\",\n    c.issued_at::date   AS \"Start Date\",\n    c.activated_at::date AS \"Activated Date\"\nFROM reporting.dim_member m\nLEFT JOIN reporting.dim_card c ON c.dim_member_sk = m.member_sk\nWHERE m.tenant_id = 'rfu-oregon'\nAND m.is_current = true\nORDER BY m.client_member_id\n    ",
-          "refId": "A"
-        }
-      ],
+      "type": "table",
       "title": "Card Status \u2014 All Members",
-      "type": "table"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    m.client_member_id AS \"Client Member ID\",\n    m.first_name AS \"First Name\",\n    m.last_name AS \"Last Name\",\n    m.fis_person_id AS \"FIS Person ID\",\n    m.fis_cuid AS \"FIS CUID\",\n    c.fis_card_id AS \"FIS Card ID\",\n    CASE c.card_status WHEN 1 THEN 'Active' WHEN 2 THEN 'Suspended' WHEN 3 THEN 'Closed' ELSE 'New' END AS \"Card Status\",\n    c.issued_at::date AS \"Start Date\",\n    c.activated_at::date AS \"Activated Date\"\nFROM reporting.dim_member m\nLEFT JOIN reporting.dim_card c ON c.dim_member_sk = m.member_sk\nWHERE m.tenant_id = 'rfu-oregon' AND m.is_current = true\nORDER BY m.client_member_id",
+          "refId": "A"
+        }
+      ]
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 20
-      },
       "id": 11,
-      "panels": [],
+      "type": "row",
       "title": "Enrollment",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 21
+        "y": 20,
+        "w": 24,
+        "h": 1
       },
-      "id": 12,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": []
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT\n    fe.processing_status    AS \"Status\",\n    fe.fis_record_type      AS \"Record Type\",\n    fe.srg_file_type        AS \"SRG File Type\",\n    COUNT(*)                AS \"Count\",\n    MIN(fe.created_at)::date AS \"First Seen\",\n    MAX(fe.updated_at)::date AS \"Last Updated\"\nFROM reporting.fact_enrollments fe\nWHERE fe.tenant_id = 'rfu-oregon'\nGROUP BY fe.processing_status, fe.fis_record_type, fe.srg_file_type\nORDER BY COUNT(*) DESC\n    ",
-          "refId": "A"
-        }
-      ],
-      "title": "Enrollment Fact \u2014 Processing Status",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 21
-      },
-      "id": 13,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true,
-        "sortBy": []
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "\nSELECT\n    fe.correlation_id               AS \"Correlation ID\",\n    fe.srg_file_type                AS \"File Type\",\n    COUNT(*)                        AS \"Records\",\n    COUNT(CASE WHEN fe.processing_status='STAGED' THEN 1 END)  AS \"Staged\",\n    COUNT(CASE WHEN fe.processing_status='ACCEPTED' THEN 1 END) AS \"Accepted\",\n    COUNT(CASE WHEN fe.processing_status='FAILED' THEN 1 END)  AS \"Failed\",\n    MIN(fe.created_at)::date        AS \"Date\"\nFROM reporting.fact_enrollments fe\nWHERE fe.tenant_id = 'rfu-oregon'\nGROUP BY fe.correlation_id, fe.srg_file_type\nORDER BY MIN(fe.created_at) DESC\n    ",
-          "refId": "A"
-        }
-      ],
-      "title": "Enrollment by Correlation ID (Batch)",
-      "type": "table"
-    },
-    {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 29
-      },
-      "id": 14,
-      "panels": [],
-      "title": "Reconciliation",
-      "type": "row"
+      "panels": []
     },
     {
+      "id": 12,
+      "type": "table",
+      "title": "Enrollment by Batch File",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 12,
-        "w": 24,
         "x": 0,
-        "y": 30
+        "y": 21,
+        "w": 24,
+        "h": 8
       },
-      "id": 15,
       "options": {
         "cellHeight": "sm",
         "footer": {
           "show": false
         },
-        "showHeader": true,
-        "sortBy": []
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -662,47 +559,73 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "\nSELECT\n    r.correlation_id            AS \"Correlation ID\",\n    r.fis_record_type           AS \"Record Type\",\n    r.fis_result_code           AS \"Result Code\",\n    r.fis_result_message        AS \"Result Message\",\n    r.reconciliation_status     AS \"Status\",\n    m.client_member_id          AS \"Member ID\",\n    m.fis_person_id             AS \"FIS Person ID\",\n    r.reconciled_at::date       AS \"Reconciled Date\"\nFROM reporting.fact_reconciliation r\nLEFT JOIN reporting.dim_member m ON m.member_sk = r.dim_member_sk\nWHERE r.tenant_id = 'rfu-oregon'\nORDER BY r.reconciled_at DESC, r.row_sequence_number\nLIMIT 500\n    ",
+          "rawSql": "SELECT\n    fe.correlation_id AS \"Correlation ID\",\n    fe.srg_file_type AS \"File Type\",\n    fe.fis_record_type AS \"Record Type\",\n    COUNT(*) AS \"Records\",\n    COUNT(CASE WHEN fe.processing_status='STAGED' THEN 1 END) AS \"Staged\",\n    COUNT(CASE WHEN fe.processing_status='ACCEPTED' THEN 1 END) AS \"Accepted\",\n    COUNT(CASE WHEN fe.processing_status='FAILED' THEN 1 END) AS \"Failed\",\n    MIN(fe.created_at)::date AS \"Date\"\nFROM reporting.fact_enrollments fe\nWHERE fe.tenant_id = 'rfu-oregon'\nGROUP BY fe.correlation_id, fe.srg_file_type, fe.fis_record_type\nORDER BY MIN(fe.created_at) DESC",
           "refId": "A"
         }
-      ],
+      ]
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Reconciliation",
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 14,
+      "type": "table",
       "title": "Reconciliation Results",
-      "type": "table"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    m.client_member_id AS \"Member ID\",\n    m.fis_person_id AS \"FIS Person ID\",\n    r.fis_record_type AS \"Record Type\",\n    r.fis_result_code AS \"Result Code\",\n    r.fis_result_message AS \"Result Message\",\n    r.reconciliation_status AS \"Status\",\n    r.correlation_id AS \"Correlation ID\",\n    r.reconciled_at::date AS \"Reconciled Date\"\nFROM reporting.fact_reconciliation r\nLEFT JOIN reporting.dim_member m ON m.member_sk = r.dim_member_sk\nWHERE r.tenant_id = 'rfu-oregon'\nORDER BY r.reconciled_at DESC NULLS LAST, r.row_sequence_number\nLIMIT 500",
+          "refId": "A"
+        }
+      ]
     }
   ],
-  "refresh": "5m",
-  "schemaVersion": 39,
-  "tags": [
-    "client",
-    "reporting",
-    "rfu"
-  ],
   "templating": {
-    "list": [
-      {
-        "current": {
-          "text": "rfu-oregon",
-          "value": "rfu-oregon"
-        },
-        "datasource": {
-          "type": "grafana-postgresql-datasource",
-          "uid": "cfglj9j8ghwqob"
-        },
-        "includeAll": false,
-        "label": "Tenant",
-        "multi": false,
-        "name": "tenant_id",
-        "query": "SELECT DISTINCT tenant_id FROM reporting.dim_member ORDER BY tenant_id",
-        "refresh": 2,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
-  "time": {
-    "from": "now-90d",
-    "to": "now"
-  },
-  "timezone": "browser",
-  "title": "Client Reports",
-  "uid": "onefintech-client-reports"
+  "annotations": {
+    "list": []
+  }
 }
