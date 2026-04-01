@@ -1,0 +1,678 @@
+{
+  "uid": "onefintech-rpt-ccx",
+  "title": "Client Configuration Report",
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Home",
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Reports",
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 9
+      },
+      "options": {
+        "content": "### \u2139\ufe0f About This Report\nProgram and purse configuration from FIS CCX (Client Configuration XTRACT) v1.17. Sourced from **`dim_subprogram`**, **`dim_purse_config`**, and **`dim_package`**. This is the authoritative FIS view of how RFU's program is configured \u2014 purse limits, spend categories, and package definitions as FIS has them. Click any tile to see the detail.\n\n| Table | Source Record | Meaning |\n|---|---|---|\n| `dim_subprogram` | CCX DSPG | Subprogram definition \u2014 program ID, client, market segment, reload rules |\n| `dim_purse_config` | CCX DPUR | Per-purse limits and eligible spend category codes |\n| `dim_package` | CCX DPKG | Card package definition linked to BIN |\n\n**Spend category codes:** 5D=Food/Beverages \u00b7 5A=OTC/Health \u00b7 OF=OTC (OF) \u00b7 OV=OTC (OV) \u00b7 5X=Produce\n\n> Configuration snapshot as of **2026-03-31** for subprogram **26071** (RFU Oregon Medicaid Food).",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Program Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Subprograms",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View subprogram config",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_subprogram",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Purses Configured",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View purse config",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_purse_config",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Packages",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View package config",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_package",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Active Purses",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View active purses",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.dim_purse_config WHERE purse_status='ACTIVE'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Max Food Purse Load",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View Food purse config",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(MAX(max_load_amount)::numeric,2) AS \"n\" FROM reporting.dim_purse_config WHERE purse_code='FOD2100'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Max OTC Purse Load",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View OTC purse config",
+              "url": "/d/onefintech-rpt-ccx/client-configuration-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(MAX(max_load_amount)::numeric,2) AS \"n\" FROM reporting.dim_purse_config WHERE purse_code='OTC2100'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "Subprogram Definition",
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Subprogram (DSPG)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 6
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    s.subprogram_id         AS \"Subprogram ID\",\n    s.subprogram_name       AS \"Subprogram Name\",\n    s.program_id            AS \"Program ID\",\n    s.program_name          AS \"Program Name\",\n    s.client_id             AS \"Client ID\",\n    s.client_name           AS \"Client Name\",\n    s.is_active             AS \"Active\",\n    s.is_reloadable         AS \"Reloadable\",\n    s.initial_card_status   AS \"Initial Card Status\",\n    s.market_segment        AS \"Market Segment\",\n    s.file_date             AS \"Config Date\"\nFROM reporting.dim_subprogram s\nORDER BY s.file_date DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Purse Configuration",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Purse Configuration (DPUR)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    purse_code AS \"Purse Code\",\n    purse_number AS \"Purse Number\",\n    purse_status AS \"Status\",\n    '$' || TO_CHAR(ROUND((min_load_amount)::numeric,2),'FM999,999,990.00') AS \"Min Load\",\n    '$' || TO_CHAR(ROUND((max_load_amount)::numeric,2),'FM999,999,990.00') AS \"Max Load\",\n    '$' || TO_CHAR(ROUND((min_balance_amount)::numeric,2),'FM999,999,990.00') AS \"Min Balance\",\n    '$' || TO_CHAR(ROUND((max_balance_amount)::numeric,2),'FM999,999,990.00') AS \"Max Balance\",\n    filter_type AS \"Filter Type\",\n    filter_network_name AS \"Filter Network\",\n    spend_categories_raw AS \"Spend Categories\",\n    purse_start_date AS \"Start Date\",\n    purse_end_date AS \"End Date\",\n    file_date AS \"Config Date\"\nFROM reporting.dim_purse_config\nORDER BY purse_code",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "type": "row",
+      "title": "Package Definition",
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Package Definition (DPKG)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 24,
+        "h": 6
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    p.package_id    AS \"Package ID\",\n    p.package_name  AS \"Package Name\",\n    p.package_code  AS \"Package Code\",\n    p.bin           AS \"BIN\",\n    p.subprogram_id AS \"Subprogram ID\",\n    p.file_date     AS \"Config Date\"\nFROM reporting.dim_package p\nORDER BY p.file_date DESC",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

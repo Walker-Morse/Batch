@@ -544,7 +544,7 @@
         "h": 5
       },
       "options": {
-        "content": "## [\ud83d\udcca Reports](/d/onefintech-reports/reports)\n\n**For:** Operations & Client Success\n\n**Answers:** Card status, enrollment counts, reconciliation results, utilization, authorization & declines, and item-level spend for RFU. Mirrors Aetna Medicaid monthly reporting format. Each report includes an (\u2139\ufe0f) info panel explaining every field and its source table.\n\n**Live reports:** Card Status \u00b7 Enrollment \u00b7 Reconciliation \u00b7 Auth & Declines \u00b7 Utilization \u00b7 Spend Item Detail",
+        "content": "## [\ud83d\udcca Reports](/d/onefintech-reports/reports)\n\n**For:** Operations & Client Success\n\n**Answers:** Full reporting suite for RFU \u2014 card status, enrollment, reconciliation, authorization & declines, utilization, spend item detail, monetary transactions, non-monetary events, and client configuration. Mirrors Aetna Medicaid monthly reporting format.\n\n**9 reports live:** Card Status \u00b7 Enrollment \u00b7 Reconciliation \u00b7 Auth & Declines \u00b7 Utilization \u00b7 Spend Items \u00b7 Monetary \u00b7 Non-Monetary \u00b7 Client Config",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"

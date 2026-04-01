@@ -1,0 +1,595 @@
+{
+  "uid": "onefintech-rpt-nonmon",
+  "title": "Non-Monetary Report",
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Home",
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Reports",
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "content": "### \u2139\ufe0f About This Report\nCard lifecycle events from FIS STDNONMON Data XTRACT v3.0. One row per event per card \u2014 enrollment, status changes, activation, closure. Click any tile to jump to the detail table.\n\n| Column | Source | Meaning |\n|---|---|---|\n| Event Type Code | `fact_non_monetary.event_type_code` | FIS event classification. 1530=New Account \u00b7 1250=Card Ordered \u00b7 4=Insurance/Medicaid |\n| Event Description | `fact_non_monetary.event_description` | Human-readable event text from FIS |\n| Event Datetime | `fact_non_monetary.event_datetime` | When the event occurred at FIS |\n| Card Status Code | `fact_non_monetary.card_status_code` | 1=Active \u00b7 2=Suspended \u00b7 3=Closed |\n| Event Source | `fact_non_monetary.event_source` | Who/what triggered the event (Self, ClientWebUser, etc.) |\n| Person ID | `fact_non_monetary.person_id` | FIS person identifier (same as `dim_member.fis_person_id`) |\n| Pan Proxy | `fact_non_monetary.pan_proxy_number` | Card proxy number used by FIS |\n\n> 166 card enrollment events loaded from STDNONMON03312026_RFU.txt.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Events",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View all events",
+              "url": "/d/onefintech-rpt-nonmon/non-monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_non_monetary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique Members",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View member events",
+              "url": "/d/onefintech-rpt-nonmon/non-monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT cardholder_first_name||cardholder_last_name) AS \"n\" FROM reporting.fact_non_monetary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Active Cards",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View active cards",
+              "url": "/d/onefintech-rpt-nonmon/non-monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_non_monetary WHERE tenant_id='rfu-oregon' AND card_status_code=1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "New Account Events",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View new account events",
+              "url": "/d/onefintech-rpt-nonmon/non-monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_non_monetary WHERE tenant_id='rfu-oregon' AND event_type_code=4",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Distinct Event Types",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View event type breakdown",
+              "url": "/d/onefintech-rpt-nonmon/non-monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT event_type_code) AS \"n\" FROM reporting.fact_non_monetary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "Event Type Breakdown",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Events by Type",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    event_type_code AS \"Event Type Code\",\n    event_description AS \"Description\",\n    COUNT(*) AS \"Count\",\n    COUNT(CASE WHEN card_status_code=1 THEN 1 END) AS \"Active Cards\",\n    MIN(event_datetime)::date AS \"First Seen\",\n    MAX(event_datetime)::date AS \"Last Seen\"\nFROM reporting.fact_non_monetary\nWHERE tenant_id='rfu-oregon'\nGROUP BY event_type_code, event_description\nORDER BY 3 DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Events by Card Status",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    CASE card_status_code WHEN 1 THEN 'Active' WHEN 2 THEN 'Suspended' WHEN 3 THEN 'Closed' ELSE card_status_code::text END AS \"Card Status\",\n    COUNT(*) AS \"Count\"\nFROM reporting.fact_non_monetary\nWHERE tenant_id='rfu-oregon'\nGROUP BY card_status_code ORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Member Event Detail",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Member Event Detail",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    cardholder_first_name AS \"First Name\",\n    cardholder_last_name AS \"Last Name\",\n    CASE card_status_code WHEN 1 THEN 'Active' WHEN 2 THEN 'Suspended' WHEN 3 THEN 'Closed' ELSE 'Unknown' END AS \"Card Status\",\n    event_type_code AS \"Event Code\",\n    event_description AS \"Event\",\n    event_source AS \"Source\",\n    event_datetime AS \"Event Time\",\n    mailing_state AS \"State\",\n    person_id AS \"FIS Person ID\",\n    pan_masked AS \"PAN\",\n    file_date AS \"File Date\"\nFROM reporting.fact_non_monetary\nWHERE tenant_id='rfu-oregon'\nORDER BY event_datetime DESC NULLS LAST, cardholder_last_name\nLIMIT 500",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

@@ -1,4 +1,41 @@
 // Package stdnonmon loads FIS Non-Monetary XTRACT v3.0 → reporting.fact_non_monetary.
+//
+// Field positions validated against STDNONMON11012025_MORSE.txt (156 fields):
+//   [0]  record_type
+//   [1]  top_client_id
+//   [2]  top_client_name
+//   [3]  issuer_client_id
+//   [4]  client_name
+//   [5]  program_id
+//   [6]  program_name
+//   [7]  subprogram_id
+//   [8]  subprogram_name
+//   [9]  bin
+//   [10] bin_currency_alpha
+//   [11] bin_currency_code
+//   [12] package_id
+//   [13] package_name
+//   [14] pan_masked
+//   [15] card_number_masked
+//   [16] activate_date
+//   [17] card_status_code
+//   [18] cardholder_last_name  (NOT top_client_name — confirmed from UAT file)
+//   [19] cardholder_first_name
+//   [20] middle_initial
+//   [21] mailing_address_line1
+//   [23] mailing_city
+//   [24] mailing_state         (char 1)
+//   [25] mailing_zip
+//   [30] card_start_date
+//   [31] card_end_date
+//   [34] event_type_code       (field 32 = market segment, 33 = market_seg_name, 34/35 = event codes)
+//   [36] event_datetime
+//   [51] event_description
+//   [55] pan_proxy_number
+//   [81] event_source
+//   [86] event_actor (first name part)
+//   [87] event_actor (last name part)
+//   [88] person_id
 package stdnonmon
 
 import (
@@ -45,26 +82,23 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 	cardNumMasked  := parser.Field(fields, 15)
 	activateDate   := parser.FieldDate(fields, 16)
 	cardStatusCode := parser.FieldInt64(fields, 17)
-	firstName      := parser.Field(fields, 18)
-	lastName       := parser.Field(fields, 19)
+	lastName       := parser.Field(fields, 18)
+	firstName      := parser.Field(fields, 19)
 	middleInitial  := parser.Field(fields, 20)
 	address1       := parser.Field(fields, 21)
-	city           := parser.Field(fields, 23)  // field 24 in spec
-	state          := parser.Field(fields, 24)  // field 25 — char(1)
+	city           := parser.Field(fields, 23)
+	state          := parser.Field(fields, 24)
 	zip            := parser.Field(fields, 25)
-	eventTypeCode  := parser.FieldInt64(fields, 32)
-	eventDT        := parser.FieldDateTime(fields, 33)
+	cardStartDate  := parser.FieldDate(fields, 30)
+	cardEndDate    := parser.FieldDate(fields, 31)
+	eventTypeCode  := parser.FieldInt64(fields, 34)
+	eventDT        := parser.FieldDateTime(fields, 36)
 	eventDesc      := parser.Field(fields, 51)
-	eventSource    := parser.Field(fields, 87)
-	eventActor     := parser.Field(fields, 89)
-	cardStartDate  := parser.FieldDate(fields, 46)
-	cardEndDate    := parser.FieldDate(fields, 47)
-	purseNumber    := parser.FieldInt64(fields, 116)
-	purseName      := parser.Field(fields, 117)
-	personID       := parser.FieldInt64(fields, 43)
-	panProxyNum    := parser.Field(fields, 48)
+	panProxyNum    := parser.Field(fields, 55)
+	eventSource    := parser.Field(fields, 81)
+	personID       := parser.FieldInt64(fields, 88)
 
-	// state must be char(1) — take first char only
+	// state must be char(1)
 	stateChar := ""
 	if len(state) > 0 {
 		stateChar = state[:1]
@@ -85,24 +119,21 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 			pan_masked, card_number_masked, activate_date, card_status_code,
 			cardholder_first_name, cardholder_last_name, cardholder_middle_initial,
 			mailing_address_line1, mailing_city, mailing_state, mailing_zip,
-			event_type_code, event_description, event_source, event_actor, event_datetime,
+			event_type_code, event_description, event_source, event_datetime,
 			card_start_date, card_end_date,
-			purse_number, purse_name,
 			person_id, pan_proxy_number,
 			inserted_at
 		) VALUES (
 			$1,$2,$3,$4,
 			$5,$6,$7,$8,
 			$9,$10,$11,$12,
-			$13,$14,$15,
-			$16,$17,
+			$13,$14,$15,$16,$17,
 			$18,$19,$20,$21,
 			$22,$23,$24,
 			$25,$26,$27,$28,
-			$29,$30,$31,$32,$33,
-			$34,$35,
-			$36,$37,
-			$38,$39,
+			$29,$30,$31,$32,
+			$33,$34,
+			$35,$36,
 			now()
 		)`,
 		l.workOfDate, l.workOfDate, l.sourceFile, l.tenantID,
@@ -114,9 +145,8 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 		nullStr(panMasked), nullStr(cardNumMasked), nullDate(activateDate), nullInt16(cardStatusCode),
 		nullStr(firstName), nullStr(lastName), nullChar1(middleChar),
 		nullStr(address1), nullStr(city), nullChar1(stateChar), nullStr(zip),
-		eventTypeCode, nullStr(eventDesc), nullStr(eventSource), nullStr(eventActor), nullTime(eventDT),
+		eventTypeCode, nullStr(eventDesc), nullStr(eventSource), nullTime(eventDT),
 		nullDate(cardStartDate), nullDate(cardEndDate),
-		nullInt(purseNumber), nullStr(purseName),
 		nullInt(personID), nullStr(panProxyNum),
 	)
 	if err != nil {

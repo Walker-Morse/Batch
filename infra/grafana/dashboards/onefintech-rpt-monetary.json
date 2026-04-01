@@ -1,0 +1,665 @@
+{
+  "uid": "onefintech-rpt-monetary",
+  "title": "Monetary Report",
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Home",
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Reports",
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "content": "### \u2139\ufe0f About This Report\nAll settled monetary transactions from FIS STDMON Data XTRACT v3.8. Includes value loads, purchases, reversals, and adjustments. Click any tile to jump to the transaction detail table.\n\n| Column | Source | Meaning |\n|---|---|---|\n| Txn Type Code | `fact_monetary.txn_type_code` | 1710=Value Load \u00b7 5=Purchase \u00b7 1=Reversal \u00b7 1720=Adjustment |\n| Settle Amount | `fact_monetary.settle_amount` | Dollar amount of settled transaction |\n| Purse Code | `fact_monetary.purse_code` | OTC2100 \u00b7 FOD2100 \u00b7 CMB2100 |\n| Response Code | `fact_monetary.response_code` | 0=Completed OK \u00b7 other=error |\n| Work of Date | `fact_monetary.work_of_date` | FIS reporting date |\n| Pan Proxy | `fact_monetary.pan_proxy_number` | Card proxy (links to `dim_member.fis_person_id`) |\n\n> Current data contains **498 value loads** ($114,540) across 166 members \u00d7 3 purses. Purchase and reversal transactions will appear here once members start using cards.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Transactions",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View all transactions",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique Members",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View by member",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT pan_proxy_number) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Value Loads",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View value loads",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1710",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Total Loaded",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View loaded amount detail",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(SUM(settle_amount)::numeric,2) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1710",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Purchases",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View purchases",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=5",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Reversals",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View reversals",
+              "url": "/d/onefintech-rpt-monetary/monetary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "By Purse",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Transactions by Purse",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT purse_code AS \"Purse\",\n    txn_type_code AS \"Txn Type\",\n    COUNT(*) AS \"Count\",\n    '$' || TO_CHAR(ROUND((SUM(settle_amount))::numeric,2),'FM999,999,990.00') AS \"Total\",\n    '$' || TO_CHAR(ROUND((AVG(settle_amount))::numeric,2),'FM999,999,990.00') AS \"Avg\"\nFROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'\nGROUP BY purse_code, txn_type_code ORDER BY purse_code, txn_type_code",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Response Code Summary",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    response_code AS \"Response Code\",\n    COUNT(*) AS \"Count\"\nFROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'\nGROUP BY response_code ORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Transaction Detail",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Monetary Transaction Detail",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    work_of_date AS \"Work Date\",\n    purse_code AS \"Purse\",\n    txn_type_code AS \"Txn Type\",\n    response_code AS \"Response\",\n    '$' || TO_CHAR(ROUND((settle_amount)::numeric,2),'FM999,999,990.00') AS \"Settle Amount\",\n    '$' || TO_CHAR(ROUND((authorization_amount)::numeric,2),'FM999,999,990.00') AS \"Auth Amount\",\n    merchant_name AS \"Merchant\",\n    mcc AS \"MCC\",\n    pan_proxy_number AS \"Member Proxy\",\n    pan_masked AS \"PAN\",\n    txn_local_datetime AS \"Txn Time\"\nFROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'\nORDER BY work_of_date DESC, txn_local_datetime DESC\nLIMIT 500",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}
