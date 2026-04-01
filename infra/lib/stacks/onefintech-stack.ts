@@ -144,6 +144,15 @@ export class OneFintechStack extends cdk.Stack {
       executionRole: iam.executionRole,
     });
 
+    // Allow xtract-loader tasks to reach the Aurora RDS Proxy on port 5432.
+    // The proxy SG only whitelists specific source SGs; xtract-loader uses a
+    // separate SG from ingest-task so it must be added explicitly.
+    aurora.proxySg.addIngressRule(
+      xtractEcs.taskSecurityGroup,
+      cdk.aws_ec2.Port.tcp(5432),
+      "xtract-loader ECS task to Aurora proxy"
+    );
+
     // Grafana: self-hosted on ECS Fargate, Aurora PostgreSQL as internal DB (eliminates SQLite/EFS corruption)
     new GrafanaConstruct(this, "Grafana", {
       env,
