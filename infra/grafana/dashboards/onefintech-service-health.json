@@ -1,0 +1,1938 @@
+{
+  "uid": "onefintech-service-health",
+  "title": "Service Health",
+  "tags": [
+    "onefintech",
+    "health"
+  ],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "title": "API Server",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "API Server"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "title": "Grafana",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Grafana"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "title": "API ALB",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "API ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "title": "Grafana ALB",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Grafana ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "title": "Aurora/RDS Proxy",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Aurora/RDS Proxy"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "title": "S3 Inbound Bucket",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "S3 Inbound Bucket"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 3
+      },
+      "title": "S3 Lister API",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "S3 Lister API"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 3
+      },
+      "title": "SFTP Server",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "SFTP Server"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 8,
+        "y": 3
+      },
+      "title": "EventBridge",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "EventBridge"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 3
+      },
+      "title": "Secrets Manager",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Secrets Manager"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 16,
+        "y": 3
+      },
+      "title": "KMS",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "KMS"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 3
+      },
+      "title": "ECR",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "ECR"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "title": "Transfer Family",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Transfer Family"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 4,
+        "y": 6
+      },
+      "title": "CloudWatch",
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": -0.1,
+                "to": 0.5,
+                "result": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.5,
+                "to": 1.1,
+                "result": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "?"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "CloudWatch"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "title": "UP / DOWN history",
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "last"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "drawStyle": "line",
+            "spanNulls": true
+          },
+          "min": -0.1,
+          "max": 1.1,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "API Server"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Grafana"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "API ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Grafana ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Aurora/RDS Proxy"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "S3 Inbound Bucket"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "S3 Lister API"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "SFTP Server"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "EventBridge"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Secrets Manager"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "KMS"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "L",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "ECR"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "Transfer Family"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "ServiceUp",
+          "dimensions": {
+            "ServiceName": [
+              "CloudWatch"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Maximum",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "bfglj9ie589oge"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "title": "Check latency (ms)",
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "last",
+            "max"
+          ]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "drawStyle": "line",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "LatencyMs",
+          "dimensions": {
+            "ServiceName": [
+              "API ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "LatencyMs",
+          "dimensions": {
+            "ServiceName": [
+              "Grafana ALB"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "LatencyMs",
+          "dimensions": {
+            "ServiceName": [
+              "Aurora/RDS Proxy"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "LatencyMs",
+          "dimensions": {
+            "ServiceName": [
+              "SFTP Server"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "bfglj9ie589oge"
+          },
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0,
+          "namespace": "OneFin/ServiceHealth",
+          "metricName": "LatencyMs",
+          "dimensions": {
+            "ServiceName": [
+              "S3 Lister API"
+            ]
+          },
+          "matchExact": true,
+          "statistic": "Average",
+          "period": "60",
+          "region": "us-east-1",
+          "hide": false
+        }
+      ]
+    }
+  ]
+}
