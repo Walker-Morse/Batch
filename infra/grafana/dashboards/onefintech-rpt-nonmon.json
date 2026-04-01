@@ -580,7 +580,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n    cardholder_first_name AS \"First Name\",\n    cardholder_last_name AS \"Last Name\",\n    CASE card_status_code WHEN 1 THEN 'Active' WHEN 2 THEN 'Suspended' WHEN 3 THEN 'Closed' ELSE 'Unknown' END AS \"Card Status\",\n    event_type_code::text || ' \u2014 ' || event_description AS \"Event Code\",\n    event_description AS \"Event\",\n    event_source AS \"Source\",\n    event_datetime AS \"Event Time\",\n    TRIM(mailing_state) AS \"State\",\n    person_id AS \"FIS Person ID\",\n    pan_masked AS \"PAN\",\n    file_date AS \"File Date\"\nFROM reporting.fact_non_monetary\nWHERE tenant_id='rfu-oregon'\nORDER BY event_datetime DESC NULLS LAST, cardholder_last_name\nLIMIT 500",
+          "rawSql": "SELECT\n    cardholder_first_name AS \"First Name\",\n    cardholder_last_name AS \"Last Name\",\n    CASE card_status_code WHEN 1 THEN 'Active' WHEN 2 THEN 'Suspended' WHEN 3 THEN 'Closed' ELSE 'Unknown' END AS \"Card Status\",\n    event_type_code AS \"Event Code\",\n    event_description AS \"Event\",\n    event_source AS \"Source\",\n    event_datetime AS \"Event Time\",\n    mailing_state AS \"State\",\n    person_id AS \"FIS Person ID\",\n    pan_masked AS \"PAN\",\n    file_date AS \"File Date\"\nFROM reporting.fact_non_monetary\nWHERE tenant_id='rfu-oregon'\nORDER BY event_datetime DESC NULLS LAST, cardholder_last_name\nLIMIT 500",
           "refId": "A"
         }
       ]
