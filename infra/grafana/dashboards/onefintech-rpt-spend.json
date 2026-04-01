@@ -40,14 +40,14 @@
   "panels": [
     {
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "content": "### \u2139\ufe0f About This Report\nSettled monetary transactions and purse-level closing balances from FIS STDMON + STDACCTBAL XTRACT.\n\n| Column | Source | Meaning |\n|---|---|---|\n| Settle Amount | `fact_monetary.settle_amount` | Dollar amount of the settled transaction |\n| Txn Type Code | `fact_monetary.txn_type_code` | 1710=Value Load, 5=Purchase, 1=Reversal |\n| Purse Code | `fact_monetary.purse_code` | OTC2100=OTC, FOD2100=Food, CMB2100=Combined |\n| Closing Balance | `fact_account_balance.closing_balance` | Purse balance at end of reporting day |\n| Total Purchase | `fact_account_balance.total_purchase_amount` | Sum of all purchases that day |\n| Total Valueload | `fact_account_balance.total_valueload_amount` | Sum of all loads that day |\n\n> All figures as of **2026-03-31** (RFU DEV load, subprogram 26071).",
+        "content": "### \u2139\ufe0f About This Report\nItem-level spend from FIS STDFSID (Filtered Spend Item Details) XTRACT v1.3.\n\n| Column | Source | Meaning |\n|---|---|---|\n| UPC | `fact_spend_item_detail.upc` | Product barcode |\n| Item Description | `fact_spend_item_detail.item_description` | Product name |\n| Spend Category | `fact_spend_item_detail.spend_category_code` | 5D=Food, 5A=OTC, OF/OV=OTC variants |\n| Item Amount | `fact_spend_item_detail.item_amount` | Line item dollar amount |\n| Item Quantity | `fact_spend_item_detail.item_quantity` | Units purchased |\n| Is Funded | `fact_spend_item_detail.is_funded` | Whether the item was funded by the benefit |\n| Merchant | `fact_spend_item.merchant_name` | Store where purchased |\n| Settle Amount | `fact_spend_item.settle_amount` | Total transaction amount |\n\n> **393 items** across **99 transactions** from ~60% of RFU members.",
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3",
@@ -60,7 +60,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 7
+        "y": 8
       },
       "id": 2,
       "panels": [],
@@ -96,7 +96,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 8
+        "y": 9
       },
       "id": 3,
       "options": {
@@ -122,73 +122,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(DISTINCT pan_masked) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'",
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
       ],
-      "title": "Total Members Loaded",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT ROUND(SUM(settle_amount)::numeric,2) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1710",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Loaded ($)",
+      "title": "Total Transactions",
       "type": "stat"
     },
     {
@@ -219,8 +157,70 @@
       "gridPos": {
         "h": 4,
         "w": 4,
+        "x": 4,
+        "y": 9
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Items",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 8,
-        "y": 8
+        "y": 9
       },
       "id": 5,
       "options": {
@@ -246,73 +246,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(SUM(closing_balance)::numeric,2) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
+          "rawSql": "SELECT ROUND(SUM(item_amount)::numeric,2) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
       ],
-      "title": "Total Balance ($)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "fixedColor": "orange",
-            "mode": "fixed"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "orange",
-                "value": null
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 8
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT ROUND(SUM(total_purchase_amount)::numeric,2) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Spent ($)",
+      "title": "Total Spend ($)",
       "type": "stat"
     },
     {
@@ -343,8 +281,70 @@
       "gridPos": {
         "h": 4,
         "w": 4,
+        "x": 12,
+        "y": 9
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG(settle_amount)::numeric,2) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Basket ($)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 16,
-        "y": 8
+        "y": 9
       },
       "id": 7,
       "options": {
@@ -370,11 +370,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(AVG(total_purchase_amount)::numeric,2) AS \"n\" FROM (SELECT pan_masked, SUM(total_purchase_amount) as total_purchase_amount FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon' GROUP BY pan_masked) s",
+          "rawSql": "SELECT COUNT(DISTINCT pan_masked) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
       ],
-      "title": "Avg Spend / Member",
+      "title": "Unique Members",
       "type": "stat"
     },
     {
@@ -406,7 +406,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 8
+        "y": 9
       },
       "id": 8,
       "options": {
@@ -432,11 +432,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(100.0*SUM(total_purchase_amount)/NULLIF(SUM(closing_balance+total_purchase_amount),0),1) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
+          "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon' AND is_funded=true",
           "refId": "A"
         }
       ],
-      "title": "Utilization Rate",
+      "title": "Funded Items",
       "type": "stat"
     },
     {
@@ -445,11 +445,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 13
       },
       "id": 9,
       "panels": [],
-      "title": "Value Loads by Purse",
+      "title": "By Category",
       "type": "row"
     },
     {
@@ -467,10 +467,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 8,
         "w": 12,
         "x": 0,
-        "y": 13
+        "y": 14
       },
       "id": 10,
       "options": {
@@ -489,11 +489,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT purse_code AS \"Purse\",\n    COUNT(*) AS \"Members Loaded\",\n    ROUND(SUM(settle_amount)::numeric,2) AS \"Total Loaded ($)\",\n    ROUND(AVG(settle_amount)::numeric,2) AS \"Avg Load ($)\"\nFROM reporting.fact_monetary\nWHERE tenant_id='rfu-oregon' AND txn_type_code=1710\nGROUP BY purse_code ORDER BY purse_code",
+          "rawSql": "SELECT spend_category_code AS \"Category Code\",\n    CASE spend_category_code\n        WHEN '5D' THEN 'Food & Beverages'\n        WHEN '5A' THEN 'OTC / Health'\n        WHEN 'OF' THEN 'OTC (OF)'\n        WHEN 'OV' THEN 'OTC (OV)'\n        ELSE spend_category_code\n    END AS \"Category\",\n    COUNT(*) AS \"Items\",\n    SUM(item_quantity) AS \"Units\",\n    ROUND(SUM(item_amount)::numeric,2) AS \"Total ($)\",\n    ROUND(AVG(item_amount)::numeric,2) AS \"Avg Item ($)\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY spend_category_code ORDER BY 5 DESC",
           "refId": "A"
         }
       ],
-      "title": "Value Loads by Purse",
+      "title": "Spend by Category",
       "type": "table"
     },
     {
@@ -511,10 +511,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 8,
         "w": 12,
         "x": 12,
-        "y": 13
+        "y": 14
       },
       "id": 11,
       "options": {
@@ -533,11 +533,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT purse_name AS \"Purse\",\n    COUNT(*) AS \"Members\",\n    ROUND(SUM(total_valueload_amount)::numeric,2) AS \"Total Loaded ($)\",\n    ROUND(SUM(total_purchase_amount)::numeric,2) AS \"Total Spent ($)\",\n    ROUND(SUM(closing_balance)::numeric,2) AS \"Total Balance ($)\",\n    ROUND(100.0*SUM(total_purchase_amount)/NULLIF(SUM(total_valueload_amount),0),1) AS \"Utilization %\"\nFROM reporting.fact_account_balance\nWHERE tenant_id='rfu-oregon'\nGROUP BY purse_name ORDER BY purse_name",
+          "rawSql": "SELECT item_description AS \"Item\",\n    upc AS \"UPC\",\n    spend_category_code AS \"Cat\",\n    SUM(item_quantity) AS \"Units\",\n    ROUND(SUM(item_amount)::numeric,2) AS \"Total ($)\",\n    COUNT(*) AS \"Transactions\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY item_description, upc, spend_category_code\nORDER BY 5 DESC LIMIT 20",
           "refId": "A"
         }
       ],
-      "title": "Purse Balances Summary",
+      "title": "Top Items by Sales",
       "type": "table"
     },
     {
@@ -546,11 +546,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 22
       },
       "id": 12,
       "panels": [],
-      "title": "Member-Level Balances",
+      "title": "Transaction Detail",
       "type": "row"
     },
     {
@@ -571,7 +571,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 23
       },
       "id": 13,
       "options": {
@@ -590,11 +590,11 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n    m.client_member_id AS \"Member ID\",\n    m.first_name AS \"First Name\",\n    m.last_name AS \"Last Name\",\n    ab.purse_name AS \"Purse\",\n    ROUND(ab.total_valueload_amount::numeric,2) AS \"Loaded ($)\",\n    ROUND(ab.total_purchase_amount::numeric,2) AS \"Spent ($)\",\n    ROUND(ab.closing_balance::numeric,2) AS \"Balance ($)\",\n    ROUND(100.0*ab.total_purchase_amount/NULLIF(ab.total_valueload_amount,0),1) AS \"Util %\"\nFROM reporting.fact_account_balance ab\nLEFT JOIN reporting.dim_member m\n    ON m.client_member_id = ab.pan_proxy_number AND m.tenant_id = ab.tenant_id\nWHERE ab.tenant_id='rfu-oregon'\nORDER BY ab.closing_balance DESC\nLIMIT 200",
+          "rawSql": "SELECT\n    si.txn_datetime::date AS \"Date\",\n    si.merchant_name AS \"Merchant\",\n    ROUND(si.settle_amount::numeric,2) AS \"Total ($)\",\n    sd.item_description AS \"Item\",\n    sd.spend_category_code AS \"Category\",\n    sd.item_quantity AS \"Qty\",\n    ROUND(sd.item_amount::numeric,2) AS \"Amount ($)\",\n    sd.is_funded AS \"Funded\",\n    si.pan_masked AS \"PAN\"\nFROM reporting.fact_spend_item_detail sd\nJOIN reporting.fact_spend_item si ON si.spend_item_sk = sd.spend_item_sk\nWHERE sd.tenant_id='rfu-oregon'\nORDER BY si.txn_datetime DESC, sd.item_sequence\nLIMIT 500",
           "refId": "A"
         }
       ],
-      "title": "Member Purse Balances",
+      "title": "Transaction + Item Detail",
       "type": "table"
     }
   ],
@@ -612,6 +612,6 @@
     "to": "now"
   },
   "timezone": "browser",
-  "title": "Utilization Summary Report",
-  "uid": "onefintech-rpt-utilization"
+  "title": "Spend Item Detail Report",
+  "uid": "onefintech-rpt-spend"
 }
