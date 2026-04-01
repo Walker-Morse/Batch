@@ -123,6 +123,7 @@ export class OneFintechStack extends cdk.Stack {
     // XTRACT ETL: separate ECS task + EventBridge trigger for FIS Data XTRACT feeds (§4.3.13)
     const xtractEcs = new XtractEcsConstruct(this, "XtractEcs", {
       env,
+      vpc: networking.vpc,
       cluster: ecs.cluster,
       taskRole: iam.taskRole,
       executionRole: iam.executionRole,

@@ -11,6 +11,7 @@ import { Construct } from "constructs";
 
 export interface XtractEcsProps {
   env: string;
+  vpc: ec2.IVpc;
   cluster: ecs.ICluster;
   taskRole: iam.IRole;
   executionRole: iam.IRole;
@@ -65,7 +66,7 @@ export class XtractEcsConstruct extends Construct {
     // Security group — same outbound rules as ingest-task (Aurora + S3 via VPC endpoints)
     this.taskSecurityGroup = new ec2.SecurityGroup(this, "XtractTaskSG", {
       securityGroupName: `onefintech-${env}-xtract-loader-sg`,
-      vpc: (props.cluster as any).vpc,
+      vpc: props.vpc,
       description: "xtract-loader ECS task security group",
       allowAllOutbound: true,
     });
