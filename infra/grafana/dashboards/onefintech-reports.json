@@ -207,6 +207,70 @@
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 19,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "content": "## [\ud83d\udcc8 Daily Monetary Summary](/d/onefintech-rpt-daily-monetary/daily-monetary-summary)\n\n**Audience:** Operations, Finance\n\nSettled transaction totals by purse and date. Credits, debits, net amounts, and per-purse breakdown from STDMON XTRACT.\n\n**Source:** `vw_daily_monetary_summary`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 20,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 8,
+        "y": 27,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "content": "## [\ud83d\udcb0 Daily Purse Balance](/d/onefintech-rpt-daily-balance/daily-purse-balance)\n\n**Audience:** Finance, Operations\n\nDaily opening/closing balance snapshots by purse. Load vs spend utilization across OTC, FOD, and CMB purses.\n\n**Source:** `vw_daily_purse_balance`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 21,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 16,
+        "y": 27,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "content": "## [\ud83d\udeab Auth & Decline Summary](/d/onefintech-rpt-auth-decline/auth-decline-summary)\n\n**Audience:** Operations, Client Success\n\nAuthorization approval rates and decline breakdown by response code. Total auth volume and declined amounts by purse.\n\n**Source:** `vw_auth_decline_summary`, `fact_authorization`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 22,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "content": "## [\ud83d\uded2 Spend Category Summary](/d/onefintech-rpt-spend-category/spend-category-summary)\n\n**Audience:** Operations, Compliance\n\nItem-level spend by APL category code and MCC. Funded vs gross amounts, fund rates, and line item detail from STDFSID.\n\n**Source:** `vw_spend_category_summary`",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
     }
   ],
   "templating": {

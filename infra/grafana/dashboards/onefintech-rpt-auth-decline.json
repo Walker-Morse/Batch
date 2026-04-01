@@ -1,0 +1,677 @@
+{
+  "uid": "onefintech-rpt-auth-decline",
+  "title": "Auth & Decline Summary",
+  "tags": [
+    "reporting"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Home",
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Reports",
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 6
+      },
+      "options": {
+        "content": "## Auth & Decline Summary\nAuthorization event totals by purse and date. Approved vs declined breakdown with reason code detail.\nSourced from FIS Authorization XTRACT (STDAUTH). Response code 0 = approved; all others are declines.\n**Source:** `reporting.vw_auth_decline_summary` \u2192 `reporting.fact_authorization`\n**Audience:** Operations, Client Success",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Authorizations",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Approved",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND response_code=0",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Declined",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND response_code<>0",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Approval Rate",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND((COUNT(*) FILTER (WHERE response_code=0) * 100.0 / NULLIF(COUNT(*),0))::numeric,1) || '%' AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Total Auth Amount ($)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT '$' || TO_CHAR(ROUND((SUM(authorization_amount))::numeric,2),'FM999,999,990.00') AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Declined Amount ($)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-auth-decline/auth-decline-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT '$' || TO_CHAR(ROUND((SUM(authorization_amount))::numeric,2),'FM999,999,990.00') AS v FROM reporting.fact_authorization WHERE tenant_id='rfu-oregon' AND response_code<>0",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Decline Detail by Purse and Date",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Decline Summary (from view)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    work_of_date AS \"Date\",\n    purse_number AS \"Purse #\",\n    COALESCE(reason_code::text, 'N/A') AS \"Reason Code\",\n    reason_code_description AS \"Description\",\n    decline_count AS \"Decline Count\",\n    '$' || TO_CHAR(ROUND((declined_amount)::numeric,2),'FM999,999,990.00') AS \"Declined Amount\"\nFROM reporting.vw_auth_decline_summary\nWHERE tenant_id='rfu-oregon'\nORDER BY work_of_date DESC, decline_count DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "All Authorizations",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Authorization Detail",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    work_of_date AS \"Date\",\n    purse_number AS \"Purse #\",\n    response_code AS \"Response Code\",\n    COUNT(*) AS \"Count\",\n    '$' || TO_CHAR(ROUND((SUM(authorization_amount))::numeric,2),'FM999,999,990.00') AS \"Total Amount\",\n    '$' || TO_CHAR(ROUND((AVG(authorization_amount))::numeric,2),'FM999,999,990.00') AS \"Avg Amount\",\n    ROUND((COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (PARTITION BY work_of_date),0))::numeric,1) || '%' AS \"% of Day\"\nFROM reporting.fact_authorization\nWHERE tenant_id='rfu-oregon'\nGROUP BY work_of_date, purse_number, response_code\nORDER BY work_of_date DESC, count DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Response Code Breakdown",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Response Code Summary",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    response_code AS \"Response Code\",\n    CASE response_code WHEN 0 THEN 'Approved' WHEN 51 THEN 'Insufficient Funds' WHEN 57 THEN 'Txn Not Permitted' WHEN 61 THEN 'Exceeds Limit' ELSE 'Other' END AS \"Description\",\n    COUNT(*) AS \"Count\",\n    '$' || TO_CHAR(ROUND((SUM(authorization_amount))::numeric,2),'FM999,999,990.00') AS \"Total Amount\",\n    ROUND(COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (),0), 1) || '%' AS \"% of All Auths\"\nFROM reporting.fact_authorization\nWHERE tenant_id='rfu-oregon'\nGROUP BY response_code\nORDER BY count DESC",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

@@ -1,0 +1,620 @@
+{
+  "uid": "onefintech-rpt-daily-monetary",
+  "title": "Daily Monetary Summary",
+  "tags": [
+    "reporting"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "links": [
+    {
+      "title": "Home",
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Reports",
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    },
+    {
+      "title": "Ops Health",
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 6
+      },
+      "options": {
+        "content": "## Daily Monetary Summary\nSettled transaction totals by purse and date, sourced from FIS Monetary XTRACT (STDMON).\nShows daily credit/debit volumes across OTC, FOD, and CMB purses.\n**Source:** `reporting.vw_daily_monetary_summary` \u2192 `reporting.fact_monetary`\n**Audience:** Operations, Finance",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Settled ($)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT '$' || TO_CHAR(ROUND((SUM(net_amount))::numeric,2),'FM999,999,990.00') AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Transactions",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT SUM(txn_count) AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total Credits ($)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT '$' || TO_CHAR(ROUND((SUM(total_credits))::numeric,2),'FM999,999,990.00') AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Total Debits ($)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT '$' || TO_CHAR(ROUND((SUM(total_debits))::numeric,2),'FM999,999,990.00') AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Active Days",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT work_of_date) AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Purses Reporting",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 7,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          },
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View detail",
+              "url": "/d/onefintech-rpt-daily-monetary/daily-monetary-summary?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT purse_code) AS v FROM reporting.vw_daily_monetary_summary WHERE tenant_id='rfu-oregon'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Daily Totals by Purse",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Daily Monetary Totals by Purse",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    work_of_date AS \"Date\",\n    purse_code AS \"Purse\",\n    txn_count AS \"Txn Count\",\n    '$' || TO_CHAR(ROUND((total_credits)::numeric,2),'FM999,999,990.00') AS \"Credits\",\n    '$' || TO_CHAR(ROUND((total_debits)::numeric,2),'FM999,999,990.00') AS \"Debits\",\n    '$' || TO_CHAR(ROUND((net_amount)::numeric,2),'FM999,999,990.00') AS \"Net\"\nFROM reporting.vw_daily_monetary_summary\nWHERE tenant_id='rfu-oregon'\nORDER BY work_of_date DESC, purse_code",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "Purse Summary",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Cumulative Totals by Purse",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n    purse_code AS \"Purse\",\n    SUM(txn_count) AS \"Total Txns\",\n    '$' || TO_CHAR(ROUND((SUM(total_credits))::numeric,2),'FM999,999,990.00') AS \"Total Credits\",\n    '$' || TO_CHAR(ROUND((SUM(total_debits))::numeric,2),'FM999,999,990.00') AS \"Total Debits\",\n    '$' || TO_CHAR(ROUND((SUM(net_amount))::numeric,2),'FM999,999,990.00') AS \"Net Amount\",\n    '$' || TO_CHAR(ROUND((AVG(net_amount/NULLIF(txn_count,0)))::numeric,2),'FM999,999,990.00') AS \"Avg Txn ($)\"\nFROM reporting.vw_daily_monetary_summary\nWHERE tenant_id='rfu-oregon'\nGROUP BY purse_code\nORDER BY purse_code",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}
