@@ -19,7 +19,7 @@ ALL_PKGS := \
 	./_shared/... \
 	./_cmd/...
 
-.PHONY: build test test-verbose test-record vet smoke smoke-integration smoke-record db-up db-down db-logs db-psql db-init-schema db-seed db-reset-fixtures
+.PHONY: build test test-verbose test-record vet smoke smoke-integration smoke-record integration integration-record db-up db-down db-logs db-psql db-init-schema db-seed db-reset-fixtures
 build:
 	GONOSUMDB=$(GONOSUMDB) GOFLAGS=$(GOFLAGS) go build $(ALL_PKGS)
 
@@ -60,6 +60,20 @@ smoke-record:
 smoke-integration:
 	docker compose up -d postgres
 	@echo "Postgres is starting. Run 'make db-logs' to follow startup and schema init."
+
+# Integration tests — full Stages 1-7 pipeline with in-memory fakes.
+# No real Aurora, S3, or FIS connections required. Runs fast (~20ms).
+# Covers: happy path (SRG310/315/320), multi-member, RT99 halt, idempotency,
+# stall, malformed rows, audit completeness, metrics emission.
+integration:
+	$(GONOSUMDB) $(GOFLAGS) go test -tags integration -v -run TestIntegration ./_cmd/ingest-task/
+
+# Integration tests with result recording.
+integration-record:
+	go test -json -tags integration -run TestIntegration ./_cmd/ingest-task/ 2>&1 | \
+	python3 scripts/record-test-results.py --suite integration || true
+	go test -tags integration -v -run TestIntegration ./_cmd/ingest-task/
+
 
 db-up:
 	docker compose up -d postgres
