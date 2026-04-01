@@ -150,12 +150,13 @@ func (l *Loader) processD(ctx context.Context, lineNum int, fields []string) err
 	itemSeq        := parser.FieldInt64(fields, 4)
 	deptNum        := parser.Field(fields, 5)
 	spendCatCode   := parser.Field(fields, 6)
-	itemAmount     := parser.FieldFloat64(fields, 8)
-	itemQty        := parser.FieldInt64(fields, 9)
-	taxAmount      := parser.FieldFloat64(fields, 10)
-	discountAmount := parser.FieldFloat64(fields, 11)
-	isFunded       := parser.Field(fields, 12) == "1"
-	fundedAmount   := parser.FieldFloat64(fields, 14)
+	// fields[7] and [8] are empty padding in generated files; amount at [9]
+	itemAmount     := parser.FieldFloat64(fields, 9)
+	itemQty        := parser.FieldInt64(fields, 10)
+	taxAmount      := parser.FieldFloat64(fields, 11)
+	discountAmount := parser.FieldFloat64(fields, 12)
+	isFunded       := parser.Field(fields, 13) == "1"
+	fundedAmount   := parser.FieldFloat64(fields, 15)
 
 	_, err := l.pool.Exec(ctx, `
 		INSERT INTO reporting.fact_spend_item_detail (
