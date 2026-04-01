@@ -114,7 +114,7 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 		nullStr(panMasked), nullStr(cardNumMasked), nullDate(activateDate), nullInt16(cardStatusCode),
 		nullStr(firstName), nullStr(lastName), nullChar1(middleChar),
 		nullStr(address1), nullStr(city), nullChar1(stateChar), nullStr(zip),
-		nullInt(eventTypeCode), nullStr(eventDesc), nullStr(eventSource), nullStr(eventActor), nullTime(eventDT),
+		eventTypeCode, nullStr(eventDesc), nullStr(eventSource), nullStr(eventActor), nullTime(eventDT),
 		nullDate(cardStartDate), nullDate(cardEndDate),
 		nullInt(purseNumber), nullStr(purseName),
 		nullInt(personID), nullStr(panProxyNum),

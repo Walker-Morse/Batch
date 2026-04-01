@@ -120,7 +120,7 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 		nullStr(txnUID), nullInt(txnTypeCode), nullStr(txnTypeName),
 		nullInt(purseNumber), nullStr(purseName), nullTime(txnDT),
 		nullStr(authCode), nullInt(actualReqCode), nullStr(actualReqDesc),
-		nullInt(responseCode), nullStr(responseDesc),
+		responseCode, nullStr(responseDesc),
 		nullInt(reasonCode), nullStr(reasonCodeDesc),
 		nullInt(sourceCode), nullStr(sourceDesc),
 		nullFloat(authAmount), nullFloat(txnLocalAmt), int16(txnSign),

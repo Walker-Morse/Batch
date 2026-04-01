@@ -174,8 +174,8 @@ func (l *Loader) processD(ctx context.Context, lineNum int, fields []string) err
 		l.lastSpendItemSK, l.sourceFile, l.workOfDate,
 		nullStr(upcType), nullStr(upc), nullStr(itemDesc), nullInt(itemSeq), nullStr(deptNum),
 		nullStr(spendCatCode),
-		nullFloat(itemAmount), nullInt(itemQty), nullFloat(taxAmount), nullFloat(discountAmount),
-		isFunded, nullFloat(fundedAmount),
+		itemAmount, itemQty, nullFloat(taxAmount), nullFloat(discountAmount),
+		isFunded, fundedAmount,
 		l.tenantID,
 	)
 	if err != nil {
