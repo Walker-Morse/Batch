@@ -15,18 +15,20 @@ import (
 const FeedName = ""
 
 type Loader struct {
-	pool            *pgxpool.Pool
-	tenantID        string
-	sourceFile      string
-	workOfDate      time.Time
-	currentSPID     int64
+	pool       *pgxpool.Pool
+	tenantID   string
+	sourceFile string
+	fileDate   time.Time
 }
 
-func NewLoader(pool *pgxpool.Pool, tenantID, sourceFile string, workOfDate time.Time) *Loader {
-	return &Loader{pool: pool, tenantID: tenantID, sourceFile: sourceFile, workOfDate: workOfDate}
+func NewLoader(pool *pgxpool.Pool, tenantID, sourceFile string, fileDate time.Time) *Loader {
+	return &Loader{pool: pool, tenantID: tenantID, sourceFile: sourceFile, fileDate: fileDate}
 }
 
 func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) error {
+	if len(fields) == 0 {
+		return nil
+	}
 	switch strings.ToUpper(strings.TrimSpace(fields[0])) {
 	case "DSPG":
 		return l.processDSPG(ctx, lineNum, fields)
@@ -46,50 +48,41 @@ func (l *Loader) processDSPG(ctx context.Context, lineNum int, fields []string) 
 	programName    := parser.Field(fields, 5)
 	clientID       := parser.FieldInt64(fields, 6)
 	clientName     := parser.Field(fields, 7)
+	clientAltValue := parser.Field(fields, 8)
 	marketSegment  := parser.Field(fields, 14)
-	proxyName      := parser.Field(fields, 11)
-	akaName        := parser.Field(fields, 12)
-	pseudoBIN      := parser.Field(fields, 13)
 	isReloadable   := parser.Field(fields, 30) == "1"
 	initialStatus  := parser.Field(fields, 31)
 	physExpMethod  := parser.Field(fields, 34)
 	logicalExp     := parser.Field(fields, 37) == "1"
 
-	l.currentSPID = subprogramID
-
-	fd := l.workOfDate
 	_, err := l.pool.Exec(ctx, `
 		INSERT INTO reporting.dim_subprogram (
 			subprogram_id, file_date, effective_from,
 			program_id, program_name,
 			client_id, client_name,
 			subprogram_name, is_active,
-			market_segment, proxy_name, aka_name, pseudo_bin,
+			client_alt_value, market_segment,
 			is_reloadable, initial_card_status,
 			physical_expiration_method, logical_expiration_enabled,
 			inserted_at
 		) VALUES (
 			$1,$2,$2,
-			$3,$4,
-			$5,$6,
-			$7,$8,
-			$9,$10,$11,$12,
-			$13,$14,
-			$15,$16,
+			$3,$4,$5,$6,
+			$7,$8,$9,$10,
+			$11,$12,$13,$14,
 			now()
 		)
 		ON CONFLICT (subprogram_id, file_date) DO UPDATE SET
-			is_active              = EXCLUDED.is_active,
-			subprogram_name        = EXCLUDED.subprogram_name,
-			is_reloadable          = EXCLUDED.is_reloadable,
-			physical_expiration_method = EXCLUDED.physical_expiration_method`,
-		subprogramID, fd,
-		programID, nullStr(programName),
+			is_active                  = EXCLUDED.is_active,
+			subprogram_name            = EXCLUDED.subprogram_name,
+			is_reloadable              = EXCLUDED.is_reloadable,
+			physical_expiration_method = EXCLUDED.physical_expiration_method,
+			logical_expiration_enabled = EXCLUDED.logical_expiration_enabled`,
+		subprogramID, l.fileDate,
+		nullInt(programID), nullStr(programName),
 		clientID, nullStr(clientName),
-		nullStr(subprogramName), isActive,
-		nullStr(marketSegment), nullStr(proxyName), nullStr(akaName), nullStr(pseudoBIN),
-		isReloadable, nullStr(initialStatus),
-		nullStr(physExpMethod), logicalExp,
+		subprogramName, isActive, nullStr(clientAltValue), nullStr(marketSegment),
+		isReloadable, nullStr(initialStatus), nullStr(physExpMethod), logicalExp,
 	)
 	if err != nil {
 		return fmt.Errorf("ccx DSPG line %d subprogram=%d: %w", lineNum, subprogramID, err)
@@ -113,6 +106,7 @@ func (l *Loader) processDPUR(ctx context.Context, lineNum int, fields []string) 
 	purseStart    := parseCCXDate(parser.Field(fields, 13))
 	purseEnd      := parseCCXDate(parser.Field(fields, 14))
 
+	// spend categories: last non-empty field
 	spendCats := ""
 	for i := len(fields) - 1; i >= 15; i-- {
 		if v := strings.TrimSpace(fields[i]); v != "" {
@@ -121,7 +115,6 @@ func (l *Loader) processDPUR(ctx context.Context, lineNum int, fields []string) 
 		}
 	}
 
-	fd := l.workOfDate
 	_, err := l.pool.Exec(ctx, `
 		INSERT INTO reporting.dim_purse_config (
 			subprogram_id, purse_number, purse_code, file_date,
@@ -130,23 +123,13 @@ func (l *Loader) processDPUR(ctx context.Context, lineNum int, fields []string) 
 			min_balance_amount, max_balance_amount,
 			purse_status, purse_start_date, purse_end_date,
 			spend_categories_raw, inserted_at
-		) VALUES (
-			$1,$2,$3,$4,
-			$5,$6,$7,
-			$8,$9,$10,
-			$11,$12,
-			$13,$14,$15,
-			$16, now()
-		)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,now())
 		ON CONFLICT (subprogram_id, purse_number, file_date) DO UPDATE SET
-			purse_code   = EXCLUDED.purse_code,
-			is_active    = EXCLUDED.is_active,
-			purse_status = EXCLUDED.purse_status,
+			purse_status         = EXCLUDED.purse_status,
 			spend_categories_raw = EXCLUDED.spend_categories_raw`,
-		subprogramID, purseNumber, nullStr(purseCode), fd,
+		subprogramID, nullInt(purseNumber), nullStr(purseCode), l.fileDate,
 		nullStr(filterType), nullInt(filterNetID), nullStr(filterNetName),
-		isActive, nullFloat(minLoad), nullFloat(maxLoad),
-		nullFloat(minBalance), nullFloat(maxBalance),
+		isActive, minLoad, maxLoad, minBalance, maxBalance,
 		nullStr(purseStatus), purseStart, purseEnd,
 		nullStr(spendCats),
 	)
@@ -163,16 +146,15 @@ func (l *Loader) processDPKG(ctx context.Context, lineNum int, fields []string) 
 	packageCode  := parser.Field(fields, 4)
 	bin          := parser.Field(fields, 5)
 
-	fd := l.workOfDate
 	_, err := l.pool.Exec(ctx, `
 		INSERT INTO reporting.dim_package (
 			subprogram_id, package_id, package_name, package_code, bin, file_date, inserted_at
 		) VALUES ($1,$2,$3,$4,$5,$6,now())
 		ON CONFLICT (subprogram_id, package_id, file_date) DO UPDATE SET
 			package_name = EXCLUDED.package_name,
-			package_code = EXCLUDED.package_code`,
+			bin          = EXCLUDED.bin`,
 		nullInt(subprogramID), nullInt(packageID),
-		nullStr(packageName), nullStr(packageCode), nullStr(bin), fd,
+		nullStr(packageName), nullStr(packageCode), nullStr(bin), l.fileDate,
 	)
 	if err != nil {
 		return fmt.Errorf("ccx DPKG line %d subprogram=%d package=%d: %w", lineNum, subprogramID, packageID, err)
@@ -194,14 +176,12 @@ func parseCCXDate(s string) interface{} {
 	if len(parts[1]) == 1 {
 		parts[1] = "0" + parts[1]
 	}
-	f := []string{"", parts[0] + parts[1] + parts[2]}
-	t := parser.FieldDate(f, 1)
+	t := parser.FieldDate([]string{"", parts[0] + parts[1] + parts[2]}, 1)
 	if t.IsZero() {
 		return nil
 	}
 	return t
 }
 
-func nullStr(s string) interface{}    { if s == "" { return nil }; return s }
-func nullInt(v int64) interface{}     { if v == 0 { return nil }; return v }
-func nullFloat(v float64) interface{} { if v == 0 { return nil }; return v }
+func nullStr(s string) interface{} { if s == "" { return nil }; return s }
+func nullInt(v int64) interface{}   { if v == 0 { return nil }; return v }
