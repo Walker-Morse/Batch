@@ -548,6 +548,21 @@
         "mode": "markdown"
       },
       "pluginVersion": "10.4.3"
+    },
+    {
+      "id": 17,
+      "type": "text",
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 19
+      },
+      "title": "",
+      "options": {
+        "mode": "markdown",
+        "content": "## [Service Health](/d/onefintech-service-health/service-health)\n\n**For:** Engineering & Operations\n\n**Answers:** Are all 14 platform services up right now? Live up/down status, outage history, and latency for every service."
+      }
     }
   ],
   "refresh": "1m",
