@@ -1,83 +1,118 @@
 {
-  "annotations": {
-    "list": []
+  "uid": "onefintech-rpt-utilization",
+  "title": "Utilization Summary Report",
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
   },
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
       "title": "Home",
-      "type": "link",
-      "url": "/d/onefintech-home/one-fintech-platform"
-    },
-    {
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Reports",
-      "type": "link",
-      "url": "/d/onefintech-reports/reports"
-    },
-    {
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Ops Health",
-      "type": "link",
-      "url": "/d/onefintech-ops-health/ops-health"
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
     }
   ],
   "panels": [
     {
-      "gridPos": {
-        "h": 7,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
       "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
       "options": {
-        "content": "### \u2139\ufe0f About This Report\nSettled monetary transactions and purse-level closing balances from FIS STDMON + STDACCTBAL XTRACT.\n\n| Column | Source | Meaning |\n|---|---|---|\n| Settle Amount | `fact_monetary.settle_amount` | Dollar amount of the settled transaction |\n| Txn Type Code | `fact_monetary.txn_type_code` | 1710=Value Load, 5=Purchase, 1=Reversal |\n| Purse Code | `fact_monetary.purse_code` | OTC2100=OTC, FOD2100=Food, CMB2100=Combined |\n| Closing Balance | `fact_account_balance.closing_balance` | Purse balance at end of reporting day |\n| Total Purchase | `fact_account_balance.total_purchase_amount` | Sum of all purchases that day |\n| Total Valueload | `fact_account_balance.total_valueload_amount` | Sum of all loads that day |\n\n> All figures as of **2026-03-31** (RFU DEV load, subprogram 26071).",
+        "content": "### \u2139\ufe0f About This Report\nSettled monetary transactions and purse-level closing balances from FIS STDMON + STDACCTBAL XTRACT. **Click any tile** to jump to member-level balances.\n\n| Column | Source | Meaning |\n|---|---|---|\n| Settle Amount | `fact_monetary.settle_amount` | Dollar amount of settled transaction |\n| Txn Type Code | `fact_monetary.txn_type_code` | 1710=Value Load \u00b7 5=Purchase |\n| Closing Balance | `fact_account_balance.closing_balance` | Purse balance at end of reporting day |\n| Total Purchase | `fact_account_balance.total_purchase_amount` | Sum of all purchases that day |\n| Total Valueload | `fact_account_balance.total_valueload_amount` | Sum of all loads that day |\n\n> 166 members \u00b7 3 purses (FOD2100, OTC2100, CMB2100) \u00b7 $91,641 total closing balance.",
         "mode": "markdown"
       },
-      "pluginVersion": "10.4.3",
-      "title": "",
-      "type": "text"
+      "pluginVersion": "10.4.3"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 7
-      },
-      "id": 2,
-      "panels": [],
+      "id": 9,
+      "type": "row",
       "title": "Summary",
-      "type": "row"
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
     },
     {
+      "id": 3,
+      "type": "stat",
+      "title": "Members Loaded",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -88,30 +123,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View member balances",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -125,21 +145,44 @@
           "rawSql": "SELECT COUNT(DISTINCT pan_masked) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Members Loaded",
-      "type": "stat"
+      ]
     },
     {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Loaded",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 4,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -150,30 +193,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View loaded amount detail",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -187,21 +215,44 @@
           "rawSql": "SELECT ROUND(SUM(settle_amount)::numeric,2) AS \"n\" FROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1710",
           "refId": "A"
         }
-      ],
-      "title": "Total Loaded ($)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 5,
+      "type": "stat",
+      "title": "Total Balance",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 8,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -212,30 +263,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View balance detail",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 8
-      },
-      "id": 5,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -249,21 +285,44 @@
           "rawSql": "SELECT ROUND(SUM(closing_balance)::numeric,2) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Balance ($)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 6,
+      "type": "stat",
+      "title": "Total Spent",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "orange",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "orange"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -274,30 +333,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View spend detail",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 8
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -311,21 +355,44 @@
           "rawSql": "SELECT ROUND(SUM(total_purchase_amount)::numeric,2) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Spent ($)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 7,
+      "type": "stat",
+      "title": "Avg Spend / Member",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "purple",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "purple"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -336,30 +403,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View per-member spend",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 8
-      },
-      "id": 7,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -370,24 +422,47 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ROUND(AVG(total_purchase_amount)::numeric,2) AS \"n\" FROM (SELECT pan_masked, SUM(total_purchase_amount) as total_purchase_amount FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon' GROUP BY pan_masked) s",
+          "rawSql": "SELECT ROUND(AVG(total_purchase_amount)::numeric,2) AS \"n\" FROM (SELECT pan_masked, SUM(total_purchase_amount) AS total_purchase_amount FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon' GROUP BY pan_masked) s",
           "refId": "A"
         }
-      ],
-      "title": "Avg Spend / Member",
-      "type": "stat"
+      ]
     },
     {
+      "id": 8,
+      "type": "stat",
+      "title": "Utilization Rate",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 20,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "none",
+          "decimals": 1,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -398,30 +473,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View utilization detail",
+              "url": "/d/onefintech-rpt-utilization/utilization-summary-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 8
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -435,151 +495,50 @@
           "rawSql": "SELECT ROUND(100.0*SUM(total_purchase_amount)/NULLIF(SUM(closing_balance+total_purchase_amount),0),1) AS \"n\" FROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Utilization Rate",
-      "type": "stat"
+      ]
     },
     {
-      "collapsed": false,
+      "id": 19,
+      "type": "row",
+      "title": "Value Loads",
       "gridPos": {
-        "h": 1,
+        "x": 0,
+        "y": 13,
         "w": 24,
-        "x": 0,
-        "y": 12
+        "h": 1
       },
-      "id": 9,
-      "panels": [],
-      "title": "Value Loads by Purse",
-      "type": "row"
+      "collapsed": false,
+      "panels": []
     },
     {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 0,
-        "y": 13
-      },
       "id": 10,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT purse_code AS \"Purse\",\n    COUNT(*) AS \"Members Loaded\",\n    ROUND(SUM(settle_amount)::numeric,2) AS \"Total Loaded ($)\",\n    ROUND(AVG(settle_amount)::numeric,2) AS \"Avg Load ($)\"\nFROM reporting.fact_monetary\nWHERE tenant_id='rfu-oregon' AND txn_type_code=1710\nGROUP BY purse_code ORDER BY purse_code",
-          "refId": "A"
-        }
-      ],
+      "type": "table",
       "title": "Value Loads by Purse",
-      "type": "table"
-    },
-    {
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 6,
+        "x": 0,
+        "y": 14,
         "w": 12,
-        "x": 12,
-        "y": 13
+        "h": 6
       },
-      "id": 11,
       "options": {
         "cellHeight": "sm",
         "footer": {
           "show": false
         },
         "showHeader": true
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT purse_name AS \"Purse\",\n    COUNT(*) AS \"Members\",\n    ROUND(SUM(total_valueload_amount)::numeric,2) AS \"Total Loaded ($)\",\n    ROUND(SUM(total_purchase_amount)::numeric,2) AS \"Total Spent ($)\",\n    ROUND(SUM(closing_balance)::numeric,2) AS \"Total Balance ($)\",\n    ROUND(100.0*SUM(total_purchase_amount)/NULLIF(SUM(total_valueload_amount),0),1) AS \"Utilization %\"\nFROM reporting.fact_account_balance\nWHERE tenant_id='rfu-oregon'\nGROUP BY purse_name ORDER BY purse_name",
-          "refId": "A"
-        }
-      ],
-      "title": "Purse Balances Summary",
-      "type": "table"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 19
-      },
-      "id": 12,
-      "panels": [],
-      "title": "Member-Level Balances",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
       },
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "displayMode": "auto",
-            "filterable": true
+            "filterable": true,
+            "displayMode": "auto"
           }
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 12,
-        "w": 24,
-        "x": 0,
-        "y": 20
-      },
-      "id": 13,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -590,28 +549,117 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n    m.client_member_id AS \"Member ID\",\n    m.first_name AS \"First Name\",\n    m.last_name AS \"Last Name\",\n    ab.purse_name AS \"Purse\",\n    ROUND(ab.total_valueload_amount::numeric,2) AS \"Loaded ($)\",\n    ROUND(ab.total_purchase_amount::numeric,2) AS \"Spent ($)\",\n    ROUND(ab.closing_balance::numeric,2) AS \"Balance ($)\",\n    ROUND(100.0*ab.total_purchase_amount/NULLIF(ab.total_valueload_amount,0),1) AS \"Util %\"\nFROM reporting.fact_account_balance ab\nLEFT JOIN reporting.dim_member m\n    ON m.client_member_id = ab.pan_proxy_number AND m.tenant_id = ab.tenant_id\nWHERE ab.tenant_id='rfu-oregon'\nORDER BY ab.closing_balance DESC\nLIMIT 200",
+          "rawSql": "SELECT purse_code AS \"Purse\",\n    COUNT(*) AS \"Members Loaded\",\n    '$' || TO_CHAR(ROUND((SUM(settle_amount))::numeric,2),'FM999,999,990.00') AS \"Total Loaded\",\n    '$' || TO_CHAR(ROUND((AVG(settle_amount))::numeric,2),'FM999,999,990.00') AS \"Avg Load\"\nFROM reporting.fact_monetary WHERE tenant_id='rfu-oregon' AND txn_type_code=1710\nGROUP BY purse_code ORDER BY purse_code",
           "refId": "A"
         }
-      ],
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Purse Balance Summary",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 6
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT purse_name AS \"Purse\",\n    COUNT(*) AS \"Members\",\n    '$' || TO_CHAR(ROUND((SUM(total_valueload_amount))::numeric,2),'FM999,999,990.00') AS \"Total Loaded\",\n    '$' || TO_CHAR(ROUND((SUM(total_purchase_amount))::numeric,2),'FM999,999,990.00') AS \"Total Spent\",\n    '$' || TO_CHAR(ROUND((SUM(closing_balance))::numeric,2),'FM999,999,990.00') AS \"Total Balance\",\n    ROUND((100.0*SUM(total_purchase_amount)/NULLIF(SUM(total_valueload_amount),0))::numeric,1) || '%' AS \"Utilization\"\nFROM reporting.fact_account_balance WHERE tenant_id='rfu-oregon'\nGROUP BY purse_name ORDER BY purse_name",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Member-Level Balances",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
       "title": "Member Purse Balances",
-      "type": "table"
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT m.client_member_id AS \"Member ID\",\n    m.first_name AS \"First Name\", m.last_name AS \"Last Name\",\n    ab.purse_name AS \"Purse\",\n    '$' || TO_CHAR(ROUND((ab.total_valueload_amount)::numeric,2),'FM999,999,990.00') AS \"Loaded\",\n    '$' || TO_CHAR(ROUND((ab.total_purchase_amount)::numeric,2),'FM999,999,990.00') AS \"Spent\",\n    '$' || TO_CHAR(ROUND((ab.closing_balance)::numeric,2),'FM999,999,990.00') AS \"Balance\",\n    ROUND((100.0*ab.total_purchase_amount/NULLIF(ab.total_valueload_amount,0))::numeric,1) || '%' AS \"Util %\"\nFROM reporting.fact_account_balance ab\nLEFT JOIN reporting.dim_member m ON m.client_member_id=ab.pan_proxy_number AND m.tenant_id=ab.tenant_id\nWHERE ab.tenant_id='rfu-oregon'\nORDER BY ab.closing_balance DESC LIMIT 200",
+          "refId": "A"
+        }
+      ]
     }
-  ],
-  "refresh": "10m",
-  "schemaVersion": 39,
-  "tags": [
-    "reporting",
-    "client"
   ],
   "templating": {
     "list": []
   },
-  "time": {
-    "from": "now-90d",
-    "to": "now"
-  },
-  "timezone": "browser",
-  "title": "Utilization Summary Report",
-  "uid": "onefintech-rpt-utilization"
+  "annotations": {
+    "list": []
+  }
 }

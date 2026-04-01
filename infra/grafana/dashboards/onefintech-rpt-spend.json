@@ -1,83 +1,118 @@
 {
-  "annotations": {
-    "list": []
+  "uid": "onefintech-rpt-spend",
+  "title": "Spend Item Detail Report",
+  "tags": [
+    "reporting",
+    "client"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "10m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
   },
   "links": [
     {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": true,
-      "tags": [],
-      "targetBlank": false,
       "title": "Home",
-      "type": "link",
-      "url": "/d/onefintech-home/one-fintech-platform"
-    },
-    {
+      "url": "/d/onefintech-home/one-fintech-platform",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Reports",
-      "type": "link",
-      "url": "/d/onefintech-reports/reports"
-    },
-    {
+      "url": "/d/onefintech-reports/reports",
+      "keepTime": true,
       "asDropdown": false,
       "icon": "external link",
       "includeVars": false,
-      "keepTime": true,
       "tags": [],
       "targetBlank": false,
+      "type": "link"
+    },
+    {
       "title": "Ops Health",
-      "type": "link",
-      "url": "/d/onefintech-ops-health/ops-health"
+      "url": "/d/onefintech-ops-health/ops-health",
+      "keepTime": true,
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "tags": [],
+      "targetBlank": false,
+      "type": "link"
     }
   ],
   "panels": [
     {
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
       "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
       "options": {
-        "content": "### \u2139\ufe0f About This Report\nItem-level spend from FIS STDFSID (Filtered Spend Item Details) XTRACT v1.3.\n\n| Column | Source | Meaning |\n|---|---|---|\n| UPC | `fact_spend_item_detail.upc` | Product barcode |\n| Item Description | `fact_spend_item_detail.item_description` | Product name |\n| Spend Category | `fact_spend_item_detail.spend_category_code` | 5D=Food, 5A=OTC, OF/OV=OTC variants |\n| Item Amount | `fact_spend_item_detail.item_amount` | Line item dollar amount |\n| Item Quantity | `fact_spend_item_detail.item_quantity` | Units purchased |\n| Is Funded | `fact_spend_item_detail.is_funded` | Whether the item was funded by the benefit |\n| Merchant | `fact_spend_item.merchant_name` | Store where purchased |\n| Settle Amount | `fact_spend_item.settle_amount` | Total transaction amount |\n\n> **393 items** across **99 transactions** from ~60% of RFU members.",
+        "content": "### \u2139\ufe0f About This Report\nItem-level spend from FIS STDFSID XTRACT v1.3. **Click any tile** to jump to transaction or item detail.\n\n| Column | Source | Meaning |\n|---|---|---|\n| UPC | `fact_spend_item_detail.upc` | Product barcode |\n| Item Description | `fact_spend_item_detail.item_description` | Product name |\n| Spend Category | `fact_spend_item_detail.spend_category_code` | 5D=Food \u00b7 5A=OTC \u00b7 OF/OV=OTC variants |\n| Item Amount | `fact_spend_item_detail.item_amount` | Line item dollar amount |\n| Item Quantity | `fact_spend_item_detail.item_quantity` | Units purchased |\n| Settle Amount | `fact_spend_item.settle_amount` | Total transaction amount |\n\n> **393 items** \u00b7 **99 transactions** \u00b7 $4,824 total spend.",
         "mode": "markdown"
       },
-      "pluginVersion": "10.4.3",
-      "title": "",
-      "type": "text"
+      "pluginVersion": "10.4.3"
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 2,
-      "panels": [],
+      "id": 9,
+      "type": "row",
       "title": "Summary",
-      "type": "row"
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
     },
     {
+      "id": 3,
+      "type": "stat",
+      "title": "Transactions",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -88,30 +123,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View transaction detail",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 9
-      },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -125,21 +145,44 @@
           "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Transactions",
-      "type": "stat"
+      ]
     },
     {
+      "id": 4,
+      "type": "stat",
+      "title": "Items",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 4,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -150,30 +193,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View item detail",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 9
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -187,21 +215,44 @@
           "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Items",
-      "type": "stat"
+      ]
     },
     {
+      "id": 5,
+      "type": "stat",
+      "title": "Total Spend",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 8,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -212,30 +263,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View spend breakdown",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 9
-      },
-      "id": 5,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -249,21 +285,44 @@
           "rawSql": "SELECT ROUND(SUM(item_amount)::numeric,2) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Total Spend ($)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 6,
+      "type": "stat",
+      "title": "Avg Basket",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "purple",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "purple"
           },
+          "unit": "currencyUSD",
+          "decimals": 2,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -274,30 +333,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View basket detail",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 9
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -311,21 +355,44 @@
           "rawSql": "SELECT ROUND(AVG(settle_amount)::numeric,2) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Avg Basket ($)",
-      "type": "stat"
+      ]
     },
     {
+      "id": 7,
+      "type": "stat",
+      "title": "Unique Members",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "blue"
           },
+          "unit": "none",
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -336,30 +403,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View member spend",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 9
-      },
-      "id": 7,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -373,21 +425,44 @@
           "rawSql": "SELECT COUNT(DISTINCT pan_masked) AS \"n\" FROM reporting.fact_spend_item WHERE tenant_id='rfu-oregon'",
           "refId": "A"
         }
-      ],
-      "title": "Unique Members",
-      "type": "stat"
+      ]
     },
     {
+      "id": 8,
+      "type": "stat",
+      "title": "Funded Items",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
+      "gridPos": {
+        "x": 20,
+        "y": 9,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "green",
-            "mode": "fixed"
+            "mode": "fixed",
+            "fixedColor": "green"
           },
+          "unit": "none",
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -398,30 +473,15 @@
               }
             ]
           },
-          "unit": "none"
+          "links": [
+            {
+              "targetBlank": false,
+              "title": "View funded items",
+              "url": "/d/onefintech-rpt-spend/spend-item-detail-report?orgId=1&from=${__from}&to=${__to}"
+            }
+          ]
         },
         "overrides": []
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 9
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -435,151 +495,50 @@
           "rawSql": "SELECT COUNT(*) AS \"n\" FROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon' AND is_funded=true",
           "refId": "A"
         }
-      ],
-      "title": "Funded Items",
-      "type": "stat"
+      ]
     },
     {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 13
-      },
-      "id": 9,
-      "panels": [],
+      "id": 19,
+      "type": "row",
       "title": "By Category",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 14
+        "y": 13,
+        "w": 24,
+        "h": 1
       },
-      "id": 10,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT spend_category_code AS \"Category Code\",\n    CASE spend_category_code\n        WHEN '5D' THEN 'Food & Beverages'\n        WHEN '5A' THEN 'OTC / Health'\n        WHEN 'OF' THEN 'OTC (OF)'\n        WHEN 'OV' THEN 'OTC (OV)'\n        ELSE spend_category_code\n    END AS \"Category\",\n    COUNT(*) AS \"Items\",\n    SUM(item_quantity) AS \"Units\",\n    ROUND(SUM(item_amount)::numeric,2) AS \"Total ($)\",\n    ROUND(AVG(item_amount)::numeric,2) AS \"Avg Item ($)\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY spend_category_code ORDER BY 5 DESC",
-          "refId": "A"
-        }
-      ],
-      "title": "Spend by Category",
-      "type": "table"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cfglj9j8ghwqob"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "id": 11,
-      "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        },
-        "showHeader": true
-      },
-      "pluginVersion": "10.4.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cfglj9j8ghwqob"
-          },
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT item_description AS \"Item\",\n    upc AS \"UPC\",\n    spend_category_code AS \"Cat\",\n    SUM(item_quantity) AS \"Units\",\n    ROUND(SUM(item_amount)::numeric,2) AS \"Total ($)\",\n    COUNT(*) AS \"Transactions\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY item_description, upc, spend_category_code\nORDER BY 5 DESC LIMIT 20",
-          "refId": "A"
-        }
-      ],
-      "title": "Top Items by Sales",
-      "type": "table"
-    },
-    {
       "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 22
-      },
-      "id": 12,
-      "panels": [],
-      "title": "Transaction Detail",
-      "type": "row"
+      "panels": []
     },
     {
+      "id": 10,
+      "type": "table",
+      "title": "Spend by Category",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "cfglj9j8ghwqob"
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "displayMode": "auto",
-            "filterable": true
-          }
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 12,
-        "w": 24,
         "x": 0,
-        "y": 23
+        "y": 14,
+        "w": 12,
+        "h": 8
       },
-      "id": 13,
       "options": {
         "cellHeight": "sm",
         "footer": {
           "show": false
         },
         "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
       },
       "pluginVersion": "10.4.3",
       "targets": [
@@ -590,28 +549,117 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n    si.txn_datetime::date AS \"Date\",\n    si.merchant_name AS \"Merchant\",\n    ROUND(si.settle_amount::numeric,2) AS \"Total ($)\",\n    sd.item_description AS \"Item\",\n    sd.spend_category_code AS \"Category\",\n    sd.item_quantity AS \"Qty\",\n    ROUND(sd.item_amount::numeric,2) AS \"Amount ($)\",\n    sd.is_funded AS \"Funded\",\n    si.pan_masked AS \"PAN\"\nFROM reporting.fact_spend_item_detail sd\nJOIN reporting.fact_spend_item si ON si.spend_item_sk = sd.spend_item_sk\nWHERE sd.tenant_id='rfu-oregon'\nORDER BY si.txn_datetime DESC, sd.item_sequence\nLIMIT 500",
+          "rawSql": "SELECT spend_category_code AS \"Code\",\n    CASE spend_category_code WHEN '5D' THEN 'Food & Beverages' WHEN '5A' THEN 'OTC / Health' ELSE spend_category_code END AS \"Category\",\n    COUNT(*) AS \"Items\", SUM(item_quantity) AS \"Units\",\n    '$' || TO_CHAR(ROUND((SUM(item_amount))::numeric,2),'FM999,999,990.00') AS \"Total\",\n    '$' || TO_CHAR(ROUND((AVG(item_amount))::numeric,2),'FM999,999,990.00') AS \"Avg Item\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY spend_category_code ORDER BY 5 DESC",
           "refId": "A"
         }
-      ],
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Top Items by Sales",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT item_description AS \"Item\", upc AS \"UPC\", spend_category_code AS \"Cat\",\n    SUM(item_quantity) AS \"Units\",\n    '$' || TO_CHAR(ROUND((SUM(item_amount))::numeric,2),'FM999,999,990.00') AS \"Total\",\n    COUNT(*) AS \"Transactions\"\nFROM reporting.fact_spend_item_detail WHERE tenant_id='rfu-oregon'\nGROUP BY item_description,upc,spend_category_code ORDER BY 5 DESC LIMIT 20",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
       "title": "Transaction + Item Detail",
-      "type": "table"
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Transaction + Item Detail",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "cfglj9j8ghwqob"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "displayMode": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "cfglj9j8ghwqob"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT si.txn_datetime::date AS \"Date\",\n    si.merchant_name AS \"Merchant\",\n    '$' || TO_CHAR(ROUND((si.settle_amount)::numeric,2),'FM999,999,990.00') AS \"Total\",\n    sd.item_description AS \"Item\",\n    sd.spend_category_code AS \"Category\",\n    sd.item_quantity AS \"Qty\",\n    '$' || TO_CHAR(ROUND((sd.item_amount)::numeric,2),'FM999,999,990.00') AS \"Amount\",\n    sd.is_funded AS \"Funded\",\n    si.pan_masked AS \"PAN\"\nFROM reporting.fact_spend_item_detail sd\nJOIN reporting.fact_spend_item si ON si.spend_item_sk=sd.spend_item_sk\nWHERE sd.tenant_id='rfu-oregon'\nORDER BY si.txn_datetime DESC, sd.item_sequence LIMIT 500",
+          "refId": "A"
+        }
+      ]
     }
-  ],
-  "refresh": "10m",
-  "schemaVersion": 39,
-  "tags": [
-    "reporting",
-    "client"
   ],
   "templating": {
     "list": []
   },
-  "time": {
-    "from": "now-90d",
-    "to": "now"
-  },
-  "timezone": "browser",
-  "title": "Spend Item Detail Report",
-  "uid": "onefintech-rpt-spend"
+  "annotations": {
+    "list": []
+  }
 }

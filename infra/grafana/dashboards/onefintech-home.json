@@ -18,7 +18,7 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
+              "title": "View ops health",
               "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}"
             }
           ],
@@ -86,8 +86,8 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail"
+              "title": "View enrollment report",
+              "url": "/d/onefintech-rpt-enrollment/enrollment-report?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -154,8 +154,8 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail"
+              "title": "View dead letter detail",
+              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -230,8 +230,8 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail"
+              "title": "View ops health",
+              "url": "/d/onefintech-ops-health/ops-health?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -306,8 +306,8 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-file-detail/file-detail"
+              "title": "View incomplete files",
+              "url": "/d/onefintech-file-detail/file-detail?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -382,8 +382,8 @@
           "links": [
             {
               "targetBlank": false,
-              "title": "",
-              "url": "/d/onefintech-member-lifecycle/member-lifecycle?orgId=1&from=${__from}&to=${__to}"
+              "title": "View platform config",
+              "url": "/d/onefintech-platform-config/platform-config?orgId=1&from=${__from}&to=${__to}"
             }
           ],
           "mappings": [],
@@ -532,6 +532,22 @@
       "pluginVersion": "10.4.3",
       "title": "",
       "type": "text"
+    },
+    {
+      "id": 16,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 5
+      },
+      "options": {
+        "content": "## [\ud83d\udcca Reports](/d/onefintech-reports/reports)\n\n**For:** Operations & Client Success\n\n**Answers:** Card status, enrollment counts, reconciliation results, utilization, authorization & declines, and item-level spend for RFU. Mirrors Aetna Medicaid monthly reporting format. Each report includes an (\u2139\ufe0f) info panel explaining every field and its source table.\n\n**Live reports:** Card Status \u00b7 Enrollment \u00b7 Reconciliation \u00b7 Auth & Declines \u00b7 Utilization \u00b7 Spend Item Detail",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.4.3"
     }
   ],
   "refresh": "1m",
