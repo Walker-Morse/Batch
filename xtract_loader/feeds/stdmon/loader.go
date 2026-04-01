@@ -40,6 +40,9 @@ func (l *Loader) ProcessRow(ctx context.Context, lineNum int, fields []string) e
 	cardNumMasked   := parser.Field(fields, 10)
 	authAmount      := parser.FieldFloat64(fields, 11)
 	authCode        := parser.Field(fields, 12)
+	if len(authCode) > 6 {
+		authCode = authCode[:6]
+	}
 	txnLocalAmt     := parser.FieldFloat64(fields, 13)
 	txnLocalDT      := parser.FieldDateTime(fields, 14)
 	txnSign         := parser.FieldInt64(fields, 15)
