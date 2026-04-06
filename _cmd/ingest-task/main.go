@@ -1,14 +1,19 @@
-// Command ingest-task is the single ECS Fargate container for the complete
-// One Fintech file lifecycle (ADR-003).
+// Command ingest-task is the single ECS Fargate container image for the
+// One Fintech file lifecycle (ADR-003). It runs in two modes:
 //
-// Seven named pipeline stages:
-//   Stage 1 — File Arrival       S3 event → SHA-256 → batch_files row
-//   Stage 2 — Validation         PGP decrypt → SRG parse → dead-letter malformed rows
-//   Stage 3 — Row Processing     Sequential row-by-row: idempotency → domain writes → staging
-//   Stage 4 — Batch Assembly     FIS 400-byte fixed-width records → PGP-encrypt → S3
-//   Stage 5 — SCP Egress Deposit  PutObject → S3 egress bucket (FIS polls for pickup)
-//   Stage 6 — Return File Wait   Poll fis-exchange S3 for FIS return file (6h timeout)
-//   Stage 7 — Reconciliation     Match results → update status → stamp FIS identifiers
+//   --mode ingest (default)
+//     Stages 1–5: File Arrival → Validation → Row Processing →
+//     Batch Assembly → FIS Transfer. Exits after Stage 5.
+//     Triggered by EventBridge file.arrived.
+//
+//   --mode reconcile
+//     Stage 6: Reconciliation. Reads the FIS return file from S3 and
+//     reconciles results against staged batch records.
+//     Triggered by EventBridge return.file.arrived (hours after ingest).
+//     Requires --return-file-bucket, --return-file-key.
+//
+// Same image, two ECS task definitions, different TASK_MODE env var.
+// This eliminates idle Fargate billing during FIS processing (up to 6 hours).
 //
 // Adapters are wired here and injected into stages via port interfaces.
 // No stage imports an adapter directly — all dependencies flow through ports (ADR-001).
@@ -33,14 +38,10 @@ import (
 	"github.com/walker-morse/batch/_adapters/aurora"
 	pgpadapter "github.com/walker-morse/batch/_adapters/pgp"
 	"github.com/walker-morse/batch/_adapters/s3"
-	adtransport "github.com/walker-morse/batch/_adapters/transport"
 	"github.com/walker-morse/batch/_shared/observability"
 	"github.com/walker-morse/batch/_shared/ports"
 	"github.com/walker-morse/batch/fis_reconciliation/fis_adapter"
-	stage4 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
-	stage5 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
-	stage6 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
-	stage7 "github.com/walker-morse/batch/fis_reconciliation/pipeline"
+	fisp "github.com/walker-morse/batch/fis_reconciliation/pipeline"
 	stage1 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage2 "github.com/walker-morse/batch/member_enrollment/pipeline"
 	stage3 "github.com/walker-morse/batch/member_enrollment/pipeline"
@@ -49,6 +50,10 @@ import (
 // PipelineConfig holds all runtime configuration.
 // Sensitive values come from Secrets Manager — never from env vars (§5.4.5).
 type PipelineConfig struct {
+	// Mode selects the execution path: "ingest" (Stages 1–5) or "reconcile" (Stage 6).
+	// Set via --mode flag or TASK_MODE env var.
+	Mode string
+
 	CorrelationID uuid.UUID
 	TenantID      string
 	ClientID      string
@@ -70,7 +75,6 @@ type PipelineConfig struct {
 	StagedBucket      string
 	SCPExchangeBucket string
 	EgressBucket      string
-	ReturnFilePrefix  string
 
 	// SCP assembler
 	SCPCompanyID string
@@ -80,23 +84,26 @@ type PipelineConfig struct {
 	PGPPassphraseSecretARN   string
 	PGPSCPPublicKeySecretARN string
 
-	// FIS SFTP fields removed — Stage 5 now uses S3 egress bucket (OI #19 superseded).
+	// Reconcile mode — required when Mode == "reconcile"
+	ReturnFileBucket string // S3 bucket containing the FIS return file
+	ReturnFileKey    string // S3 key of the FIS return file
+
 	// Replay mode
 	ReplayMode        bool
 	ReplayRowSequence *int
-
-	ReturnFileWaitTimeout time.Duration
 }
 
 // PipelineDeps holds all wired port implementations.
 type PipelineDeps struct {
-	Stage1 *stage1.FileArrivalStage
-	Stage2 *stage2.ValidationStage
-	Stage3 *stage3.RowProcessingStage
-	Stage4 *stage4.BatchAssemblyStage
-	Stage5 *stage5.ProcessorDepositStage
-	Stage6 *stage6.ReturnFileWaitStage
-	Stage7 *stage7.ReconciliationStage
+	FileStore ports.FileStore // shared S3 adapter — used in both modes
+	Stage1    *stage1.FileArrivalStage
+	Stage2    *stage2.ValidationStage
+	Stage3    *stage3.RowProcessingStage
+	Stage4    *fisp.BatchAssemblyStage
+	Stage5    *fisp.ProcessorDepositStage
+	// Stage 6 (ReturnFileWaitStage) removed — polling replaced by EventBridge trigger.
+	// ReconciliationStage is used in reconcile mode (triggered by return.file.arrived).
+	Stage7 *fisp.ReconciliationStage
 }
 
 func main() {
@@ -162,12 +169,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	}
 	_ = testProdIndicator
 
-	// PGP decrypt (Stage 2)
-	// Encryption is detected from the S3 key suffix at runtime:
-	//   .pgp suffix  → real PGP decrypt using key from Secrets Manager
-	//   all others   → PassthroughDecrypt (plaintext .txt / .txt.pgp)
-	// This allows both encrypted (TST/PRD MCO files) and plaintext (DEV test files)
-	// to flow through the same pipeline without environment-level overrides.
+	// PGP decrypt (Stage 2) — detect from S3 key suffix at runtime
 	var pgpDecrypt func(io.Reader) (io.Reader, error)
 	if strings.HasSuffix(strings.ToLower(cfg.S3Key), ".pgp") {
 		if cfg.PGPPrivateKeySecretARN == "" {
@@ -190,7 +192,6 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Message:       "PGP decrypt active: file is encrypted",
 		})
 	} else {
-		// Plaintext file — passthrough, no decryption needed
 		pgpDecrypt = stage2.PassthroughDecrypt
 		_ = obs.LogEvent(ctx, &ports.LogEvent{
 			EventType:     "pipeline.startup",
@@ -219,7 +220,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Stage:         strPtr("pipeline"),
 			Message:       "NullPGPEncrypt active — DEV only; never use in TST or PRD",
 		})
-		pgpEncrypt = stage4.NullPGPEncrypt
+		pgpEncrypt = fisp.NullPGPEncrypt
 	} else {
 		enc, err := pgpadapter.LoadEncrypter(ctx, smClient, cfg.PGPSCPPublicKeySecretARN)
 		if err != nil {
@@ -229,22 +230,10 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 		pgpEncrypt = enc.Encrypt
 	}
 
-	// FIS transport — Stage 6 only (return file polling via S3).
-	// Stage 5 outbound delivery now writes directly to the egress S3 bucket;
-	// SFTP/SSH transport is no longer used for the outbound path (OI #19 superseded).
-	returnPrefix := cfg.ReturnFilePrefix
-	if returnPrefix == "" {
-		returnPrefix = "return/"
-	}
-	var fisTransport ports.FISTransport = &adtransport.FISTransportAdapter{
-		S3Client:          s3Client,
-		FISExchangeBucket: cfg.SCPExchangeBucket,
-		ReturnFilePrefix:  returnPrefix,
-	}
-
 	var martWriter ports.MartWriter = aurora.NewMartWriterRepo(pool)
 
 	return &PipelineDeps{
+		FileStore: fileStore,
 		Stage1: &stage1.FileArrivalStage{
 			Files:      fileStore,
 			BatchFiles: batchFileRepo,
@@ -270,7 +259,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			Obs:            obs,
 			Mart:           martWriter,
 		},
-		Stage4: &stage4.BatchAssemblyStage{
+		Stage4: &fisp.BatchAssemblyStage{
 			Assembler:         assembler,
 			Files:             fileStore,
 			BatchFiles:        batchFileRepo,
@@ -281,7 +270,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			StagedBucket:      cfg.StagedBucket,
 			FISExchangeBucket: cfg.SCPExchangeBucket,
 		},
-		Stage5: &stage5.ProcessorDepositStage{
+		Stage5: &fisp.ProcessorDepositStage{
 			Files:             fileStore,
 			BatchFiles:        batchFileRepo,
 			Audit:             auditRepo,
@@ -289,14 +278,7 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 			FISExchangeBucket: cfg.SCPExchangeBucket,
 			EgressBucket:      cfg.EgressBucket,
 		},
-		Stage6: &stage6.ReturnFileWaitStage{
-			Transport:  fisTransport,
-			BatchFiles: batchFileRepo,
-			Audit:      auditRepo,
-			Obs:        obs,
-			Timeout:    cfg.ReturnFileWaitTimeout,
-		},
-		Stage7: &stage7.ReconciliationStage{
+		Stage7: &fisp.ReconciliationStage{
 			BatchFiles:     batchFileRepo,
 			BatchRecords:   batchRecordsRepo,
 			DomainCommands: domainCmdRepo,
@@ -309,12 +291,16 @@ func wireDeps(ctx context.Context, cfg *PipelineConfig) (*PipelineDeps, error) {
 	}, nil
 }
 
-// runWithDeps executes the full pipeline using pre-wired dependencies.
-// All infrastructure concerns are resolved before this is called.
-// This is the testable core of the ingest-task.
+// runWithDeps dispatches to runIngest or runReconcile based on cfg.Mode.
 func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) error {
-	// Obtain an observability handle from Stage 1 (which holds the wired adapter).
-	// For pre-Stage-1 events, BatchFileID is uuid.Nil — correct per spec.
+	if cfg.Mode == "reconcile" {
+		return runReconcile(ctx, cfg, deps)
+	}
+	return runIngest(ctx, cfg, deps)
+}
+
+// runIngest executes Stages 1–5 and exits. Triggered by file.arrived.
+func runIngest(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) error {
 	obs := deps.Stage1.Obs
 	startTime := time.Now()
 	ft := cfg.FileType
@@ -330,7 +316,7 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		Stage:         strPtr("pipeline"),
 		FileType:      &ft,
 		S3Key:         &s3k,
-		Message:       fmt.Sprintf("pipeline starting: tenant=%s file_type=%s env=%s", cfg.TenantID, cfg.FileType, cfg.PipelineEnv),
+		Message:       fmt.Sprintf("ingest starting: tenant=%s file_type=%s env=%s", cfg.TenantID, cfg.FileType, cfg.PipelineEnv),
 	})
 
 	// ── Stage 1 — File Arrival ────────────────────────────────────────────
@@ -379,27 +365,46 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		"stage": "stage3_row_processing", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
-	// Emit dead_letter_rate metric after Stage 3
+	// Emit dead_letter_rate and malformed_rate metrics
 	total3 := processingResult.StagedCount + processingResult.DuplicateCount + processingResult.FailedCount
 	dlRate := 0.0
 	if total3 > 0 {
 		dlRate = float64(processingResult.FailedCount) / float64(total3) * 100
 	}
-	_ = obs.RecordMetric(ctx, observability.MetricDeadLetterRate, dlRate, map[string]string{
-		"tenant_id": cfg.TenantID,
-		"env":       cfg.PipelineEnv,
-	})
-
-	// Emit malformed_rate metric (from Stage 2 result)
+	_ = obs.RecordMetric(ctx, observability.MetricDeadLetterRate, dlRate, map[string]string{"tenant_id": cfg.TenantID, "env": cfg.PipelineEnv})
 	malformedRate := 0.0
-	totalRows := validationResult.TotalRows
-	if totalRows > 0 {
-		malformedRate = float64(len(validationResult.ParseErrors)) / float64(totalRows) * 100
+	if validationResult.TotalRows > 0 {
+		malformedRate = float64(len(validationResult.ParseErrors)) / float64(validationResult.TotalRows) * 100
 	}
-	_ = obs.RecordMetric(ctx, "malformed_rate", malformedRate, map[string]string{
-		"tenant_id": cfg.TenantID,
-		"env":       cfg.PipelineEnv,
-	})
+	_ = obs.RecordMetric(ctx, "malformed_rate", malformedRate, map[string]string{"tenant_id": cfg.TenantID, "env": cfg.PipelineEnv})
+
+	// ── Stage 3 guard: skip assembly if nothing staged ────────────────────
+	// All rows dead-lettered or duplicate — do not assemble or transfer an
+	// empty file to FIS. Log pipeline.complete and exit cleanly.
+	if processingResult.StagedCount == 0 {
+		durationMs := time.Since(startTime).Milliseconds()
+		staged := processingResult.StagedCount
+		dl := processingResult.FailedCount
+		dups := processingResult.DuplicateCount
+		zero := 0
+		_ = obs.LogEvent(ctx, &ports.LogEvent{
+			EventType:     "pipeline.complete",
+			Level:         "INFO",
+			CorrelationID: cfg.CorrelationID,
+			TenantID:      cfg.TenantID,
+			BatchFileID:   batchFile.ID,
+			Stage:         strPtr("pipeline"),
+			DurationMs:    &durationMs,
+			Staged:        &staged,
+			Enrolled:      &zero,
+			DeadLettered:  &dl,
+			Duplicates:    &dups,
+			Message: fmt.Sprintf(
+				"ingest complete (no staged records — assembly skipped): duration=%dms staged=0 dead_lettered=%d duplicates=%d",
+				durationMs, dl, dups),
+		})
+		return nil
+	}
 
 	// ── Stage 4 — Batch Assembly ──────────────────────────────────────────
 	s4Start := time.Now()
@@ -411,7 +416,7 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		"stage": "stage4_batch_assembly", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
-	// ── Stage 5 — SCP Transfer ────────────────────────────────────────────
+	// ── Stage 5 — FIS Transfer ────────────────────────────────────────────
 	s5Start := time.Now()
 	if err := deps.Stage5.Run(ctx, batchFile, assemblyResult); err != nil {
 		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage5: %w", err))
@@ -420,66 +425,101 @@ func runWithDeps(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) e
 		"stage": "stage5_processor_deposit", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
-	// ── Stage 6 — Return File Wait ────────────────────────────────────────
-	s6Start := time.Now()
-	waitResult, err := deps.Stage6.Run(ctx, batchFile)
-	if err != nil {
-		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage6: %w", err))
-	}
-	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s6Start).Milliseconds()), map[string]string{
-		"stage": "stage6_return_file_wait", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
-	})
-
-	// ── Stage 7 — Reconciliation ──────────────────────────────────────────
-	s7Start := time.Now()
-	reconcResult, err := deps.Stage7.Run(ctx, batchFile, waitResult.Body)
-	if err != nil {
-		return pipelineError(ctx, obs, cfg, batchFile.ID, startTime, fmt.Errorf("stage7: %w", err))
-	}
-	_ = obs.RecordMetric(ctx, observability.MetricStageDurationMs, float64(time.Since(s7Start).Milliseconds()), map[string]string{
-		"stage": "stage7_reconciliation", "tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
-	})
-
-	// ── pipeline.complete ─────────────────────────────────────────────────
+	// ── Ingest complete — container exits ─────────────────────────────────
+	// Reconciliation runs in a separate reconcile-task container triggered
+	// by EventBridge return.file.arrived when FIS deposits the return file.
 	durationMs := time.Since(startTime).Milliseconds()
-	staged    := processingResult.StagedCount
-	dl        := processingResult.FailedCount
-	dups      := processingResult.DuplicateCount
-
-	// enrolled = Stage 7 Completed (FIS result code 000). Authoritative count.
-	// replaces the prior approximation (enrolled = staged).
-	enrolled := reconcResult.Completed
+	staged := processingResult.StagedCount
+	dl := processingResult.FailedCount
+	dups := processingResult.DuplicateCount
 
 	_ = obs.LogEvent(ctx, &ports.LogEvent{
-		EventType:    "pipeline.complete",
-		Level:        "INFO",
+		EventType:     "ingest.complete",
+		Level:         "INFO",
 		CorrelationID: cfg.CorrelationID,
-		TenantID:     cfg.TenantID,
-		BatchFileID:  batchFile.ID,
-		Stage:        strPtr("pipeline"),
-		DurationMs:   &durationMs,
-		Staged:       &staged,
-		Enrolled:     &enrolled,
-		DeadLettered: &dl,
-		Duplicates:   &dups,
-		Message: fmt.Sprintf("pipeline complete: duration=%dms staged=%d enrolled=%d dead_lettered=%d duplicates=%d",
-			durationMs, staged, enrolled, dl, dups),
+		TenantID:      cfg.TenantID,
+		BatchFileID:   batchFile.ID,
+		Stage:         strPtr("pipeline"),
+		DurationMs:    &durationMs,
+		Staged:        &staged,
+		DeadLettered:  &dl,
+		Duplicates:    &dups,
+		Message: fmt.Sprintf(
+			"ingest complete: duration=%dms staged=%d dead_lettered=%d duplicates=%d — awaiting return.file.arrived for reconciliation",
+			durationMs, staged, dl, dups),
 	})
 
 	_ = obs.RecordMetric(ctx, observability.MetricPipelineDurationMs, float64(durationMs), map[string]string{
-		"tenant_id": cfg.TenantID,
-		"env":       cfg.PipelineEnv,
+		"tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
-	// enrollment_success_rate: % of Stage 7 records with FIS result code 000.
-	// Feeds Dashboard 1 stat panel and CloudWatch alarm §7.3.
+	return nil
+}
+
+// runReconcile executes Stage 6 Reconciliation. Triggered by return.file.arrived.
+// Reads the FIS return file from S3 using cfg.ReturnFileBucket / cfg.ReturnFileKey.
+func runReconcile(ctx context.Context, cfg *PipelineConfig, deps *PipelineDeps) error {
+	obs := deps.Stage7.Obs
+	startTime := time.Now()
+
+	if cfg.ReturnFileBucket == "" || cfg.ReturnFileKey == "" {
+		return fmt.Errorf("reconcile mode requires --return-file-bucket and --return-file-key")
+	}
+
+	_ = obs.LogEvent(ctx, &ports.LogEvent{
+		EventType:     "reconcile.startup",
+		Level:         "INFO",
+		CorrelationID: cfg.CorrelationID,
+		TenantID:      cfg.TenantID,
+		BatchFileID:   uuid.Nil,
+		Stage:         strPtr("pipeline"),
+		Message: fmt.Sprintf("reconcile starting: tenant=%s correlation_id=%s return_file=%s/%s",
+			cfg.TenantID, cfg.CorrelationID, cfg.ReturnFileBucket, cfg.ReturnFileKey),
+	})
+
+	// Look up the original batch file by correlation ID
+	batchFile, err := deps.Stage7.BatchFiles.GetByCorrelationID(ctx, cfg.CorrelationID)
+	if err != nil {
+		return fmt.Errorf("reconcile: get batch file for correlation_id=%s: %w", cfg.CorrelationID, err)
+	}
+
+	// Read FIS return file from S3
+	returnBody, err := deps.FileStore.GetObject(ctx, cfg.ReturnFileBucket, cfg.ReturnFileKey)
+	if err != nil {
+		return fmt.Errorf("reconcile: read return file %s/%s: %w", cfg.ReturnFileBucket, cfg.ReturnFileKey, err)
+	}
+
+	// Run Stage 6 — Reconciliation (was Stage 7 in single-container architecture)
+	reconcResult, err := deps.Stage7.Run(ctx, batchFile, returnBody)
+	if err != nil {
+		return fmt.Errorf("reconcile: stage6_reconciliation: %w", err)
+	}
+
+	durationMs := time.Since(startTime).Milliseconds()
+	_ = obs.LogEvent(ctx, &ports.LogEvent{
+		EventType:     "reconcile.complete",
+		Level:         "INFO",
+		CorrelationID: cfg.CorrelationID,
+		TenantID:      cfg.TenantID,
+		BatchFileID:   batchFile.ID,
+		Stage:         strPtr("pipeline"),
+		DurationMs:    &durationMs,
+		Completed:     &reconcResult.Completed,
+		Failed:        &reconcResult.Failed,
+		Total:         &reconcResult.Total,
+		Message: fmt.Sprintf("reconcile complete: duration=%dms completed=%d failed=%d total=%d",
+			durationMs, reconcResult.Completed, reconcResult.Failed, reconcResult.Total),
+	})
+
 	enrollmentRate := 0.0
 	if reconcResult.Total > 0 {
 		enrollmentRate = float64(reconcResult.Completed) / float64(reconcResult.Total) * 100
 	}
 	_ = obs.RecordMetric(ctx, observability.MetricEnrollmentSuccessRate, enrollmentRate, map[string]string{
-		"tenant_id": cfg.TenantID,
-		"env":       cfg.PipelineEnv,
+		"tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
+	})
+	_ = obs.RecordMetric(ctx, observability.MetricPipelineDurationMs, float64(durationMs), map[string]string{
+		"tenant_id": cfg.TenantID, "env": cfg.PipelineEnv,
 	})
 
 	return nil
@@ -490,15 +530,15 @@ func pipelineError(ctx context.Context, obs ports.IObservabilityPort, cfg *Pipel
 	durationMs := time.Since(startTime).Milliseconds()
 	errStr := err.Error()
 	_ = obs.LogEvent(ctx, &ports.LogEvent{
-		EventType:    "pipeline.error",
-		Level:        "ERROR",
+		EventType:     "pipeline.error",
+		Level:         "ERROR",
 		CorrelationID: cfg.CorrelationID,
-		TenantID:     cfg.TenantID,
-		BatchFileID:  batchFileID,
-		Stage:        strPtr("pipeline"),
-		DurationMs:   &durationMs,
-		Error:        &errStr,
-		Message:      fmt.Sprintf("pipeline failed after %dms", durationMs),
+		TenantID:      cfg.TenantID,
+		BatchFileID:   batchFileID,
+		Stage:         strPtr("pipeline"),
+		DurationMs:    &durationMs,
+		Error:         &errStr,
+		Message:       fmt.Sprintf("pipeline failed after %dms", durationMs),
 	})
 	return err
 }
@@ -528,37 +568,35 @@ func getSecretString(ctx context.Context, sm *secretsmanager.Client, arn string)
 }
 
 func parseConfig() (*PipelineConfig, error) {
-	corrIDStr             := flag.String("correlation-id",               os.Getenv("CORRELATION_ID"),               "correlation UUID")
-	tenantID              := flag.String("tenant-id",                    os.Getenv("TENANT_ID"),                    "health plan tenant ID")
-	clientID              := flag.String("client-id",                    os.Getenv("CLIENT_ID"),                    "Morse client code")
-	s3Bucket              := flag.String("s3-bucket",                    os.Getenv("S3_BUCKET"),                    "inbound S3 bucket")
-	s3Key                 := flag.String("s3-key",                       os.Getenv("S3_KEY"),                       "S3 object key")
-	fileType              := flag.String("file-type",                    os.Getenv("FILE_TYPE"),                    "SRG310|SRG315|SRG320")
-	region                := flag.String("region",                       envOrDefault("AWS_REGION", "us-east-1"),   "AWS region")
-	pipelineEnv           := flag.String("env",                          envOrDefault("PIPELINE_ENV", "DEV"),       "DEV|TST|PRD")
-	dbHost                := flag.String("db-host",                      os.Getenv("DB_HOST"),                      "Aurora RDS Proxy endpoint")
-	dbName                := flag.String("db-name",                      os.Getenv("DB_NAME"),                      "database name")
-	dbUser                := flag.String("db-user",                      os.Getenv("DB_USER"),                      "database user")
-	dbPass                := flag.String("db-password",                  os.Getenv("DB_PASSWORD"),                  "database password")
-	dbSSL                 := flag.String("db-ssl",                       envOrDefault("DB_SSL", "require"),         "sslmode")
-	kmsKey                := flag.String("kms-key-arn",                  os.Getenv("KMS_KEY_ARN"),                  "KMS key ARN")
-	stagedBucket          := flag.String("staged-bucket",                os.Getenv("STAGED_BUCKET"),                "staged S3 bucket")
-	scpBucket             := flag.String("scp-exchange-bucket",          os.Getenv("SCP_EXCHANGE_BUCKET"),          "scp-exchange S3 bucket")
-	egressBucket          := flag.String("egress-bucket",                os.Getenv("EGRESS_BUCKET"),                "egress S3 bucket for FIS pickup")
-	returnPrefix          := flag.String("return-prefix",                envOrDefault("RETURN_FILE_PREFIX", "return/"), "S3 prefix for SCP return files")
-	scpCompanyID          := flag.String("scp-company-id",               os.Getenv("SCP_COMPANY_ID"),               "SCP company ID (8 chars)")
-	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",   os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "ARN: Morse PGP private key")
-	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",    os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "ARN: PGP passphrase")
-	pgpSCPPublicKeyARN    := flag.String("pgp-scp-public-key-secret-arn",os.Getenv("PGP_SCP_PUBLIC_KEY_SECRET_ARN"),"ARN: SCP PGP public key")
-	// SFTP flags removed — outbound delivery is now S3 egress (OI #19 superseded).
+	mode                  := flag.String("mode",                          envOrDefault("TASK_MODE", "ingest"),       "ingest|reconcile")
+	corrIDStr             := flag.String("correlation-id",                os.Getenv("CORRELATION_ID"),               "correlation UUID")
+	tenantID              := flag.String("tenant-id",                     os.Getenv("TENANT_ID"),                    "health plan tenant ID")
+	clientID              := flag.String("client-id",                     os.Getenv("CLIENT_ID"),                    "Morse client code")
+	s3Bucket              := flag.String("s3-bucket",                     os.Getenv("S3_BUCKET"),                    "inbound S3 bucket")
+	s3Key                 := flag.String("s3-key",                        os.Getenv("S3_KEY"),                       "S3 object key")
+	fileType              := flag.String("file-type",                     os.Getenv("FILE_TYPE"),                    "SRG310|SRG315|SRG320")
+	region                := flag.String("region",                        envOrDefault("AWS_REGION", "us-east-1"),   "AWS region")
+	pipelineEnv           := flag.String("env",                           envOrDefault("PIPELINE_ENV", "DEV"),       "DEV|TST|PRD")
+	dbHost                := flag.String("db-host",                       os.Getenv("DB_HOST"),                      "Aurora RDS Proxy endpoint")
+	dbName                := flag.String("db-name",                       os.Getenv("DB_NAME"),                      "database name")
+	dbUser                := flag.String("db-user",                       os.Getenv("DB_USER"),                      "database user")
+	dbPass                := flag.String("db-password",                   os.Getenv("DB_PASSWORD"),                  "database password")
+	dbSSL                 := flag.String("db-ssl",                        envOrDefault("DB_SSL", "require"),         "sslmode")
+	kmsKey                := flag.String("kms-key-arn",                   os.Getenv("KMS_KEY_ARN"),                  "KMS key ARN")
+	stagedBucket          := flag.String("staged-bucket",                 os.Getenv("STAGED_BUCKET"),                "staged S3 bucket")
+	scpBucket             := flag.String("scp-exchange-bucket",           os.Getenv("SCP_EXCHANGE_BUCKET"),          "scp-exchange S3 bucket")
+	egressBucket          := flag.String("egress-bucket",                 os.Getenv("EGRESS_BUCKET"),                "egress S3 bucket for FIS pickup")
+	scpCompanyID          := flag.String("scp-company-id",                os.Getenv("SCP_COMPANY_ID"),               "SCP company ID (8 chars)")
+	pgpPrivateKeyARN      := flag.String("pgp-private-key-secret-arn",    os.Getenv("PGP_PRIVATE_KEY_SECRET_ARN"),   "ARN: Morse PGP private key")
+	pgpPassphraseARN      := flag.String("pgp-passphrase-secret-arn",     os.Getenv("PGP_PASSPHRASE_SECRET_ARN"),    "ARN: PGP passphrase")
+	pgpSCPPublicKeyARN    := flag.String("pgp-scp-public-key-secret-arn", os.Getenv("PGP_SCP_PUBLIC_KEY_SECRET_ARN"),"ARN: SCP PGP public key")
+	returnFileBucket      := flag.String("return-file-bucket",            os.Getenv("RETURN_FILE_BUCKET"),           "S3 bucket for FIS return file (reconcile mode)")
+	returnFileKey         := flag.String("return-file-key",               os.Getenv("RETURN_FILE_KEY"),              "S3 key for FIS return file (reconcile mode)")
 	replay                := flag.Bool("replay", false, "replay mode")
 	replaySeq             := flag.Int("replay-seq", 0, "row sequence for replay")
-	returnTimeout         := flag.Duration("return-file-timeout", 6*time.Hour, "Stage 6 return file wait timeout")
 	flag.Parse()
 
-	// Derive TENANT_ID and CLIENT_ID from S3 key path when not explicitly set.
-	// Expected key convention: inbound-raw/{tenant_id}/{client_id}/YYYY/MM/DD/filename
-	// Falls back to env/flag values if set; empty string is acceptable in DEV.
+	// Derive TENANT_ID and CLIENT_ID from S3 key path when not explicitly set
 	if *tenantID == "" && *s3Key != "" {
 		parts := strings.SplitN(*s3Key, "/", 4)
 		if len(parts) >= 3 {
@@ -572,10 +610,7 @@ func parseConfig() (*PipelineConfig, error) {
 		}
 	}
 
-	// Derive FILE_TYPE from S3 key when not explicitly set.
-	// Inbound files from health plan clients use .txt extension (pipe-delimited).
-	// Encrypted variants use .txt.pgp.
-	// File type is detected by srg310/srg315/srg320 appearing in the filename.
+	// Derive FILE_TYPE from S3 key when not explicitly set
 	if *fileType == "" && *s3Key != "" {
 		lower := strings.ToLower(*s3Key)
 		switch {
@@ -588,10 +623,7 @@ func parseConfig() (*PipelineConfig, error) {
 		}
 	}
 
-	// Generate CORRELATION_ID deterministically from (s3Bucket + s3Key) when not set.
-	// UUID v5 (SHA-1 namespace) — same key always produces the same correlation ID,
-	// making EventBridge-triggered replays fully idempotent (Stage 3 deduplication
-	// catches re-submitted rows; the correlation ID itself is stable).
+	// Generate CORRELATION_ID deterministically from (s3Bucket + s3Key) when not set
 	if *corrIDStr == "" {
 		if *s3Key == "" {
 			return nil, fmt.Errorf("--correlation-id is required when --s3-key is not set")
@@ -605,30 +637,31 @@ func parseConfig() (*PipelineConfig, error) {
 	}
 
 	cfg := &PipelineConfig{
-		CorrelationID:              id,
-		TenantID:                   *tenantID,
-		ClientID:                   *clientID,
-		S3Bucket:                   *s3Bucket,
-		S3Key:                      *s3Key,
-		FileType:                   *fileType,
-		Region:                     *region,
-		PipelineEnv:                *pipelineEnv,
-		DBHost:                     *dbHost,
-		DBName:                     *dbName,
-		DBUser:                     *dbUser,
-		DBPassword:                 *dbPass,
-		DBSSLMode:                  *dbSSL,
-		KMSKeyARN:                  *kmsKey,
-		StagedBucket:               *stagedBucket,
-		SCPExchangeBucket:          *scpBucket,
-		EgressBucket:               *egressBucket,
-		ReturnFilePrefix:           *returnPrefix,
-		SCPCompanyID:               *scpCompanyID,
-		PGPPrivateKeySecretARN:     *pgpPrivateKeyARN,
-		PGPPassphraseSecretARN:     *pgpPassphraseARN,
-		PGPSCPPublicKeySecretARN:   *pgpSCPPublicKeyARN,
-		ReplayMode:                 *replay,
-		ReturnFileWaitTimeout:      *returnTimeout,
+		Mode:                     *mode,
+		CorrelationID:            id,
+		TenantID:                 *tenantID,
+		ClientID:                 *clientID,
+		S3Bucket:                 *s3Bucket,
+		S3Key:                    *s3Key,
+		FileType:                 *fileType,
+		Region:                   *region,
+		PipelineEnv:              *pipelineEnv,
+		DBHost:                   *dbHost,
+		DBName:                   *dbName,
+		DBUser:                   *dbUser,
+		DBPassword:               *dbPass,
+		DBSSLMode:                *dbSSL,
+		KMSKeyARN:                *kmsKey,
+		StagedBucket:             *stagedBucket,
+		SCPExchangeBucket:        *scpBucket,
+		EgressBucket:             *egressBucket,
+		SCPCompanyID:             *scpCompanyID,
+		PGPPrivateKeySecretARN:   *pgpPrivateKeyARN,
+		PGPPassphraseSecretARN:   *pgpPassphraseARN,
+		PGPSCPPublicKeySecretARN: *pgpSCPPublicKeyARN,
+		ReturnFileBucket:         *returnFileBucket,
+		ReturnFileKey:            *returnFileKey,
+		ReplayMode:               *replay,
 	}
 	if *replay && *replaySeq > 0 {
 		seq := *replaySeq
@@ -645,4 +678,3 @@ func envOrDefault(key, def string) string {
 }
 
 func strPtr(s string) *string { return &s }
-
